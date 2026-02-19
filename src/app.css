@@ -1,0 +1,89 @@
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Rajdhani:wght@400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #09090b;
+  --card: #111116;
+  --border: #1e1e28;
+  --green: #00e676;
+  --orange: #f7931a;
+  --blue: #4fc3f7;
+  --red: #ff5252;
+  --muted: #555566;
+  --dim: #888899;
+  --bright: #e8e8f0;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  background: #09090b;
+  color: #e8e8f0;
+  font-family: 'Share Tech Mono', monospace;
+  min-height: 100vh;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.025) 2px, rgba(0,0,0,0.025) 4px);
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(79,195,247,0.2), transparent);
+}
+
+.card-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.val-lg {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.val-xl {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1;
+}
+
+.pbar { height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+.pfill { height: 100%; border-radius: 2px; transition: width 0.5s ease; }
+
+.news-item { border-bottom: 1px solid var(--border); padding: 0.6rem 0; }
+.news-item:last-child { border-bottom: none; }
+
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+.blink { animation: blink 1.5s step-end infinite; }
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
