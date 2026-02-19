@@ -31,100 +31,64 @@ export interface LiveSignals {
   difficultyChange: number | null;
   fundingRate: number | null;
   audUsd: number | null;
-  mvrv: number | null;
-  nupl: number | null;
-  nvt: number | null;
 }
 
 export function calcDCA(btcUsd: number, live: LiveSignals) {
   const audUsd = live.audUsd ?? 1.58;
-  const mvrv = live.mvrv;
-  const nupl = live.nupl;
-  const nvt = live.nvt;
 
-  // Base % from price position + MVRV (auto now)
-  let base = 0;
-  let usingFallback = false;
-  if (btcUsd < 55000) {
-    base = 100;
-  } else if (btcUsd > 125000) {
-    base = 0;
-  } else if (mvrv !== null) {
-    // MVRV-driven base: 3.5 = overvalued (0%), 1.0 = undervalued (100%)
-    base = Math.max(0, Math.min(100, ((3.5 - mvrv) / 2.5) * 100));
-  } else {
-    // Price-only fallback
-    base = Math.max(0, Math.min(100, ((125000 - btcUsd) / 70000) * 100));
-    usingFallback = true;
-  }
-  base = Math.max(0, Math.min(100, base));
+  // Price-based taper: 100% allocation at $55k, 0% at $125k, linear
+  // This is the primary driver — clean, fast, no external API dependency
+  const base = Math.max(0, Math.min(100, ((125000 - btcUsd) / 70000) * 100));
 
-  const now = new Date();
-  const halvingActive = now >= new Date('2026-05-01') && now < new Date('2027-05-01');
   const fg = live.fearGreed;
   const diff = live.difficultyChange;
   const funding = live.fundingRate;
+  const now = new Date();
+  const halvingActive = now >= new Date('2026-05-01') && now < new Date('2027-05-01');
 
-  // NVT: low NVT (<= 40) = undervalued/accumulation, network activity high relative to price
-  // Historical: NVT < 40 = strong buy signal, 40-65 = neutral, > 65 = overvalued
-  const nvtLow = nvt !== null && nvt <= 40;
-
+  // Only use the 3 fast/reliable signals — no CoinMetrics dependency
   const signals = [
     {
       name: 'Extreme Fear',
       active: fg !== null && fg <= 20,
-      value: fg !== null ? `F&G ${fg}` : 'Loading...',
+      value: fg !== null ? `F&G ${fg}` : '--',
       boost: 20,
-      source: 'alternative.me'
+      source: 'alternative.me',
     },
     {
-      name: 'Fear',
+      name: 'Fear Zone',
       active: fg !== null && fg > 20 && fg <= 40,
-      value: fg !== null ? `F&G ${fg}` : 'Loading...',
+      value: fg !== null ? `F&G ${fg}` : '--',
       boost: 10,
-      source: 'alternative.me'
-    },
-    {
-      name: 'NUPL Negative',
-      active: nupl !== null && nupl < 0,
-      value: nupl !== null ? nupl.toFixed(3) : 'Loading...',
-      boost: 15,
-      source: 'coinmetrics'
-    },
-    {
-      name: 'NVT Low',
-      active: nvtLow,
-      value: nvt !== null ? `NVT ${nvt}` : 'Loading...',
-      boost: 15,
-      source: 'coinmetrics'
+      source: 'alternative.me',
     },
     {
       name: 'Mining Distress',
       active: diff !== null && diff < -7,
-      value: diff !== null ? `${diff.toFixed(1)}%` : 'Loading...',
-      boost: 20,
-      source: 'mempool.space'
+      value: diff !== null ? `${diff.toFixed(1)}%` : '--',
+      boost: 15,
+      source: 'mempool.space',
     },
     {
       name: 'Funding Negative',
       active: funding !== null && funding < -0.05,
-      value: funding !== null ? `${funding.toFixed(3)}%` : 'Loading...',
-      boost: 15,
-      source: 'binance'
+      value: funding !== null ? `${funding.toFixed(3)}%` : '--',
+      boost: 10,
+      source: 'binance',
     },
     {
       name: 'Halving Window',
       active: halvingActive,
-      value: halvingActive ? 'Active' : 'May 2026',
+      value: halvingActive ? 'Active' : 'Post-April 2026',
       boost: 10,
-      source: 'hardcoded'
+      source: 'schedule',
     },
   ];
 
   const totalBoost = signals.filter(s => s.active).reduce((a, s) => a + s.boost, 0);
   const totalPct = Math.max(0, Math.min(100, base + totalBoost));
   const raw = (totalPct / 100) * 1000;
-  const finalAud = Math.min(Math.round(raw / 50) * 50, 1000);
+  const finalAud = Math.round(raw / 50) * 50;
 
   return {
     base,
@@ -134,7 +98,7 @@ export function calcDCA(btcUsd: number, live: LiveSignals) {
     conviction: signals.filter(s => s.active).length,
     audUsd,
     btcAud: btcUsd * audUsd,
-    usingFallback,
-    mvrv
+    usingFallback: false,
+    mvrv: null,
   };
 }

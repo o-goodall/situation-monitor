@@ -30,19 +30,11 @@
   let sp500YtdPct: number | null = null;
   let cpiAnnual: number | null = null;
 
-  // SAT converter — derived from existing btcPrice + audUsd, no extra API
-  let satInput = '100';
-  let satInputMode: 'aud' | 'sats' = 'aud';
-
   let fearGreed: number | null = null;
   let fearGreedLabel = '';
   let difficultyChange: number | null = null;
   let fundingRate: number | null = null;
   let audUsd: number | null = null;
-  let mvrv: number | null = null;
-  let nupl: number | null = null;
-  let nvt: number | null = null;
-  let cmDate = '';
   let dcaUpdated = '';
 
   let markets: { id: string; question: string; topOutcome: string; probability: number; volume: number; volume24hr: number; endDate: string; tag: string; url: string; pinned: boolean }[] = [];
@@ -83,28 +75,14 @@
   }
 
   $: settings, btcPrice, updateStacking();
-  $: liveSignals = { fearGreed, difficultyChange, fundingRate, audUsd, mvrv, nupl, nvt } as LiveSignals;
+  $: liveSignals = { fearGreed, difficultyChange, fundingRate, audUsd } as LiveSignals;
   $: dca = btcPrice > 0 ? calcDCA(btcPrice, liveSignals) : null;
   $: dcaBuyColor = !dca ? '#888899' : dca.finalAud === 0 ? '#ff5252' : dca.finalAud >= 750 ? '#00e676' : dca.finalAud >= 400 ? '#f7931a' : '#4fc3f7';
   $: priceColor = priceFlash === 'up' ? '#00e676' : priceFlash === 'down' ? '#ff5252' : '#e8e8f0';
-  $: mvrvColor = mvrv === null ? '#888899' : mvrv < 1 ? '#00e676' : mvrv < 2 ? '#4fc3f7' : mvrv < 3 ? '#f7931a' : '#ff5252';
-  $: nuplColor = nupl === null ? '#888899' : nupl < 0 ? '#00e676' : nupl < 0.25 ? '#4fc3f7' : nupl < 0.5 ? '#f7931a' : '#ff5252';
-  $: nvtColor = nvt === null ? '#888899' : nvt <= 40 ? '#00e676' : nvt <= 65 ? '#888899' : '#ff5252';
 
-  // SAT converter: derive from existing BTC price + AUD/USD rate
+  // SAT converter: $1 AUD = X sats, live calculation — no input needed
   $: btcAud = (btcPrice > 0 && audUsd !== null) ? btcPrice * audUsd : null;
   $: satsPerAud = btcAud !== null && btcAud > 0 ? (1e8 / btcAud) : null;
-  $: satConverterOutput = (() => {
-    const val = parseFloat(satInput);
-    if (isNaN(val) || val <= 0 || satsPerAud === null || btcAud === null) return null;
-    if (satInputMode === 'aud') {
-      const sats = val * satsPerAud;
-      return { sats: Math.round(sats), aud: val };
-    } else {
-      const aud = val / satsPerAud;
-      return { sats: Math.round(val), aud };
-    }
-  })();
 
   // Inflation-adjusted net worth (using CPI annual rate and DCA start date)
   $: inflationAdjustedNetWorth = (() => {
@@ -167,10 +145,6 @@
       difficultyChange = d.difficultyChange;
       fundingRate = d.fundingRate;
       audUsd = d.audUsd;
-      mvrv = d.mvrv;
-      nupl = d.nupl;
-      nvt = d.nvt;
-      cmDate = d.cmDate ?? '';
       const now = new Date();
       dcaUpdated = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
     } catch {}
@@ -308,30 +282,30 @@
   });
 </script>
 
-<header style="border-bottom:1px solid #1e1e28; padding:12px 16px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; background:#09090b; z-index:100;">
+<header class="header-inner">
   <div style="display:flex; align-items:center; gap:10px;">
-    <span style="font-size:1.4rem">🌐</span>
+    <span style="font-size:1.3rem">🌐</span>
     <div>
-      <div style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:1.1rem; letter-spacing:0.15em; color:#e8e8f0;">SITUATION MONITOR</div>
-      <div style="font-size:0.65rem; color:#555566;"><span class="blink" style="color:#00e676">▮</span> LIVE · AUTO-REFRESH</div>
+      <div class="site-title" style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:1.1rem; letter-spacing:0.15em; color:#e8e8f0;">SITUATION MONITOR</div>
+      <div style="font-size:0.62rem; color:#555566;"><span class="blink" style="color:#00e676">▮</span> LIVE · AUTO-REFRESH</div>
     </div>
   </div>
   <div style="display:flex; align-items:center; gap:12px;">
     <div style="text-align:right;">
-      <div style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:1.5rem; color:#4fc3f7; line-height:1;">{time}</div>
-      <div style="font-size:0.65rem; color:#555566;">{dateStr} UTC</div>
+      <div class="clock-time" style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:1.5rem; color:#4fc3f7; line-height:1;">{time}</div>
+      <div class="clock-date" style="font-size:0.62rem; color:#555566;">{dateStr} UTC</div>
     </div>
-    <button on:click={() => showSettings = !showSettings}
-      style="padding:5px 12px; border:1px solid {showSettings ? '#4fc3f7' : '#1e1e28'}; border-radius:4px; background:none; color:{showSettings ? '#4fc3f7' : '#888899'}; font-family:Rajdhani,sans-serif; font-weight:700; font-size:0.7rem; letter-spacing:0.1em; cursor:pointer;">
-      SETTINGS
+    <button class="settings-btn" on:click={() => showSettings = !showSettings}
+      style="padding:5px 12px; border:1px solid {showSettings ? '#4fc3f7' : '#1e1e28'}; border-radius:4px; background:none; color:{showSettings ? '#4fc3f7' : '#888899'}; font-family:Rajdhani,sans-serif; font-weight:700; font-size:0.7rem; letter-spacing:0.1em; cursor:pointer; min-width:36px;">
+      <span>SETTINGS</span>
     </button>
   </div>
 </header>
 
 {#if showSettings}
-<div style="background:#111116; border-bottom:1px solid #1e1e28; padding:1rem 1.25rem; max-width:900px; margin:0 auto;">
+<div class="settings-panel" style="background:#111116; border-bottom:1px solid #1e1e28; padding:1rem 1.25rem; max-width:900px; margin:0 auto;">
   <div style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:0.7rem; letter-spacing:0.15em; color:#4fc3f7; margin-bottom:1rem;">SETTINGS</div>
-  <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin-bottom:1rem;">
+  <div class="settings-grid" style="display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:1rem; margin-bottom:1rem;">
     <div>
       <div class="card-label">DCA START DATE</div>
       <input type="date" bind:value={settings.dca.startDate} style="width:100%; background:#09090b; border:1px solid #1e1e28; border-radius:4px; padding:6px 8px; color:#e8e8f0; font-family:monospace; font-size:0.8rem;" />
@@ -349,7 +323,7 @@
       <input type="number" step="0.001" bind:value={settings.dca.goalBtc} style="width:100%; background:#09090b; border:1px solid #1e1e28; border-radius:4px; padding:6px 8px; color:#e8e8f0; font-family:monospace; font-size:0.8rem;" />
     </div>
   </div>
-  <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:0.75rem;">
+  <div class="settings-kw-grid" style="display:grid; grid-template-columns:1fr 1fr; gap:1rem; margin-bottom:0.75rem;">
     <div>
       <div class="card-label">PINNED WATCHLIST (keywords)</div>
       <div style="font-size:0.6rem; color:#555566; margin-bottom:6px;">Added on top of auto-trending geopolitics/politics/economy feed</div>
@@ -404,24 +378,26 @@
 </div>
 {/if}
 
-<main style="padding:12px; max-width:1400px; margin:0 auto;">
-  <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px;">
+<main>
+  <div class="main-grid">
 
-    <div style="display:flex; flex-direction:column; gap:12px;">
+    <div class="col-signals" style="display:flex; flex-direction:column; gap:8px;">
 
       <!-- BITCOIN -->
       <div class="card">
         <div class="card-label">BTC BITCOIN NETWORK</div>
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px;">
+        <div class="btc-stats-grid" style="margin-bottom:14px;">
           <div>
-            <div class="card-label" style="margin-bottom:4px;">PRICE</div>
+            <div class="card-label" style="margin-bottom:4px;">PRICE (USD)</div>
             <div class="val-lg" style="color:{priceColor}; transition:color 0.5s;">${n(btcPrice)}</div>
             {#if btcAud !== null}<div style="font-size:0.65rem; color:#888899;">A${n(btcAud, 0)}</div>{/if}
           </div>
           <div>
-            <div class="card-label" style="margin-bottom:4px;">SATS/$</div>
-            <div class="val-lg" style="color:#f7931a;">{n(btcSats)}</div>
-            {#if satsPerAud !== null}<div style="font-size:0.65rem; color:#888899;">{satsPerAud.toFixed(0)} sat/A$</div>{/if}
+            <div class="card-label" style="margin-bottom:4px;">$1 AUD IN SATS</div>
+            <div class="val-lg" style="color:#f7931a;">
+              {satsPerAud !== null ? satsPerAud.toFixed(0) : '--'}
+            </div>
+            <div style="font-size:0.65rem; color:#888899;">sats per A$1</div>
           </div>
           <div>
             <div class="card-label" style="margin-bottom:4px;">BLOCK</div>
@@ -432,7 +408,7 @@
         <!-- MEMPOOL FEES -->
         <div style="border-top:1px solid #1e1e28; padding-top:10px; margin-bottom:12px;">
           <div class="card-label" style="margin-bottom:8px;">MEMPOOL FEES (SAT/VB)</div>
-          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px;">
+          <div class="grid-3">
             {#each [['LOW', btcFees.low, '#00e676'], ['MED', btcFees.medium, '#f7931a'], ['HIGH', btcFees.high, '#ff5252']] as [label, val, color]}
               <div style="text-align:center;">
                 <div class="val-lg" style="color:{color};">{val}</div>
@@ -471,34 +447,7 @@
         </div>
         {/if}
 
-        <!-- SAT CONVERTER -->
-        <div style="border-top:1px solid #1e1e28; padding-top:10px;">
-          <div class="card-label" style="margin-bottom:8px;">SAT CONVERTER</div>
-          <div style="display:flex; gap:6px; margin-bottom:8px;">
-            <button on:click={() => satInputMode = 'aud'}
-              style="flex:1; padding:4px; border:1px solid {satInputMode==='aud' ? '#f7931a' : '#1e1e28'}; border-radius:3px; background:none; color:{satInputMode==='aud' ? '#f7931a' : '#555566'}; font-family:Rajdhani,sans-serif; font-size:0.7rem; cursor:pointer;">A$ → SATS</button>
-            <button on:click={() => satInputMode = 'sats'}
-              style="flex:1; padding:4px; border:1px solid {satInputMode==='sats' ? '#f7931a' : '#1e1e28'}; border-radius:3px; background:none; color:{satInputMode==='sats' ? '#f7931a' : '#555566'}; font-family:Rajdhani,sans-serif; font-size:0.7rem; cursor:pointer;">SATS → A$</button>
-          </div>
-          <div style="display:flex; gap:6px; align-items:center;">
-            <input type="number" bind:value={satInput} min="0"
-              style="flex:1; background:#09090b; border:1px solid #1e1e28; border-radius:4px; padding:6px 8px; color:#f7931a; font-family:monospace; font-size:0.9rem; min-width:0;" />
-            <span style="font-size:0.7rem; color:#555566;">{satInputMode === 'aud' ? 'AUD' : 'sats'}</span>
-          </div>
-          {#if satConverterOutput !== null}
-            <div style="margin-top:8px; padding:8px; background:#111116; border-radius:4px; font-family:monospace; font-size:0.8rem;">
-              {#if satInputMode === 'aud'}
-                <div style="color:#e8e8f0;">= <span style="color:#f7931a; font-size:1rem;">{satConverterOutput.sats.toLocaleString()}</span> sats</div>
-                <div style="color:#555566; font-size:0.65rem; margin-top:2px;">≈ {(satConverterOutput.sats / 1e8).toFixed(8)} BTC</div>
-              {:else}
-                <div style="color:#e8e8f0;">= <span style="color:#00e676; font-size:1rem;">A${satConverterOutput.aud.toFixed(4)}</span></div>
-                <div style="color:#555566; font-size:0.65rem; margin-top:2px;">≈ {(satConverterOutput.sats / 1e8).toFixed(8)} BTC</div>
-              {/if}
-            </div>
-          {:else if satsPerAud === null}
-            <div style="margin-top:6px; font-size:0.65rem; color:#555566;">Waiting for price data...</div>
-          {/if}
-        </div>
+
       </div>
 
       <!-- STACKING -->
@@ -546,7 +495,7 @@
         </div>
 
         <!-- BTC vs Gold vs S&P500 row -->
-        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px;">
+        <div class="asset-cmp-grid" style="margin-bottom:14px;">
           <!-- BTC -->
           <div style="background:#111116; border-radius:5px; padding:8px; text-align:center;">
             <div class="card-label" style="margin-bottom:4px; color:#f7931a;">₿ BTC</div>
@@ -630,13 +579,36 @@
             {!dca ? 'LOADING...' : dca.finalAud === 0 ? 'DO NOT BUY' : 'BUY $' + dca.finalAud.toLocaleString() + ' AUD'}
           </div>
           {#if dca && dca.finalAud > 0}
-            <div style="font-size:0.65rem; color:#888899; margin-top:4px;">{dca.totalPct.toFixed(0)}% of $1,000 · {dca.conviction}/7 signals active</div>
+            <div style="font-size:0.65rem; color:#888899; margin-top:4px;">{dca.totalPct.toFixed(0)}% of $1,000 base · {dca.conviction} boost signal{dca.conviction !== 1 ? 's' : ''} active</div>
           {/if}
         </div>
 
+        <!-- Price scale visualiser -->
+        {#if btcPrice > 0}
+          <div style="margin-bottom:12px; padding:10px; background:#111116; border-radius:5px; border:1px solid #1e1e28;">
+            <div style="display:flex; justify-content:space-between; font-size:0.6rem; color:#555566; margin-bottom:5px;">
+              <span style="color:#00e676;">$55k MAX BUY</span>
+              <span style="color:#f7931a;">${(btcPrice/1000).toFixed(0)}k NOW</span>
+              <span style="color:#ff5252;">$125k NO BUY</span>
+            </div>
+            <div class="pbar" style="margin-bottom:4px;">
+              {#if btcPrice <= 55000}
+                <div class="pfill" style="width:0%; background:#00e676;"></div>
+              {:else if btcPrice >= 125000}
+                <div class="pfill" style="width:100%; background:#ff5252;"></div>
+              {:else}
+                <div class="pfill" style="width:{((btcPrice - 55000) / 70000) * 100}%; background:linear-gradient(90deg,#00e676,#f7931a,#ff5252);"></div>
+              {/if}
+            </div>
+            <div style="font-size:0.6rem; color:#555566; text-align:center;">
+              Price taper · {dca ? dca.base.toFixed(0) : '--'}% base allocation
+            </div>
+          </div>
+        {/if}
+
         <!-- Signals -->
         <div style="margin-bottom:12px;">
-          <div class="card-label" style="margin-bottom:8px;">SIGNALS</div>
+          <div class="card-label" style="margin-bottom:8px;">BOOST SIGNALS</div>
           {#if dca}
             {#each dca.signals as sig}
               <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.72rem; margin-bottom:5px;">
@@ -662,8 +634,7 @@
             <div style="font-size:0.7rem; font-family:monospace;">
               <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:#555566">BTC/AUD</span><span>${n(dca.btcAud, 0)}</span></div>
               <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:#555566">AUD/USD</span><span>{(1/dca.audUsd).toFixed(4)}</span></div>
-              <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:#555566">MVRV</span><span style="color:{mvrvColor}">{mvrv !== null ? mvrv.toFixed(3) : '--'}{dca.usingFallback ? ' (price proxy)' : ''}</span></div>
-              <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:#555566">Base</span><span style="color:#f7931a">{dca.base.toFixed(0)}%</span></div>
+              <div style="display:flex; justify-content:space-between; margin-bottom:3px;"><span style="color:#555566">Price base</span><span style="color:#f7931a">{dca.base.toFixed(0)}%</span></div>
               {#each dca.signals.filter(s => s.active) as sig}
                 <div style="display:flex; justify-content:space-between; margin-bottom:2px;"><span style="color:#555566">+ {sig.name}</span><span style="color:#00e676">+{sig.boost}%</span></div>
               {/each}
@@ -672,42 +643,28 @@
           </div>
         {/if}
 
-        <!-- Live data grid - all automated -->
+        <!-- Live context: 3 reliable signals only -->
         <div style="border-top:1px solid #1e1e28; padding-top:10px;">
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <div class="card-label" style="margin:0;">LIVE ON-CHAIN DATA</div>
-            {#if cmDate}<div style="font-size:0.6rem; color:#555566;">as of {cmDate}</div>{/if}
-          </div>
-          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; font-size:0.7rem; margin-bottom:8px;">
+          <div class="card-label" style="margin-bottom:8px;">LIVE SIGNAL CONTEXT</div>
+          <div class="signal-ctx-grid">
             <div>
-              <div style="color:#555566; margin-bottom:2px;">Fear/Greed</div>
-              <div class="val-lg" style="color:{fgColor(fearGreed)};">{fearGreed ?? '--'}</div>
-              <div style="font-size:0.6rem; color:#555566;">{fearGreedLabel || '--'}</div>
+              <div style="font-size:0.6rem; color:#555566; margin-bottom:3px;">FEAR/GREED</div>
+              <div style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:1.3rem; line-height:1; color:{fgColor(fearGreed)};">{fearGreed ?? '--'}</div>
+              <div style="font-size:0.58rem; color:#555566; margin-top:2px;">{fearGreedLabel || (fearGreed === null ? 'loading...' : '')}</div>
             </div>
             <div>
-              <div style="color:#555566; margin-bottom:2px;">MVRV</div>
-              <div class="val-lg" style="color:{mvrvColor};">{mvrv !== null ? mvrv.toFixed(2) : '--'}</div>
-              <div style="font-size:0.6rem; color:#555566;">{mvrv !== null ? (mvrv < 1 ? 'undervalued' : mvrv < 2 ? 'fair' : mvrv < 3 ? 'elevated' : 'overvalued') : '--'}</div>
+              <div style="font-size:0.6rem; color:#555566; margin-bottom:3px;">DIFFICULTY Δ</div>
+              <div style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:1.3rem; line-height:1; color:{difficultyChange !== null && difficultyChange < -7 ? '#ff5252' : '#888899'};">
+                {difficultyChange !== null ? (difficultyChange >= 0 ? '+' : '') + difficultyChange.toFixed(1) + '%' : '--'}
+              </div>
+              <div style="font-size:0.58rem; color:#555566; margin-top:2px;">{difficultyChange !== null ? (difficultyChange < -7 ? '⚡ distress' : 'normal') : 'loading...'}</div>
             </div>
             <div>
-              <div style="color:#555566; margin-bottom:2px;">NUPL</div>
-              <div class="val-lg" style="color:{nuplColor};">{nupl !== null ? nupl.toFixed(3) : '--'}</div>
-              <div style="font-size:0.6rem; color:#555566;">{nupl !== null ? (nupl < 0 ? 'capitulation' : nupl < 0.25 ? 'hope' : nupl < 0.5 ? 'optimism' : 'euphoria') : '--'}</div>
-            </div>
-          </div>
-          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:8px; font-size:0.7rem;">
-            <div>
-              <div style="color:#555566; margin-bottom:2px;">NVT</div>
-              <div class="val-lg" style="color:{nvtColor};">{nvt !== null ? nvt.toFixed(0) : '--'}</div>
-              <div style="font-size:0.6rem; color:#555566;">{nvt !== null ? (nvt <= 40 ? 'undervalued' : nvt <= 65 ? 'neutral' : 'overvalued') : '--'}</div>
-            </div>
-            <div>
-              <div style="color:#555566; margin-bottom:2px;">Difficulty</div>
-              <div class="val-lg" style="color:{difficultyChange !== null && difficultyChange < -7 ? '#ff5252' : '#888899'};">{difficultyChange !== null ? difficultyChange.toFixed(1) + '%' : '--'}</div>
-            </div>
-            <div>
-              <div style="color:#555566; margin-bottom:2px;">Funding</div>
-              <div class="val-lg" style="color:{fundingRate !== null && fundingRate < -0.05 ? '#00e676' : '#888899'};">{fundingRate !== null ? fundingRate.toFixed(3) + '%' : '--'}</div>
+              <div style="font-size:0.6rem; color:#555566; margin-bottom:3px;">FUNDING</div>
+              <div style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:1.3rem; line-height:1; color:{fundingRate !== null && fundingRate < -0.05 ? '#00e676' : fundingRate !== null && fundingRate > 0.1 ? '#ff5252' : '#888899'};">
+                {fundingRate !== null ? (fundingRate >= 0 ? '+' : '') + fundingRate.toFixed(3) + '%' : '--'}
+              </div>
+              <div style="font-size:0.58rem; color:#555566; margin-top:2px;">{fundingRate !== null ? (fundingRate < -0.05 ? 'bearish' : fundingRate > 0.1 ? 'overheated' : 'neutral') : 'loading...'}</div>
             </div>
           </div>
         </div>
@@ -716,7 +673,7 @@
     </div>
 
     <!-- COL 2: POLYMARKET -->
-    <div>
+    <div class="col-btc">
       <div class="card" style="height:100%;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
           <div>
@@ -776,7 +733,7 @@
     </div>
 
     <!-- COL 3: NEWS -->
-    <div>
+    <div class="col-right">
       <div class="card" style="height:100%;">
         <div class="card-label">NEWS FEED</div>
         {#if newsItems.length === 0}
@@ -802,7 +759,7 @@
 
   <!-- GHOSTFOLIO NET WORTH - full width row -->
   {#if settings.ghostfolio?.token}
-  <div style="margin-top:12px;">
+  <div style="margin-top:8px; padding: 0 12px 12px; max-width:1400px; margin-left:auto; margin-right:auto;">
     <div class="card">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;">
         <div style="display:flex; align-items:center; gap:10px;">
@@ -822,7 +779,7 @@
         </div>
       {:else}
         <!-- Summary row -->
-        <div style="display:grid; grid-template-columns:repeat(6,1fr); gap:12px; margin-bottom:16px;">
+        <div class="gf-summary" style="margin-bottom:16px;">
           <div>
             <div class="card-label" style="margin-bottom:4px;">NET WORTH</div>
             <div style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:1.4rem; color:#a78bfa; line-height:1;">
@@ -865,7 +822,7 @@
         {#if gfNetGainPct !== null || cpiAnnual !== null}
           <div style="border-top:1px solid #1e1e28; padding-top:12px; margin-bottom:14px;">
             <div class="card-label" style="margin-bottom:10px;">REAL ROI · PORTFOLIO vs ALTERNATIVES (annualised CAGR from DCA start)</div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px;">
+            <div class="roi-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(180px,1fr)); gap:8px;">
               <!-- Portfolio CAGR -->
               {#if portfolioAnnualisedPct !== null}
                 <div style="background:#111116; border-radius:5px; padding:10px 12px; border:1px solid #2a2a3a;">
@@ -934,7 +891,7 @@
         {#if gfHoldings.length > 0}
           <div style="border-top:1px solid #1e1e28; padding-top:12px;">
             <div class="card-label" style="margin-bottom:8px;">HOLDINGS BREAKDOWN</div>
-            <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px;">
+            <div class="holdings-grid" style="display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:8px;">
               {#each gfHoldings as h}
                 {@const perfColor = h.netPerformancePercentWithCurrencyEffect >= 0 ? '#00e676' : '#ff5252'}
                 {@const barWidth = Math.min(100, h.allocationInPercentage)}
@@ -968,14 +925,239 @@
 </main>
 
 <footer style="border-top:1px solid #1e1e28; padding:6px 16px; display:flex; justify-content:space-between; font-size:0.6rem; color:#555566; margin-top:12px;">
-  <div><span style="color:#00e676">▮</span> SITUATION MONITOR v1.4</div>
-  <div>Data: mempool.space · alternative.me · coinmetrics · binance · open.er-api · ghostfol.io · yahoo finance · worldbank</div>
+  <div><span style="color:#00e676">▮</span> SITUATION MONITOR v1.5</div>
+  <div>Data: mempool.space · alternative.me · coinmetrics · binance · open.er-api · ghostfol.io · stooq · worldbank</div>
 </footer>
 
 <style>
-  @media (max-width: 900px) {
-    main div[style*="grid-template-columns:repeat(3"] {
-      grid-template-columns: 1fr !important;
-    }
+  /* ── RESET ── */
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+  /* ── HEADER ── */
+  .header-inner {
+    border-bottom: 1px solid #1e1e28;
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: #09090b;
+    z-index: 100;
+  }
+  @media (max-width: 600px) {
+    .header-inner { padding: 8px 12px; }
+    .site-title { font-size: 0.9rem !important; letter-spacing: 0.1em !important; }
+    .clock-time { font-size: 1.3rem !important; }
+    .clock-date { display: none; }
+    .settings-btn span { display: none; }
+    .settings-btn::after { content: '⚙'; font-size: 1rem; }
+    .settings-btn { min-width: 42px; min-height: 42px; display: flex; align-items: center; justify-content: center; }
+  }
+
+  /* ── MAIN GRID: 3-col → 1-col on mobile ── */
+  .main-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding: 12px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  @media (max-width: 960px) {
+    .main-grid { grid-template-columns: 1fr 1fr; gap: 10px; padding: 10px; }
+  }
+  @media (max-width: 600px) {
+    .main-grid { grid-template-columns: 1fr; gap: 8px; padding: 8px; }
+  }
+
+  /* ── CARD BASE ── */
+  .card {
+    background: #111116;
+    border: 1px solid #1e1e28;
+    border-radius: 8px;
+    padding: 14px;
+  }
+  @media (max-width: 600px) {
+    .card { padding: 11px 12px; border-radius: 6px; }
+  }
+
+  /* ── CARD LABEL ── */
+  .card-label {
+    font-family: Rajdhani, sans-serif;
+    font-weight: 700;
+    font-size: 0.65rem;
+    letter-spacing: 0.12em;
+    color: #555566;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+  }
+  @media (max-width: 600px) {
+    .card-label { font-size: 0.6rem; }
+  }
+
+  /* ── VALUE SIZES ── */
+  .val-lg {
+    font-family: Rajdhani, sans-serif;
+    font-weight: 700;
+    font-size: 1.25rem;
+    line-height: 1.1;
+    color: #e8e8f0;
+  }
+  .val-xl {
+    font-family: Rajdhani, sans-serif;
+    font-weight: 700;
+    font-size: 1.6rem;
+    line-height: 1;
+    color: #e8e8f0;
+  }
+  @media (max-width: 600px) {
+    .val-lg  { font-size: 1.15rem; }
+    .val-xl  { font-size: 1.4rem; }
+  }
+
+  /* ── GRIDS ── */
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+
+  /* ── PROGRESS BAR ── */
+  .pbar {
+    height: 5px;
+    background: #1e1e28;
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .pfill {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 0.5s ease;
+  }
+
+  /* ── NEWS ── */
+  .news-item {
+    padding: 7px 0;
+    border-bottom: 1px solid #1a1a22;
+  }
+
+  /* ── HOLDINGS GRID ── */
+  .holdings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 8px;
+  }
+  @media (max-width: 600px) {
+    .holdings-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── ROI GRID ── */
+  .roi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+  }
+
+  /* ── SETTINGS ── */
+  .settings-panel { background: #111116; border-bottom: 1px solid #1e1e28; padding: 1rem 1.25rem; }
+  .settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+  .settings-kw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 600px) {
+    .settings-panel { padding: 0.75rem; }
+    .settings-kw-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── MOBILE CARD ORDER (pin important things to top on single col) ── */
+  @media (max-width: 960px) {
+    /* On tablet 2-col, make col-right span full width as a third row */
+    .col-right { grid-column: 1 / -1; }
+  }
+  @media (max-width: 600px) {
+    .col-signals { order: 1; }
+    .col-btc     { order: 2; }
+    .col-right   { order: 3; grid-column: auto; }
+  }
+
+  /* ── GF 6-col grid (net worth row) ── */
+  .gf-summary {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+  }
+  @media (max-width: 960px) {
+    .gf-summary { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .gf-summary { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  }
+
+  /* ── BLINK ── */
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+  .blink { animation: blink 1.5s infinite; }
+
+  /* ── SCROLLBAR (webkit) ── */
+  :global(*::-webkit-scrollbar) { width: 4px; height: 4px; }
+  :global(*::-webkit-scrollbar-track) { background: #09090b; }
+  :global(*::-webkit-scrollbar-thumb) { background: #2a2a3a; border-radius: 2px; }
+
+  /* ── MOBILE TOUCH ── */
+  :global(button, a) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  :global(input) { -webkit-tap-highlight-color: transparent; }
+  @media (max-width: 600px) {
+    /* Ensure all interactive elements have adequate touch targets */
+    :global(button) { min-height: 36px; }
+    /* Prevent text from overflowing in tight grids */
+    .val-lg { word-break: break-all; }
+  }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid #1e1e28;
+    padding: 6px 16px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.6rem;
+    color: #555566;
+    margin-top: 12px;
+  }
+  @media (max-width: 600px) {
+    footer { flex-direction: column; gap: 3px; font-size: 0.55rem; padding: 6px 10px; }
+  }
+
+  /* ── BTC STATS TOP GRID ── */
+  .btc-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  /* ── ASSET COMPARISON GRID ── */
+  .asset-cmp-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  @media (max-width: 480px) {
+    .asset-cmp-grid { grid-template-columns: 1fr 1fr; }
+    .asset-cmp-grid > div:last-child { grid-column: span 2; }
+  }
+
+  /* ── SIGNAL CONTEXT GRID ── */
+  .signal-ctx-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  /* ── MOBILE STAT TILES ── */
+  .stat-tile {
+    background: #0d0d10;
+    border: 1px solid #1e1e28;
+    border-radius: 6px;
+    padding: 10px 10px 8px;
+  }
+  @media (max-width: 600px) {
+    .stat-tile { padding: 8px 9px 6px; }
   }
 </style>
