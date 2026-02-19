@@ -115,6 +115,12 @@
     return gfNetWorth / cumulativeInflation;
   })();
 
+  $: cpiCumulativeLoss = (() => {
+    if (cpiAnnual === null) return 0;
+    const years = Math.max(0.1, (Date.now() - new Date(settings.dca.startDate).getTime()) / (365.25 * 24 * 3600 * 1000));
+    return (1 - 1 / Math.pow(1 + cpiAnnual / 100, years)) * 100;
+  })();
+
   // Ghostfolio portfolio vs other assets (annualised returns)
   $: portfolioAnnualisedPct = (() => {
     if (gfNetGainPct === null) return null;
@@ -596,8 +602,6 @@
         {#if cpiAnnual !== null}
           <div style="border-top:1px solid #1e1e28; padding-top:10px;">
             <div class="card-label" style="margin-bottom:6px;">PURCHASING POWER EROSION</div>
-            {@const years = Math.max(0.1, (Date.now() - new Date(settings.dca.startDate).getTime()) / (365.25 * 24 * 3600 * 1000))}
-            {@const cumulativeLoss = (1 - 1 / Math.pow(1 + cpiAnnual / 100, years)) * 100}
             <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
               <div>
                 <div style="font-size:0.65rem; color:#555566; margin-bottom:2px;">CPI Annual</div>
@@ -605,7 +609,7 @@
               </div>
               <div>
                 <div style="font-size:0.65rem; color:#555566; margin-bottom:2px;">Since DCA start</div>
-                <div style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:0.9rem; color:#ff5252;">-{cumulativeLoss.toFixed(1)}%</div>
+                <div style="font-family:Rajdhani,sans-serif; font-weight:700; font-size:0.9rem; color:#ff5252;">-{cpiCumulativeLoss.toFixed(1)}%</div>
               </div>
             </div>
           </div>
