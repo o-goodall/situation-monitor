@@ -123,21 +123,18 @@
   <a href="/signal" class="brand">
     <div class="globe-wrap" aria-hidden="true">
       <div class="globe">
-        <div class="meridian m-eq"></div>
-        <div class="meridian m-v1"></div>
-        <div class="meridian m-v2"></div>
-        <div class="meridian m-v3"></div>
-        <div class="meridian m-h1"></div>
-        <div class="meridian m-h2"></div>
-        <div class="node n1"></div>
-        <div class="node n2"></div>
-        <div class="node n3"></div>
-        <div class="node n4"></div>
-        <div class="node n5"></div>
-        <div class="node n6"></div>
-        <div class="arc arc-1"></div>
-        <div class="arc arc-2"></div>
-        <div class="arc arc-3"></div>
+        <!-- Static wireframe: equator + 2 longitude ellipses + 2 latitude rings -->
+        <div class="wire w-eq"></div>
+        <div class="wire w-lg1"></div>
+        <div class="wire w-lg2"></div>
+        <div class="wire w-lt1"></div>
+        <div class="wire w-lt2"></div>
+        <!-- Sequential ping lines — one after another, sweeping across the sphere -->
+        <div class="ping ping-1"></div>
+        <div class="ping ping-2"></div>
+        <div class="ping ping-3"></div>
+        <div class="ping ping-4"></div>
+        <div class="ping ping-5"></div>
       </div>
     </div>
     <span class="brand-name">
@@ -250,11 +247,13 @@
   .scan:nth-child(1){top:20%; animation-delay:0s} .scan:nth-child(2){top:56%; animation-delay:-1.7s} .scan:nth-child(3){top:79%; animation-delay:-3.3s}
   @keyframes scanPulse { 0%,100%{opacity:0; transform:scaleX(.2)} 50%{opacity:1; transform:scaleX(1)} }
 
-  /* HEADER */
+  /* HEADER — fixed height so page content never shifts between routes */
   .hdr {
     position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
     z-index: 300; width: calc(100% - 32px); max-width: 1240px;
-    display: flex; align-items: center; gap: 16px; padding: 10px 18px;
+    display: flex; align-items: center; gap: 16px;
+    height: 58px; /* explicit height — no layout reflow */
+    padding: 0 18px;
     background: rgba(6,6,6,0.78);
     backdrop-filter: blur(32px) saturate(200%);
     -webkit-backdrop-filter: blur(32px) saturate(200%);
@@ -265,35 +264,85 @@
   /* BRAND */
   .brand { display:flex; align-items:center; gap:11px; text-decoration:none; flex-shrink:0; }
 
-  /* GLOBE */
+  /* ── GLOBE: sequential ping-line version ─────────────────── */
   .globe-wrap { width: 32px; height: 32px; position: relative; flex-shrink: 0; }
+
   .globe {
-    width: 100%; height: 100%; position: relative; border-radius: 50%;
-    background: radial-gradient(circle at 38% 35%, rgba(247,147,26,0.3) 0%, rgba(247,147,26,0.08) 50%, transparent 75%);
-    box-shadow: 0 0 0 1px rgba(247,147,26,0.3), 0 0 14px rgba(247,147,26,0.35), 0 0 30px rgba(247,147,26,0.14), inset 0 0 10px rgba(247,147,26,0.1);
-    animation: globeSpin 10s linear infinite;
+    width: 100%; height: 100%;
+    position: relative; border-radius: 50%;
+    background: radial-gradient(circle at 40% 38%, rgba(247,147,26,0.22) 0%, rgba(247,147,26,0.05) 55%, transparent 75%);
+    box-shadow:
+      0 0 0 1px rgba(247,147,26,0.28),
+      0 0 12px rgba(247,147,26,0.3),
+      0 0 28px rgba(247,147,26,0.1),
+      inset 0 0 8px rgba(247,147,26,0.08);
+    overflow: hidden; /* clip pings to sphere edge */
   }
-  @keyframes globeSpin { from{box-shadow:0 0 0 1px rgba(247,147,26,0.3),0 0 14px rgba(247,147,26,0.35),0 0 30px rgba(247,147,26,0.14),-4px 0 12px rgba(247,147,26,0.2),inset 0 0 10px rgba(247,147,26,0.1)} 50%{box-shadow:0 0 0 1px rgba(247,147,26,0.25),0 0 18px rgba(247,147,26,0.45),0 0 40px rgba(247,147,26,0.18),4px 0 12px rgba(247,147,26,0.2),inset 0 0 10px rgba(247,147,26,0.15)} to{box-shadow:0 0 0 1px rgba(247,147,26,0.3),0 0 14px rgba(247,147,26,0.35),0 0 30px rgba(247,147,26,0.14),-4px 0 12px rgba(247,147,26,0.2),inset 0 0 10px rgba(247,147,26,0.1)} }
 
-  .meridian { position:absolute; border:1px solid rgba(247,147,26,0.35); border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; animation:mPulse 3.5s ease-in-out infinite; }
-  .m-eq  { width:100%; height:28%; border-color:rgba(247,147,26,0.5); animation-delay:0s; }
-  .m-v1  { width:100%; height:100%; border-color:rgba(247,147,26,0.18); animation-delay:.3s; }
-  .m-v2  { width:40%; height:100%; border-color:rgba(247,147,26,0.28); animation-delay:.7s; }
-  .m-v3  { width:18%; height:100%; border-color:rgba(247,147,26,0.18); animation-delay:1.1s; }
-  .m-h1  { width:82%; height:22%; top:28%; border-color:rgba(247,147,26,0.22); animation-delay:.5s; }
-  .m-h2  { width:82%; height:22%; top:70%; border-color:rgba(247,147,26,0.22); animation-delay:.9s; }
-  @keyframes mPulse { 0%,100%{opacity:.55} 50%{opacity:1; border-color:rgba(247,147,26,.7)} }
+  /* Static wireframe — very faint, just gives globe form */
+  .wire {
+    position: absolute; border: 1px solid rgba(247,147,26,0.18);
+    border-radius: 50%; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .w-eq  { width: 100%; height: 28%; }               /* equator */
+  .w-lg1 { width: 52%;  height: 100%; }              /* longitude 1 */
+  .w-lg2 { width: 22%;  height: 100%; }              /* longitude 2 */
+  .w-lt1 { width: 80%;  height: 20%; top: 28%; }     /* latitude high */
+  .w-lt2 { width: 80%;  height: 20%; top: 70%; }     /* latitude low */
 
-  .node { position:absolute; width:3px; height:3px; background:var(--orange); border-radius:50%; box-shadow:0 0 4px var(--orange),0 0 8px rgba(247,147,26,.6); animation:nodeFire 2.4s ease-in-out infinite; }
-  .n1{top:22%;left:48%;animation-delay:0s} .n2{top:48%;left:18%;animation-delay:.4s} .n3{top:48%;left:78%;animation-delay:.9s}
-  .n4{top:72%;left:40%;animation-delay:1.3s} .n5{top:30%;left:72%;animation-delay:1.8s} .n6{top:65%;left:65%;animation-delay:.6s}
-  @keyframes nodeFire { 0%{transform:scale(1);opacity:.4;box-shadow:0 0 3px var(--orange)} 50%{transform:scale(2.8);opacity:1;box-shadow:0 0 8px var(--orange),0 0 18px rgba(247,147,26,.5)} 100%{transform:scale(1);opacity:.4;box-shadow:0 0 3px var(--orange)} }
+  /*
+   * Ping lines — horizontal light-streaks that scan top→bottom one after
+   * another, like a radar sweep / Bitcoin node broadcast pulse.
+   * Each ping is a thin full-width bar that slides from top to bottom,
+   * staggered so they fire sequentially with a clear gap between each.
+   *
+   * Total cycle = 2.5s. 5 pings each offset by 0.5s.
+   * Each ping: fade-in at top, travel to bottom, fade out. Takes ~0.7s of
+   * the 2.5s window, leaving a clear pause before the next fires.
+   */
+  .ping {
+    position: absolute;
+    left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(247,147,26,0.0) 8%,
+      rgba(247,147,26,0.9) 35%,
+      rgba(255,200,80,1.0) 50%,
+      rgba(247,147,26,0.9) 65%,
+      rgba(247,147,26,0.0) 92%,
+      transparent 100%
+    );
+    border-radius: 1px;
+    /* start above sphere */
+    top: -2px;
+    animation: pingDrop 2.5s linear infinite;
+    opacity: 0;
+    /* subtle glow trail */
+    box-shadow: 0 0 4px rgba(247,147,26,0.6), 0 0 10px rgba(247,147,26,0.3);
+  }
 
-  .arc { position:absolute; height:1px; background:linear-gradient(90deg,transparent,rgba(247,147,26,.9),transparent); border-radius:1px; opacity:0; animation:arcBurst 3.5s ease-in-out infinite; }
-  .arc-1{width:46%;top:35%;left:22%;transform:rotate(-15deg);animation-delay:.2s}
-  .arc-2{width:38%;top:58%;left:18%;transform:rotate(20deg);animation-delay:1.1s}
-  .arc-3{width:40%;top:28%;left:48%;transform:rotate(35deg);animation-delay:2.1s}
-  @keyframes arcBurst { 0%{opacity:0;transform:scaleX(0) rotate(-15deg)} 20%{opacity:1;transform:scaleX(1) rotate(-15deg)} 60%{opacity:.3} 100%{opacity:0} }
+  /* stagger: each fires 0.5s after the previous */
+  .ping-1 { animation-delay: 0s; }
+  .ping-2 { animation-delay: 0.5s; }
+  .ping-3 { animation-delay: 1.0s; }
+  .ping-4 { animation-delay: 1.5s; }
+  .ping-5 { animation-delay: 2.0s; }
+
+  @keyframes pingDrop {
+    /*
+     * Quick fade in, travel full height of globe (0→100%), quick fade out.
+     * Compressed into first 28% of the 2.5s cycle so there's a clear
+     * pause before the next ping — gives a clean sequential rhythm.
+     */
+    0%   { top: -2px;    opacity: 0;   }
+    4%   { top: 2%;      opacity: 1;   }
+    24%  { top: 98%;     opacity: 0.9; }
+    28%  { top: 102%;    opacity: 0;   }
+    100% { top: 102%;    opacity: 0;   } /* hold until next cycle */
+  }
 
   /* gl4nce WORDMARK */
   .brand-name { font-family:'Orbitron',monospace; font-weight:900; font-size:1.05rem; letter-spacing:.06em; line-height:1; }
@@ -305,25 +354,40 @@
 
   /* PAGE NAV */
   .page-nav { flex:1; display:flex; justify-content:center; gap:6px; }
-  .nav-btn { display:flex; align-items:center; gap:6px; padding:7px 18px; border-radius:12px; font-size:.75rem; font-weight:500; font-family:'Inter',sans-serif; color:rgba(255,255,255,.35); background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); text-decoration:none; transition:all .2s cubic-bezier(.4,0,.2,1); letter-spacing:.03em; }
+  .nav-btn {
+    display:flex; align-items:center; gap:6px;
+    /* Fixed height — prevents any layout shift when active border changes */
+    height: 34px; padding: 0 18px;
+    border-radius:12px;
+    font-size:.75rem; font-weight:500; font-family:'Inter',sans-serif;
+    color:rgba(255,255,255,.35);
+    background:rgba(255,255,255,.03);
+    border:1px solid rgba(255,255,255,.07);
+    text-decoration:none;
+    transition:color .2s, background .2s, border-color .2s, box-shadow .2s;
+    letter-spacing:.03em;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
   .nav-btn:hover { color:rgba(255,255,255,.75); background:rgba(255,255,255,.06); border-color:rgba(255,255,255,.13); }
   .nav-btn--on { color:var(--orange)!important; background:rgba(247,147,26,.1)!important; border-color:rgba(247,147,26,.28)!important; box-shadow:0 0 20px rgba(247,147,26,.12),inset 0 1px 0 rgba(247,147,26,.1); }
-  .nav-ico { font-size:.82rem; }
+  .nav-ico { font-size:.82rem; line-height:1; }
 
   .hdr-right { display:flex; align-items:center; gap:12px; flex-shrink:0; }
   .hdr-clock { font-size:.78rem; font-weight:500; color:rgba(255,255,255,.2); font-variant-numeric:tabular-nums; letter-spacing:.06em; }
-  .settings-btn { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.35); cursor:pointer; transition:all .2s; }
+  .settings-btn { display:flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:rgba(255,255,255,.35); cursor:pointer; transition:all .2s; flex-shrink:0; }
   .settings-btn:hover, .settings-btn--on { background:rgba(247,147,26,.1); border-color:rgba(247,147,26,.28); color:var(--orange); box-shadow:0 0 16px rgba(247,147,26,.12); }
 
   @media (max-width:700px) {
     .hdr { top:10px; width:calc(100% - 20px); padding:9px 14px; border-radius:18px; gap:10px; }
     .brand-name { font-size:.88rem; }
     .hdr-clock { display:none; }
-    .nav-btn { padding:7px 12px; font-size:.7rem; gap:4px; }
+    /* nav buttons: fixed height so they never cause header reflow between pages */
+    .nav-btn { padding:0 12px; height:32px; font-size:.7rem; gap:4px; }
     .globe-wrap { width:26px; height:26px; }
   }
   @media (max-width:480px) {
-    .nav-btn { padding:6px 10px; font-size:.65rem; border-radius:9px; }
+    .nav-btn { padding:0 10px; height:30px; font-size:.65rem; border-radius:9px; }
     .nav-lbl { display:none; }
     .nav-ico { font-size:1rem; }
   }
@@ -353,8 +417,8 @@
   .d-save--ok { background:linear-gradient(135deg,#22c55e,#15803d); box-shadow:0 4px 22px rgba(34,197,94,.3); }
   @media (max-width:600px) { .drawer-inner { padding:22px 16px; } .dfields { flex-direction:column; } }
 
-  .page-wrap { padding-top:80px; min-height:100vh; }
-  @media (max-width:700px) { .page-wrap { padding-top:70px; } }
+  .page-wrap { padding-top: 90px; min-height: 100vh; } /* 58px header + 16px top offset + 16px gap */
+  @media (max-width:700px) { .page-wrap { padding-top: 76px; } }
 
   .site-footer { border-top:1px solid rgba(255,255,255,.05); padding:20px 24px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; }
   .footer-brand { font-family:'Orbitron',monospace; font-size:.65rem; font-weight:700; color:rgba(255,255,255,.25); letter-spacing:.1em; display:flex; align-items:center; gap:5px; }
