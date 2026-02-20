@@ -174,21 +174,19 @@
   onDestroy(()=>{ clearInterval(clockInterval); intervals.forEach(clearInterval); });
 </script>
 
-<!-- ═══ HEADER ══════════════════════════════════════════════ -->
+<!-- ╔══════════════════════════════════════════════╗
+     ║  HEADER                                      ║
+     ╚══════════════════════════════════════════════╝ -->
 <header class="hdr">
-  <div class="hdr-left">
-    <span class="live-dot blink"></span>
-    <span class="hdr-wordmark">Situation Monitor</span>
+  <div class="hdr-brand">
+    <span class="brand-pip blink"></span>
+    <span class="brand-name">Glance</span>
   </div>
-  <div class="hdr-mid">
-    <span class="hdr-time">{time}</span>
+  <div class="hdr-clock-wrap">
+    <span class="hdr-clock">{time}</span>
   </div>
   <div class="hdr-right">
-    <button
-      class="hdr-btn"
-      class:hdr-btn--active={showSettings}
-      on:click={() => showSettings = !showSettings}
-    >
+    <button class="hdr-btn" class:hdr-btn--on={showSettings} on:click={() => showSettings = !showSettings}>
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
@@ -198,134 +196,137 @@
   </div>
 </header>
 
-<!-- ═══ SETTINGS ════════════════════════════════════════════ -->
+<!-- ╔══════════════════════════════════════════════╗
+     ║  SETTINGS                                    ║
+     ╚══════════════════════════════════════════════╝ -->
 {#if showSettings}
-<div class="settings-drawer">
-  <div class="settings-inner">
+<div class="drawer">
+  <div class="drawer-inner">
 
-    <div class="settings-group">
-      <p class="settings-group-label">Stack Config</p>
-      <div class="settings-fields">
-        <div class="field">
-          <label class="flabel">Start date</label>
-          <input type="date" bind:value={settings.dca.startDate} class="finp" />
-        </div>
-        <div class="field">
-          <label class="flabel">Daily AUD</label>
-          <input type="number" bind:value={settings.dca.dailyAmount} class="finp" />
-        </div>
-        <div class="field">
-          <label class="flabel">BTC held</label>
-          <input type="number" step="0.00000001" bind:value={settings.dca.btcHeld} class="finp" />
-        </div>
-        <div class="field">
-          <label class="flabel">Goal BTC</label>
-          <input type="number" step="0.001" bind:value={settings.dca.goalBtc} class="finp" />
-        </div>
+    <div class="dgroup">
+      <p class="dgroup-label">DCA Stack</p>
+      <div class="dfields">
+        <label class="dfield">
+          <span class="dlabel">Start date</span>
+          <input type="date" bind:value={settings.dca.startDate} class="dinp" />
+        </label>
+        <label class="dfield">
+          <span class="dlabel">Daily AUD</span>
+          <input type="number" bind:value={settings.dca.dailyAmount} class="dinp" />
+        </label>
+        <label class="dfield">
+          <span class="dlabel">BTC held</span>
+          <input type="number" step="0.00000001" bind:value={settings.dca.btcHeld} class="dinp" />
+        </label>
+        <label class="dfield">
+          <span class="dlabel">Goal BTC</span>
+          <input type="number" step="0.001" bind:value={settings.dca.goalBtc} class="dinp" />
+        </label>
       </div>
     </div>
 
-    <div class="settings-group">
-      <p class="settings-group-label">Watchlist <span class="settings-hint">pinned on top of auto-trending feed</span></p>
-      <div class="tag-list">
+    <div class="dgroup">
+      <p class="dgroup-label">Watchlist <span class="dhint">pinned at top of markets feed</span></p>
+      <div class="dtags">
         {#each settings.polymarket.keywords as kw, i}
-          <span class="stag">{kw}<button on:click={() => removeKeyword(i)} class="stag-rm">×</button></span>
+          <span class="dtag">{kw}<button on:click={() => removeKeyword(i)} class="dtag-rm">×</button></span>
         {/each}
       </div>
-      <div class="finp-row">
-        <input bind:value={newKeyword} on:keydown={(e) => e.key==='Enter' && addKeyword()} placeholder="Add keyword…" class="finp" />
-        <button on:click={addKeyword} class="btn-add">Add</button>
+      <div class="dinp-row">
+        <input bind:value={newKeyword} on:keydown={(e) => e.key==='Enter' && addKeyword()} placeholder="Add keyword…" class="dinp" />
+        <button on:click={addKeyword} class="dbtn">Add</button>
       </div>
     </div>
 
-    <div class="settings-group">
-      <p class="settings-group-label">News RSS</p>
-      <div class="src-list">
+    <div class="dgroup">
+      <p class="dgroup-label">News RSS</p>
+      <div class="dsrcs">
         {#each settings.news.sources as src, i}
-          <div class="src-row"><span class="src-url">{src}</span><button on:click={() => removeSource(i)} class="stag-rm">×</button></div>
+          <div class="dsrc-row"><span class="dsrc-url">{src}</span><button on:click={() => removeSource(i)} class="dtag-rm">×</button></div>
         {/each}
       </div>
-      <div class="finp-row">
-        <input type="url" bind:value={newSource} on:keydown={(e) => e.key==='Enter' && addSource()} placeholder="https://…" class="finp" />
-        <button on:click={addSource} class="btn-add">Add</button>
+      <div class="dinp-row">
+        <input type="url" bind:value={newSource} on:keydown={(e) => e.key==='Enter' && addSource()} placeholder="https://…" class="dinp" />
+        <button on:click={addSource} class="dbtn">Add</button>
       </div>
     </div>
 
-    <div class="settings-group">
-      <p class="settings-group-label">Ghostfolio <span class="settings-hint">token stays in your browser</span></p>
-      <div class="settings-fields" style="max-width:520px;">
-        <div class="field" style="flex:3;">
-          <label class="flabel">Security token</label>
-          <input type="password" bind:value={settings.ghostfolio.token} placeholder="your-security-token" class="finp" />
-        </div>
-        <div class="field">
-          <label class="flabel">Currency</label>
-          <input bind:value={settings.ghostfolio.currency} placeholder="AUD" class="finp" style="width:72px;" />
-        </div>
+    <div class="dgroup">
+      <p class="dgroup-label">Ghostfolio <span class="dhint">token stays in your browser</span></p>
+      <div class="dfields" style="max-width:500px;">
+        <label class="dfield" style="flex:3;">
+          <span class="dlabel">Security token</span>
+          <input type="password" bind:value={settings.ghostfolio.token} placeholder="your-security-token" class="dinp" />
+        </label>
+        <label class="dfield">
+          <span class="dlabel">Currency</span>
+          <input bind:value={settings.ghostfolio.currency} placeholder="AUD" class="dinp" style="width:72px;" />
+        </label>
       </div>
     </div>
 
-    <button on:click={saveAll} class="btn-save" class:btn-save--saved={saved}>
-      {saved ? '✓ Saved' : 'Save'}
-    </button>
-
+    <button on:click={saveAll} class="dsave" class:dsave--ok={saved}>{saved ? '✓ Saved' : 'Save'}</button>
   </div>
 </div>
 {/if}
 
-<!-- ═══ MAIN ═════════════════════════════════════════════════ -->
-<main
-  class="app"
-  class:view-signal={activeMobileTab === 'signal'}
-  class:view-intel={activeMobileTab === 'intel'}
-  class:view-portfolio={activeMobileTab === 'portfolio'}
->
-  <div class="layout">
+<!-- ╔══════════════════════════════════════════════╗
+     ║  MAIN GRID                                   ║
+     ╚══════════════════════════════════════════════╝ -->
+<main class="app"
+  class:tab-signal={activeMobileTab === 'signal'}
+  class:tab-intel={activeMobileTab === 'intel'}
+  class:tab-portfolio={activeMobileTab === 'portfolio'}>
 
-    <!-- ── COL 1 ─────────────────────────────────────── -->
-    <section class="col-signal">
+  <div class="grid">
 
-      <!-- BUY SIGNAL HERO -->
-      <div class="card hero-card" style="--ac:{accentColor};">
-        <div class="hero-top">
-          <span class="eyebrow">DCA Signal</span>
-          <span class="hero-updated">{dcaUpdated || '…'}</span>
+    <!-- ── SIGNAL COLUMN ───────────────────── -->
+    <section class="col-a">
+
+      <!-- BUY SIGNAL — hero card -->
+      <div class="card signal-card" style="--ac:{accentColor};">
+        <div class="sc-top">
+          <div>
+            <p class="micro-label" style="color:var(--orange);">DCA Signal</p>
+            <p class="micro-sub">Fortnightly recommendation</p>
+          </div>
+          <span class="sc-time">{dcaUpdated || '—'}</span>
         </div>
 
-        <div class="hero-num-wrap">
+        <div class="sc-hero">
           {#if !dca}
-            <div class="hero-num" style="color:var(--t3);">—</div>
+            <span class="hero-num" style="color:var(--t3);">—</span>
           {:else if dca.finalAud === 0}
-            <div class="hero-num" style="color:var(--red-hi); font-size:2.8rem;">Pass</div>
+            <span class="hero-num" style="color:var(--dn);">Pass</span>
           {:else}
-            <div class="hero-num" style="color:{accentColor};">${dca.finalAud.toLocaleString()}</div>
+            <span class="hero-num" style="color:{accentColor};">${dca.finalAud.toLocaleString()}</span>
           {/if}
-          <div class="hero-unit">AUD · fortnightly buy</div>
+          <p class="hero-unit">AUD to buy</p>
         </div>
 
-        <!-- price-range bar -->
-        {#if btcPrice > 0 && dca}
-        <div class="range-bar">
-          <span class="range-label" style="color:var(--green-hi);">$55k</span>
-          <div class="pbar range-track" style="height:2px; flex:1;">
+        <!-- Valuation range bar -->
+        {#if btcPrice > 0}
+        <div class="range-row">
+          <span class="range-cap" style="color:var(--up);">$55k</span>
+          <div class="pbar range-bar">
             {#if btcPrice <= 55000}
-              <div class="pfill" style="width:0%;"></div>
+              <div class="pfill" style="width:2%;"></div>
             {:else if btcPrice >= 125000}
-              <div class="pfill" style="width:100%; background:var(--red-hi);"></div>
+              <div class="pfill" style="width:100%; background:var(--dn);"></div>
             {:else}
-              <div class="pfill" style="width:{((btcPrice-55000)/70000)*100}%; background:linear-gradient(90deg,var(--green-hi),var(--orange),var(--red-hi));"></div>
+              <div class="pfill" style="width:{((btcPrice-55000)/70000)*100}%; background:linear-gradient(90deg,var(--up),var(--orange),var(--dn));"></div>
             {/if}
           </div>
-          <span class="range-label" style="color:var(--red-hi);">$125k</span>
+          <span class="range-cap" style="color:var(--dn);">$125k</span>
         </div>
         {/if}
 
-        <!-- signal conditions -->
+        <!-- Signal conditions — list style -->
         {#if dca}
-        <div class="signals">
+        <div class="sigs">
           {#each dca.signals as sig}
-            <div class="sig-row" class:sig-row--on={sig.active}>
-              <span class="sig-dot">{sig.active ? '●' : '○'}</span>
+            <div class="sig" class:sig--on={sig.active}>
+              <span class="sig-indicator">{sig.active ? '▲' : '—'}</span>
               <span class="sig-name">{sig.name}</span>
               {#if sig.active}<span class="sig-boost">+{sig.boost}%</span>{/if}
             </div>
@@ -333,299 +334,268 @@
         </div>
         {/if}
 
-        <!-- footer stats -->
-        <div class="hero-footer">
-          <div class="hf-stat">
-            <span class="eyebrow">BTC / USD</span>
-            <span class="hf-val" style="color:{priceColor}; transition:color 0.5s;">{btcPrice > 0 ? '$' + n(btcPrice) : '—'}</span>
+        <!-- Stat bar -->
+        <div class="sc-stats">
+          <div class="sc-stat">
+            <p class="micro-label">BTC/USD</p>
+            <p class="sc-stat-val" style="transition:color 0.5s; color:{priceColor};">{btcPrice > 0 ? '$'+n(btcPrice) : '—'}</p>
           </div>
-          <div class="hf-div"></div>
-          <div class="hf-stat">
-            <span class="eyebrow">BTC / AUD</span>
-            <span class="hf-val">{btcAud ? 'A$' + n(btcAud, 0) : '—'}</span>
+          <div class="sc-div"></div>
+          <div class="sc-stat">
+            <p class="micro-label">BTC/AUD</p>
+            <p class="sc-stat-val">{btcAud ? 'A$'+n(btcAud,0) : '—'}</p>
           </div>
-          <div class="hf-div"></div>
-          <div class="hf-stat">
-            <span class="eyebrow">Sats / A$1</span>
-            <span class="hf-val" style="color:var(--orange);">{satsPerAud ? satsPerAud.toLocaleString() : '—'}</span>
+          <div class="sc-div"></div>
+          <div class="sc-stat">
+            <p class="micro-label">Sats / A$1</p>
+            <p class="sc-stat-val" style="color:var(--orange);">{satsPerAud ? satsPerAud.toLocaleString() : '—'}</p>
           </div>
         </div>
       </div>
 
       <!-- BITCOIN NETWORK -->
       <div class="card">
-        <div class="c-head">
-          <span class="c-title">Network</span>
-          <a href="https://mempool.space" target="_blank" rel="noopener noreferrer" class="c-src">mempool.space ↗</a>
+        <div class="ch">
+          <p class="ch-title">Network</p>
+          <a href="https://mempool.space" target="_blank" rel="noopener noreferrer" class="ch-link">mempool.space ↗</a>
         </div>
-
-        <div class="trio">
-          <div class="trio-stat">
-            <span class="eyebrow">Block</span>
-            <span class="bignum" style="color:var(--blue);">{n(btcBlock)}</span>
+        <div class="stat3">
+          <div class="s3">
+            <p class="micro-label">Block</p>
+            <p class="s3-val" style="color:var(--t1);">{n(btcBlock)}</p>
           </div>
-          <div class="trio-stat">
-            <span class="eyebrow">Fee Low</span>
-            <span class="bignum" style="color:var(--green-hi);">{btcFees.low}<small> sat/vb</small></span>
+          <div class="s3">
+            <p class="micro-label">Fee low</p>
+            <p class="s3-val" style="color:var(--up);">{btcFees.low}<small>sat/vb</small></p>
           </div>
-          <div class="trio-stat">
-            <span class="eyebrow">Fee High</span>
-            <span class="bignum" style="color:var(--red-hi);">{btcFees.high}<small> sat/vb</small></span>
+          <div class="s3">
+            <p class="micro-label">Fee high</p>
+            <p class="s3-val" style="color:var(--dn);">{btcFees.high}<small>sat/vb</small></p>
           </div>
         </div>
-
         {#if halvingBlocksLeft > 0}
         <div class="halving">
-          <div class="halving-head">
-            <span class="eyebrow">Next Halving</span>
-            <span class="halving-days">{halvingDays.toLocaleString()} days</span>
+          <div class="halving-row">
+            <p class="micro-label">Next Halving</p>
+            <p class="halving-days">{halvingDays.toLocaleString()} days</p>
           </div>
-          <div class="pbar" style="height:2px; margin:8px 0;">
+          <div class="pbar" style="height:2px; margin:7px 0;">
             <div class="pfill" style="width:{halvingProgress}%; background:var(--orange);"></div>
           </div>
-          <div class="halving-sub">{halvingProgress.toFixed(0)}% of epoch · {halvingBlocksLeft.toLocaleString()} blocks · ~{halvingDate}</div>
+          <p class="micro-dim">{halvingProgress.toFixed(0)}% of epoch · {halvingBlocksLeft.toLocaleString()} blocks · ~{halvingDate}</p>
         </div>
         {/if}
       </div>
 
       <!-- STACK -->
       <div class="card">
-        <div class="c-head">
-          <span class="c-title">Stack</span>
-          <span class="c-src" style="color:var(--green-hi);">${settings.dca.dailyAmount}/day · {dcaDays}d</span>
+        <div class="ch">
+          <p class="ch-title">Stack</p>
+          <p class="ch-sub" style="color:var(--orange);">${settings.dca.dailyAmount}/day · {dcaDays}d</p>
         </div>
-
-        <div class="trio mb-16">
-          <div class="trio-stat">
-            <span class="eyebrow">Invested</span>
-            <span class="bignum">${n(invested)}</span>
+        <div class="stat3 mb14">
+          <div class="s3">
+            <p class="micro-label">Invested</p>
+            <p class="s3-val">${n(invested)}</p>
           </div>
-          <div class="trio-stat">
-            <span class="eyebrow">Value</span>
-            <span class="bignum" style="color:{perf >= 0 ? 'var(--green-hi)' : 'var(--red-hi)'};">{btcPrice > 0 ? '$' + n(currentVal) : '—'}</span>
+          <div class="s3">
+            <p class="micro-label">Value</p>
+            <p class="s3-val" style="color:{perf>=0?'var(--up)':'var(--dn)'};">{btcPrice>0?'$'+n(currentVal):'—'}</p>
           </div>
-          <div class="trio-stat">
-            <span class="eyebrow">Return</span>
-            <span class="bignum" style="color:{perf >= 0 ? 'var(--green-hi)' : 'var(--red-hi)'};">{btcPrice > 0 ? (perf >= 0 ? '+' : '') + perf.toFixed(1) + '%' : '—'}</span>
+          <div class="s3">
+            <p class="micro-label">Return</p>
+            <p class="s3-val" style="color:{perf>=0?'var(--up)':'var(--dn)'};">{btcPrice>0?(perf>=0?'+':'')+perf.toFixed(1)+'%':'—'}</p>
           </div>
         </div>
-
-        <div class="btc-line">
-          <span style="color:var(--orange);">{settings.dca.btcHeld.toFixed(8)}</span> BTC · {n(satsHeld)} sats
-        </div>
-
-        <div class="goal-block">
+        <p class="btc-line"><span style="color:var(--orange);">{settings.dca.btcHeld.toFixed(8)}</span> BTC · {n(satsHeld)} sats</p>
+        <div class="goal">
           <div class="goal-head">
-            <span class="eyebrow">Goal · {settings.dca.goalBtc} BTC</span>
-            <span class="eyebrow" style="color:var(--green-hi);">{goalPct.toFixed(1)}%</span>
+            <p class="micro-label">Goal · {settings.dca.goalBtc} BTC</p>
+            <p class="micro-label" style="color:var(--orange);">{goalPct.toFixed(1)}%</p>
           </div>
           <div class="pbar" style="height:2px; margin:6px 0;">
-            <div class="pfill" style="width:{goalPct}%; background:linear-gradient(90deg,var(--orange),var(--green-hi));"></div>
+            <div class="pfill" style="width:{goalPct}%; background:var(--orange);"></div>
           </div>
-          <div class="goal-sub">{n(satsLeft)} sats remaining</div>
+          <p class="micro-dim" style="text-align:right;">{n(satsLeft)} sats to go</p>
         </div>
       </div>
 
     </section>
 
-    <!-- ── COL 2: POLYMARKET ──────────────────────── -->
-    <section class="col-poly">
-      <div class="card" style="height:100%;">
-        <div class="c-head" style="margin-bottom:20px;">
+    <!-- ── INTEL COLUMN ────────────────────── -->
+    <section class="col-b">
+
+      <!-- POLYMARKET — capped at 5 items -->
+      <div class="card" style="flex:1;">
+        <div class="ch" style="margin-bottom:18px;">
           <div>
-            <div class="c-title">Geopolitical Intel</div>
-            <div class="c-sub">Live prediction markets</div>
+            <p class="ch-title">Markets</p>
+            <p class="ch-sub">Prediction market pricing</p>
           </div>
-          <a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="c-src c-src-link">Polymarket ↗</a>
+          <a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="ch-link">Polymarket ↗</a>
         </div>
 
         {#if markets.length === 0}
-          <div class="empty-msg">Fetching markets…</div>
+          <p class="empty-msg">Fetching markets…</p>
         {:else}
-          {#each markets as m}
-            <div class="mkt-item">
-              <div class="mkt-tags">
-                <span class="mkt-tag" class:mkt-tag--pin={m.pinned}>{m.pinned ? 'Pinned' : m.tag}</span>
-                {#if m.volume24hr > 1000}<span class="mkt-hot">{fmtVol(m.volume24hr)} today</span>{/if}
-                {#if m.endDate}<span class="mkt-ends">{fmtDate(m.endDate)}</span>{/if}
+          {#each markets.slice(0, 5) as m}
+            <div class="mkt">
+              <div class="mkt-meta">
+                <span class="mkt-tag" class:mkt-tag--pin={m.pinned}>{m.pinned ? '★' : ''}{m.pinned ? ' Pinned' : m.tag}</span>
+                {#if m.endDate}<span class="mkt-end">{fmtDate(m.endDate)}</span>{/if}
               </div>
               <div class="mkt-body">
                 <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="mkt-q">{m.question}</a>
-                <div class="mkt-prob" style="color:{pColor(m.probability)};">{m.probability}<span class="mkt-pct-sym">%</span></div>
+                <span class="mkt-prob" style="color:{pColor(m.probability)};">{m.probability}<small>%</small></span>
               </div>
-              <div class="pbar" style="margin:7px 0;">
-                <div class="pfill" style="width:{m.probability}%; background:{pColor(m.probability)}; opacity:0.55;"></div>
+              <div class="pbar" style="margin:7px 0 4px;">
+                <div class="pfill" style="width:{m.probability}%; background:{pColor(m.probability)}; opacity:0.45;"></div>
               </div>
               <div class="mkt-foot">
-                <span style="font-size:0.65rem; color:{pColor(m.probability)};">{m.topOutcome}</span>
-                <span class="muted">{fmtVol(m.volume)}</span>
+                <span style="font-size:0.63rem; color:{pColor(m.probability)}; font-weight:500;">{m.topOutcome}</span>
+                <span class="micro-dim">{fmtVol(m.volume)}</span>
               </div>
             </div>
           {/each}
         {/if}
       </div>
-    </section>
 
-    <!-- ── COL 3: NEWS ────────────────────────────── -->
-    <section class="col-news">
-      <div class="card" style="height:100%;">
-        <div class="c-head" style="margin-bottom:20px;">
-          <span class="c-title">News</span>
+      <!-- NEWS -->
+      <div class="card" style="flex:1;">
+        <div class="ch" style="margin-bottom:18px;">
+          <p class="ch-title">News</p>
         </div>
         {#if newsItems.length === 0}
-          <div class="empty-msg">Fetching feeds…</div>
+          <p class="empty-msg">Fetching feeds…</p>
         {:else}
           {#each newsItems as item}
             <div class="news-row">
-              <a href={item.link} target="_blank" rel="noopener noreferrer" class="news-title">{item.title}</a>
+              <a href={item.link} target="_blank" rel="noopener noreferrer" class="news-link">{item.title}</a>
               <div class="news-meta">
                 <span class="news-src">{item.source}</span>
-                <span class="muted">{timeAgo(item.pubDate)} ago</span>
+                <span class="micro-dim">{timeAgo(item.pubDate)} ago</span>
               </div>
             </div>
           {/each}
         {/if}
       </div>
+
     </section>
 
-    <!-- ── PORTFOLIO ROW ───────────────────────────── -->
-    <section class="col-portfolio">
+    <!-- ── PORTFOLIO ROW ───────────────────── -->
+    <section class="col-c">
 
       <!-- ASSETS -->
-      <div class="card asset-card">
-        <div class="c-head" style="margin-bottom:22px;">
-          <span class="c-title">Assets</span>
-          <span class="c-src">1 Year Return</span>
+      <div class="card" style="flex:1; min-width:220px;">
+        <div class="ch" style="margin-bottom:20px;">
+          <p class="ch-title">Assets</p>
+          <p class="ch-sub">1-year return</p>
         </div>
-        <div class="asset-rows">
+        <div class="assets">
           {#each [
-            { name:'Bitcoin',   ticker:'BTC', pct:null,        color:'var(--orange)', sub: btcPrice ? '$'+n(btcPrice) : '' },
-            { name:'Gold',      ticker:'XAU', pct:goldYtdPct,  color:'#d4a017',       sub: goldPriceUsd ? '$'+n(goldPriceUsd,0)+'/oz' : '' },
-            { name:'S&P 500',   ticker:'SPX', pct:sp500YtdPct, color:'var(--blue)',    sub: sp500Price ? n(sp500Price,0) : '' },
-            { name:'Inflation', ticker:'CPI', pct:cpiAnnual,   color:'var(--red-hi)', sub: '' },
+            { ticker:'BTC', name:'Bitcoin',   pct:null,        color:'var(--orange)', sub: btcPrice ? '$'+n(btcPrice) : '' },
+            { ticker:'XAU', name:'Gold',      pct:goldYtdPct,  color:'#c9a84c',       sub: goldPriceUsd ? '$'+n(goldPriceUsd,0)+'/oz' : '' },
+            { ticker:'SPX', name:'S&P 500',   pct:sp500YtdPct, color:'#555555',       sub: sp500Price ? n(sp500Price,0) : '' },
+            { ticker:'CPI', name:'Inflation', pct:cpiAnnual,   color:'var(--dn)',     sub: '' },
           ] as a}
             <div class="a-row">
               <div class="a-left">
-                <span class="a-ticker" style="color:{a.color};">{a.ticker}</span>
-                <span class="a-name">{a.name}</span>
-                {#if a.sub}<span class="a-sub">{a.sub}</span>{/if}
+                <p class="a-ticker" style="color:{a.color};">{a.ticker}</p>
+                <p class="a-name">{a.name}</p>
+                {#if a.sub}<p class="a-sub">{a.sub}</p>{/if}
               </div>
               <div class="a-bar">
                 {#if a.pct !== null}
-                  {@const w = Math.min(100, Math.max(0, (a.pct / 150) * 100 + 50))}
-                  <div class="pbar" style="height:1px;"><div class="pfill" style="width:{w}%; background:{a.color}; opacity:0.45;"></div></div>
+                  {@const w = Math.min(100, Math.max(0, (a.pct/150)*100+50))}
+                  <div class="pbar" style="height:1px;"><div class="pfill" style="width:{w}%; background:{a.color}; opacity:0.4;"></div></div>
                 {:else}
                   <div class="pbar" style="height:1px;"></div>
                 {/if}
               </div>
-              <div class="a-pct" style="color:{a.pct === null ? 'var(--t3)' : a.pct >= 0 ? 'var(--green-hi)' : 'var(--red-hi)'};">
-                {a.pct !== null ? (a.pct >= 0 ? '+' : '') + a.pct.toFixed(1) + '%' : 'live'}
-              </div>
+              <p class="a-pct" style="color:{a.pct===null?'var(--t3)':a.pct>=0?'var(--up)':'var(--dn)'};">{a.pct!==null?(a.pct>=0?'+':'')+a.pct.toFixed(1)+'%':'live'}</p>
             </div>
           {/each}
         </div>
         {#if cpiAnnual !== null}
-          <div class="cpi-footer">
-            Purchasing power lost to CPI since DCA start: <span style="color:var(--red-hi);">−{cpiCumLoss.toFixed(1)}%</span>
-          </div>
+          <p class="cpi-note">Purchasing power lost to CPI since DCA start: <span style="color:var(--dn);">−{cpiCumLoss.toFixed(1)}%</span></p>
         {/if}
       </div>
 
       <!-- GHOSTFOLIO -->
       {#if settings.ghostfolio?.token}
-      <div class="card gf-card">
-        <div class="c-head" style="margin-bottom:22px;">
+      <div class="card" style="flex:2;">
+        <div class="ch" style="margin-bottom:20px;">
           <div style="display:flex; align-items:center; gap:10px;">
-            <span class="c-title">Portfolio</span>
-            <span class="c-src">Ghostfolio</span>
+            <p class="ch-title">Portfolio</p>
+            <span class="ch-sub">Ghostfolio</span>
           </div>
           <div style="display:flex; align-items:center; gap:10px;">
             {#if gfLoading}<span class="pulse-dot"></span>{/if}
-            {#if gfUpdated && !gfLoading}<span class="c-src">{gfUpdated}</span>{/if}
+            {#if gfUpdated && !gfLoading}<span class="ch-sub">{gfUpdated}</span>{/if}
             <button on:click={fetchGhostfolio} class="icon-btn">↻</button>
           </div>
         </div>
 
         {#if gfError}
-          <div class="err-msg">{gfError} — check your token in Settings.</div>
+          <p class="err-msg">{gfError} — check your token in Settings.</p>
         {:else}
-          <!-- Net Worth big numbers -->
           <div class="gf-top">
             <div class="gf-hero">
-              <span class="eyebrow">Net Worth</span>
-              <span class="gf-nw" style="color:#a78bfa;">{gfNetWorth !== null ? '$' + n(gfNetWorth, 0) : '—'}</span>
-              <span class="eyebrow">{settings.ghostfolio.currency || 'AUD'} nominal</span>
+              <p class="micro-label">Net Worth</p>
+              <p class="gf-nw">{gfNetWorth !== null ? '$'+n(gfNetWorth,0) : '—'}</p>
+              <p class="micro-label">{settings.ghostfolio.currency || 'AUD'} nominal</p>
             </div>
             {#if inflationAdjNW !== null}
-            <div class="gf-hero" style="opacity:0.45;">
-              <span class="eyebrow">Real Value</span>
-              <span class="gf-nw" style="color:#a78bfa;">{inflationAdjNW !== null ? '$' + n(inflationAdjNW, 0) : '—'}</span>
-              <span class="eyebrow">CPI-adjusted</span>
+            <div class="gf-hero" style="opacity:0.4;">
+              <p class="micro-label">Real Value</p>
+              <p class="gf-nw">{inflationAdjNW !== null ? '$'+n(inflationAdjNW,0) : '—'}</p>
+              <p class="micro-label">CPI-adjusted</p>
             </div>
             {/if}
-            <div class="gf-divider"></div>
+            <div class="gf-vdiv"></div>
             <div class="gf-smalls">
-              <div class="gf-sm">
-                <span class="eyebrow">Today</span>
-                <span class="gf-sm-val" style="color:{signColor(gfTodayChangePct)};">{pct(gfTodayChangePct)}</span>
-              </div>
-              <div class="gf-sm">
-                <span class="eyebrow">YTD</span>
-                <span class="gf-sm-val" style="color:{signColor(gfNetGainYtdPct)};">{pct(gfNetGainYtdPct)}</span>
-              </div>
-              <div class="gf-sm">
-                <span class="eyebrow">All-time</span>
-                <span class="gf-sm-val" style="color:{signColor(gfNetGainPct)};">{pct(gfNetGainPct)}</span>
-              </div>
-              <div class="gf-sm">
-                <span class="eyebrow">Invested</span>
-                <span class="gf-sm-val">{gfTotalInvested !== null ? '$' + n(gfTotalInvested, 0) : '—'}</span>
-              </div>
+              <div class="gf-sm"><p class="micro-label">Today</p><p class="gf-sm-v" style="color:{signColor(gfTodayChangePct)};">{pct(gfTodayChangePct)}</p></div>
+              <div class="gf-sm"><p class="micro-label">YTD</p><p class="gf-sm-v" style="color:{signColor(gfNetGainYtdPct)};">{pct(gfNetGainYtdPct)}</p></div>
+              <div class="gf-sm"><p class="micro-label">All-time</p><p class="gf-sm-v" style="color:{signColor(gfNetGainPct)};">{pct(gfNetGainPct)}</p></div>
+              <div class="gf-sm"><p class="micro-label">Invested</p><p class="gf-sm-v">{gfTotalInvested !== null ? '$'+n(gfTotalInvested,0) : '—'}</p></div>
             </div>
           </div>
 
-          <!-- ROI comparison strip -->
           {#if portCAGR !== null || cpiAnnual !== null || goldYtdPct !== null || sp500YtdPct !== null}
           <div class="roi-strip">
             {#if portCAGR !== null}
               <div class="roi-cell">
-                <span class="eyebrow" style="color:#a78bfa;">Portfolio CAGR</span>
-                <span class="roi-val" style="color:{portCAGR >= 0 ? 'var(--green-hi)' : 'var(--red-hi)'};">{portCAGR >= 0 ? '+' : ''}{portCAGR.toFixed(1)}%<span class="roi-unit">/yr</span></span>
-                {#if cpiAnnual !== null}
-                  <span class="roi-vs" style="color:{portCAGR > cpiAnnual ? 'var(--green-hi)' : 'var(--red-hi)'};">{portCAGR > cpiAnnual ? '+' : ''}{(portCAGR - cpiAnnual).toFixed(1)}% vs CPI</span>
-                {/if}
+                <p class="micro-label" style="color:var(--orange);">Portfolio CAGR</p>
+                <p class="roi-v" style="color:{portCAGR>=0?'var(--up)':'var(--dn)'};">{portCAGR>=0?'+':''}{portCAGR.toFixed(1)}<span class="roi-u">%/yr</span></p>
+                {#if cpiAnnual !== null}<p class="roi-vs" style="color:{portCAGR>cpiAnnual?'var(--up)':'var(--dn)'};">{portCAGR>cpiAnnual?'+':''}{(portCAGR-cpiAnnual).toFixed(1)}% vs CPI</p>{/if}
               </div>
             {/if}
             {#if cpiAnnual !== null}
               <div class="roi-cell">
-                <span class="eyebrow" style="color:var(--red-hi);">CPI</span>
-                <span class="roi-val" style="color:var(--red-hi);">+{cpiAnnual.toFixed(1)}%<span class="roi-unit">/yr</span></span>
+                <p class="micro-label" style="color:var(--dn);">CPI</p>
+                <p class="roi-v" style="color:var(--dn);">+{cpiAnnual.toFixed(1)}<span class="roi-u">%/yr</span></p>
               </div>
             {/if}
             {#if goldYtdPct !== null}
               <div class="roi-cell">
-                <span class="eyebrow" style="color:#d4a017;">Gold 1Y</span>
-                <span class="roi-val" style="color:{goldYtdPct >= 0 ? '#d4a017' : 'var(--red-hi)'};">{goldYtdPct >= 0 ? '+' : ''}{goldYtdPct.toFixed(1)}%</span>
+                <p class="micro-label" style="color:#c9a84c;">Gold 1Y</p>
+                <p class="roi-v" style="color:{goldYtdPct>=0?'#c9a84c':'var(--dn)'};">{goldYtdPct>=0?'+':''}{goldYtdPct.toFixed(1)}<span class="roi-u">%</span></p>
               </div>
             {/if}
             {#if sp500YtdPct !== null}
               <div class="roi-cell">
-                <span class="eyebrow" style="color:var(--blue);">S&P 500 1Y</span>
-                <span class="roi-val" style="color:{sp500YtdPct >= 0 ? 'var(--blue)' : 'var(--red-hi)'};">{sp500YtdPct >= 0 ? '+' : ''}{sp500YtdPct.toFixed(1)}%</span>
+                <p class="micro-label">S&P 500 1Y</p>
+                <p class="roi-v" style="color:{sp500YtdPct>=0?'var(--t1)':'var(--dn)'};">{sp500YtdPct>=0?'+':''}{sp500YtdPct.toFixed(1)}<span class="roi-u">%</span></p>
               </div>
             {/if}
           </div>
           {/if}
 
-          <!-- Holdings (collapsible) -->
           {#if gfHoldings.length > 0}
           <div class="holdings">
-            <button class="holdings-toggle" on:click={() => showHoldings = !showHoldings}>
+            <button class="hold-toggle" on:click={() => showHoldings = !showHoldings}>
               Holdings ({gfHoldings.length})
-              <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"
-                style="transform:{showHoldings ? 'rotate(180deg)' : 'rotate(0)'}; transition:transform 0.2s; color:var(--t3); margin-left:4px;">
-                <path d="M5 7L1 3h8z"/>
-              </svg>
+              <svg width="9" height="9" viewBox="0 0 10 10" fill="currentColor" style="transform:{showHoldings?'rotate(180deg)':'rotate(0)'}; transition:transform 0.2s; color:var(--t3); margin-left:4px;"><path d="M5 7L1 3h8z"/></svg>
             </button>
             {#if showHoldings}
             <div class="hgrid">
@@ -634,13 +604,13 @@
                 <div class="h-item">
                   <div class="h-top">
                     <span class="h-sym">{h.symbol}</span>
-                    <span class="h-pct" style="color:{pc >= 0 ? 'var(--green-hi)' : 'var(--red-hi)'};">{pc >= 0 ? '+' : ''}{pc.toFixed(1)}%</span>
+                    <span class="h-pct" style="color:{pc>=0?'var(--up)':'var(--dn)'};">{pc>=0?'+':''}{pc.toFixed(1)}%</span>
                   </div>
-                  {#if h.name !== h.symbol}<div class="h-name">{h.name.slice(0, 22)}</div>{/if}
-                  <div class="pbar" style="margin:7px 0;"><div class="pfill" style="width:{Math.min(100,h.allocationInPercentage)}%; background:#a78bfa; opacity:0.35;"></div></div>
+                  {#if h.name !== h.symbol}<p class="h-name">{h.name.slice(0,22)}</p>{/if}
+                  <div class="pbar" style="margin:7px 0;"><div class="pfill" style="width:{Math.min(100,h.allocationInPercentage)}%; background:var(--orange); opacity:0.3;"></div></div>
                   <div class="h-foot">
                     <span>{h.allocationInPercentage.toFixed(1)}%</span>
-                    <span>${n(h.valueInBaseCurrency, 0)}</span>
+                    <span>${n(h.valueInBaseCurrency,0)}</span>
                   </div>
                 </div>
               {/each}
@@ -657,372 +627,284 @@
   </div>
 </main>
 
-<!-- ═══ MOBILE NAV ══════════════════════════════════════════ -->
+<!-- ╔══════════════════════════════════════════════╗
+     ║  MOBILE NAV                                  ║
+     ╚══════════════════════════════════════════════╝ -->
 <nav class="bnav">
   <button class="bnav-tab" class:bnav-tab--on={activeMobileTab === 'signal'} on:click={() => activeMobileTab = 'signal'}>
-    <span class="bnav-glyph">₿</span>
-    <span class="bnav-label">Signal</span>
+    <span class="bnav-g">₿</span>
+    <span class="bnav-l">Signal</span>
     {#if dca && dca.finalAud > 0}<span class="bnav-pip" style="background:{accentColor};"></span>{/if}
   </button>
   <button class="bnav-tab" class:bnav-tab--on={activeMobileTab === 'intel'} on:click={() => activeMobileTab = 'intel'}>
-    <span class="bnav-glyph">◈</span>
-    <span class="bnav-label">Intel</span>
-    {#if markets.length > 0}<span class="bnav-pip" style="background:var(--blue);"></span>{/if}
+    <span class="bnav-g">◈</span>
+    <span class="bnav-l">Intel</span>
+    {#if markets.length > 0}<span class="bnav-pip" style="background:var(--orange);"></span>{/if}
   </button>
   <button class="bnav-tab" class:bnav-tab--on={activeMobileTab === 'portfolio'} on:click={() => activeMobileTab = 'portfolio'}>
-    <span class="bnav-glyph">↗</span>
-    <span class="bnav-label">Portfolio</span>
+    <span class="bnav-g">↗</span>
+    <span class="bnav-l">Portfolio</span>
   </button>
 </nav>
 
-<!-- ═══ FOOTER ═══════════════════════════════════════════════ -->
 <footer class="site-footer">
-  <span><span class="blink" style="color:var(--green-hi); font-size:0.45rem; vertical-align:middle;">●</span> Situation Monitor</span>
-  <span>mempool · alternative.me · binance · er-api · ghostfol.io · yahoo finance · worldbank</span>
+  <span><span class="blink" style="color:var(--orange); font-size:0.4rem; vertical-align:middle;">●</span> Glance · Bitcoin Intelligence</span>
+  <span>mempool · alternative.me · binance · er-api · ghostfol.io · worldbank</span>
 </footer>
-
 <style>
-  /* ─── RESET ─────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; }
   :global(button, a) { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 
-  /* ─── HEADER ────────────────────────────── */
+  /* ── HEADER ──────────────────────────────── */
   .hdr {
     position: sticky; top: 0; z-index: 100;
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 0 20px; height: 52px;
-    background: rgba(8,8,8,0.85);
-    backdrop-filter: blur(20px) saturate(160%);
-    border-bottom: 1px solid var(--edge);
+    display: flex; align-items: center;
+    padding: 0 24px; height: 54px;
+    background: rgba(10,10,10,0.88);
+    backdrop-filter: blur(24px) saturate(150%);
+    border-bottom: 1px solid var(--b1);
   }
-  .hdr-left { display: flex; align-items: center; gap: 10px; }
-  .live-dot { display: inline-block; width: 6px; height: 6px; background: var(--green-hi); border-radius: 50%; }
-  .hdr-wordmark { font-size: 0.8rem; font-weight: 500; color: var(--t1); letter-spacing: -0.01em; }
-  .hdr-mid { position: absolute; left: 50%; transform: translateX(-50%); }
-  .hdr-time { font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.06em; color: var(--t3); font-variant-numeric: tabular-nums; }
-  .hdr-right { display: flex; align-items: center; gap: 8px; }
+  .hdr-brand { display: flex; align-items: center; gap: 9px; flex: 1; }
+  .brand-pip { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--orange); }
+  .brand-name { font-size: 0.9rem; font-weight: 600; color: var(--t1); letter-spacing: -0.02em; }
+  .hdr-clock-wrap { position: absolute; left: 50%; transform: translateX(-50%); }
+  .hdr-clock { font-size: 0.82rem; font-weight: 500; color: var(--t3); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+  .hdr-right { flex: 1; display: flex; justify-content: flex-end; }
   .hdr-btn {
     display: flex; align-items: center; gap: 7px;
-    padding: 6px 12px; border-radius: 7px;
-    background: none; border: 1px solid var(--edge);
+    padding: 6px 13px; border-radius: 8px;
+    background: none; border: 1px solid var(--b1);
     color: var(--t2); font-size: 0.72rem; font-family: 'Inter', sans-serif;
     cursor: pointer; transition: border-color 0.15s, color 0.15s;
   }
-  .hdr-btn:hover { border-color: var(--edge-hi); color: var(--t1); }
-  .hdr-btn--active { border-color: var(--edge-hi); color: var(--t1); }
+  .hdr-btn:hover, .hdr-btn--on { border-color: var(--b2); color: var(--t1); }
   .hdr-btn-lbl { display: block; }
   @media (max-width: 600px) {
-    .hdr { padding: 0 14px; height: 48px; }
-    .hdr-mid { display: none; }
-    .hdr-wordmark { font-size: 0.75rem; }
+    .hdr { padding: 0 16px; height: 50px; }
+    .hdr-clock-wrap { display: none; }
+    .brand-name { font-size: 0.82rem; }
     .hdr-btn-lbl { display: none; }
-    .hdr-btn { padding: 7px; min-width: 36px; justify-content: center; }
+    .hdr-btn { padding: 8px; min-width: 36px; justify-content: center; border-radius: 7px; }
   }
 
-  /* ─── SETTINGS ──────────────────────────── */
-  .settings-drawer {
-    background: #060608;
-    border-bottom: 1px solid var(--edge);
-  }
-  .settings-inner {
-    max-width: 860px; margin: 0 auto;
-    padding: 28px 20px;
-    display: flex; flex-direction: column; gap: 24px;
-  }
-  .settings-group { }
-  .settings-group-label {
-    font-size: 0.7rem; font-weight: 500; color: var(--t2);
-    margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
-  }
-  .settings-hint { font-size: 0.65rem; color: var(--t3); font-weight: 400; }
-  .settings-fields { display: flex; gap: 10px; flex-wrap: wrap; }
-  .field { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 110px; }
-  .flabel { font-size: 0.6rem; color: var(--t3); font-weight: 500; letter-spacing: 0.02em; }
-  .finp {
-    width: 100%; background: var(--s2);
-    border: 1px solid var(--edge); border-radius: 7px;
-    padding: 8px 10px; color: var(--t1);
-    font-family: 'Inter', sans-serif; font-size: 0.8rem;
-    transition: border-color 0.15s;
-  }
-  .finp:focus { outline: none; border-color: var(--edge-hi); }
-  .tag-list { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
-  .stag {
-    display: inline-flex; align-items: center; gap: 5px;
-    padding: 4px 10px; background: var(--s2);
-    border: 1px solid var(--edge); border-radius: 20px;
-    font-size: 0.7rem; color: var(--t2);
-  }
-  .stag-rm { background: none; border: none; color: var(--t3); cursor: pointer; font-size: 0.9rem; padding: 0; line-height: 1; }
-  .stag-rm:hover { color: var(--red-hi); }
-  .finp-row { display: flex; gap: 7px; }
-  .btn-add {
-    padding: 8px 14px; border: 1px solid var(--edge); border-radius: 7px;
-    background: none; color: var(--t2); font-size: 0.72rem;
-    cursor: pointer; white-space: nowrap; transition: all 0.15s;
-  }
-  .btn-add:hover { border-color: var(--edge-hi); color: var(--t1); }
-  .src-list { max-height: 72px; overflow-y: auto; margin-bottom: 8px; }
-  .src-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 0.64rem; color: var(--t3); }
-  .src-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
-  .btn-save {
-    align-self: flex-start; padding: 9px 22px;
-    background: var(--t1); border: none; border-radius: 7px;
-    color: var(--bg); font-size: 0.78rem; font-weight: 500;
-    cursor: pointer; transition: opacity 0.15s;
-  }
-  .btn-save:hover { opacity: 0.85; }
-  .btn-save--saved { background: var(--green-hi); color: #fff; }
+  /* ── SETTINGS DRAWER ─────────────────────── */
+  .drawer { background: #080808; border-bottom: 1px solid var(--b1); }
+  .drawer-inner { max-width: 860px; margin: 0 auto; padding: 28px 24px; display: flex; flex-direction: column; gap: 22px; }
+  .dgroup { }
+  .dgroup-label { font-size: 0.72rem; font-weight: 500; color: var(--t2); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+  .dhint { font-size: 0.64rem; color: var(--t3); font-weight: 400; }
+  .dfields { display: flex; gap: 10px; flex-wrap: wrap; }
+  .dfield { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 100px; }
+  .dlabel { font-size: 0.6rem; color: var(--t3); font-weight: 500; }
+  .dinp { width: 100%; background: var(--s2); border: 1px solid var(--b1); border-radius: 8px; padding: 8px 11px; color: var(--t1); font-family: 'Inter', sans-serif; font-size: 0.8rem; transition: border-color 0.15s; }
+  .dinp:focus { outline: none; border-color: var(--orange); }
+  .dtags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 10px; }
+  .dtag { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; background: var(--s2); border: 1px solid var(--b1); border-radius: 20px; font-size: 0.7rem; color: var(--t2); }
+  .dtag-rm { background: none; border: none; color: var(--t3); cursor: pointer; font-size: 0.9rem; padding: 0; line-height: 1; }
+  .dtag-rm:hover { color: var(--dn); }
+  .dinp-row { display: flex; gap: 7px; }
+  .dbtn { padding: 8px 14px; border: 1px solid var(--b1); border-radius: 8px; background: none; color: var(--t2); font-size: 0.72rem; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .dbtn:hover { border-color: var(--b2); color: var(--t1); }
+  .dsrcs { max-height: 70px; overflow-y: auto; margin-bottom: 8px; }
+  .dsrc-row { display: flex; justify-content: space-between; align-items: center; padding: 3px 0; font-size: 0.64rem; color: var(--t3); }
+  .dsrc-url { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 300px; }
+  .dsave { align-self: flex-start; padding: 9px 22px; background: var(--t1); border: none; border-radius: 8px; color: var(--bg); font-size: 0.78rem; font-weight: 500; cursor: pointer; transition: background 0.2s; }
+  .dsave:hover { background: #d0d0d0; }
+  .dsave--ok { background: var(--orange); color: #fff; }
   @media (max-width: 600px) {
-    .settings-inner { padding: 20px 14px; }
-    .settings-fields { flex-direction: column; }
+    .drawer-inner { padding: 20px 16px; }
+    .dfields { flex-direction: column; }
   }
 
-  /* ─── LAYOUT ────────────────────────────── */
-  .layout {
+  /* ── LAYOUT GRID ─────────────────────────── */
+  .grid {
     display: grid;
-    grid-template-columns: 340px 1fr 1fr;
+    grid-template-columns: 340px 1fr;
     grid-template-rows: auto auto;
     gap: 10px; padding: 10px;
-    max-width: 1440px; margin: 0 auto;
-    align-items: start;
+    max-width: 1440px; margin: 0 auto; align-items: start;
   }
-  .col-signal    { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 10px; }
-  .col-poly      { grid-column: 2; grid-row: 1; }
-  .col-news      { grid-column: 3; grid-row: 1; }
-  .col-portfolio { grid-column: 1 / -1; grid-row: 2; display: flex; gap: 10px; align-items: start; }
+  .col-a { grid-column: 1; grid-row: 1; display: flex; flex-direction: column; gap: 10px; }
+  .col-b { grid-column: 2; grid-row: 1; display: flex; flex-direction: column; gap: 10px; }
+  .col-c { grid-column: 1/-1; grid-row: 2; display: flex; gap: 10px; align-items: start; }
+
   @media (max-width: 1100px) {
-    .layout { grid-template-columns: 300px 1fr 1fr; }
+    .grid { grid-template-columns: 300px 1fr; }
   }
-  @media (max-width: 960px) {
-    .layout { grid-template-columns: 1fr 1fr; }
-    .col-signal { grid-column: 1; }
-    .col-poly   { grid-column: 2; }
-    .col-news   { grid-column: 1 / -1; grid-row: 2; }
-    .col-portfolio { grid-column: 1 / -1; grid-row: 3; flex-direction: column; }
+  @media (max-width: 800px) {
+    .grid { grid-template-columns: 1fr; }
+    .col-a, .col-b { grid-column: 1; grid-row: auto; }
+    .col-c { grid-column: 1; grid-row: auto; flex-direction: column; }
   }
   @media (max-width: 600px) {
-    .layout { grid-template-columns: 1fr; padding: 8px 8px 86px; gap: 8px; }
-    .col-signal, .col-poly, .col-news, .col-portfolio { grid-column: 1; grid-row: auto; }
-    .col-signal, .col-poly, .col-news, .col-portfolio { display: none !important; }
-    .view-signal    .col-signal    { display: flex !important; flex-direction: column; gap: 8px; }
-    .view-intel     .col-poly,
-    .view-intel     .col-news      { display: flex !important; flex-direction: column; }
-    .view-portfolio .col-portfolio { display: flex !important; flex-direction: column; gap: 8px; }
+    .grid { padding: 8px 8px 86px; gap: 8px; }
+    .col-a, .col-b, .col-c { display: none !important; }
+    .tab-signal    .col-a { display: flex !important; flex-direction: column; gap: 8px; }
+    .tab-intel     .col-b { display: flex !important; flex-direction: column; gap: 8px; }
+    .tab-portfolio .col-c { display: flex !important; flex-direction: column; gap: 8px; }
   }
 
-  /* ─── SHARED ATOMS ─────────────────────── */
-  .eyebrow {
-    display: block;
-    font-size: 0.6rem; font-weight: 500;
-    text-transform: uppercase; letter-spacing: 0.1em;
-    color: var(--t3);
-  }
-  .bignum {
-    font-family: 'Rajdhani', sans-serif; font-weight: 700;
-    font-size: 1.5rem; line-height: 1; color: var(--t1);
-  }
-  .bignum small { font-size: 0.5em; opacity: 0.55; font-weight: 400; }
-  .muted { font-size: 0.6rem; color: var(--t3); }
-  .c-head { display: flex; justify-content: space-between; align-items: flex-start; }
-  .c-title { font-size: 0.78rem; font-weight: 500; color: var(--t1); }
-  .c-sub { font-size: 0.6rem; color: var(--t3); margin-top: 3px; }
-  .c-src { font-size: 0.6rem; color: var(--t3); text-decoration: none; }
-  .c-src-link:hover { color: var(--t2); }
-  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 16px; }
-  .trio-stat { display: flex; flex-direction: column; gap: 6px; }
-  .mb-16 { margin-bottom: 16px; }
-  .empty-msg { font-size: 0.75rem; color: var(--t3); padding: 8px 0; }
-  .err-msg { font-size: 0.74rem; color: var(--red-hi); padding: 10px 12px; border: 1px solid rgba(244,63,94,0.15); border-radius: 8px; background: rgba(244,63,94,0.04); }
+  /* ── TYPE ATOMS ─────────────────────────── */
+  .micro-label { font-size: 0.6rem; font-weight: 500; text-transform: uppercase; letter-spacing: 0.1em; color: var(--t3); }
+  .micro-sub   { font-size: 0.65rem; color: var(--t3); margin-top: 2px; }
+  .micro-dim   { font-size: 0.6rem; color: var(--t3); }
+  .ch { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+  .ch-title { font-size: 0.78rem; font-weight: 500; color: var(--t1); }
+  .ch-sub   { font-size: 0.62rem; color: var(--t3); margin-top: 2px; }
+  .ch-link  { font-size: 0.62rem; color: var(--t3); text-decoration: none; transition: color 0.15s; }
+  .ch-link:hover { color: var(--t2); }
+  .empty-msg { font-size: 0.74rem; color: var(--t3); }
+  .err-msg { font-size: 0.74rem; color: var(--dn); padding: 10px 12px; border: 1px solid rgba(239,68,68,0.15); border-radius: 8px; background: rgba(239,68,68,0.04); }
 
-  /* ─── HERO CARD ─────────────────────────── */
-  .hero-card {
-    border-top: 2px solid var(--ac, var(--t3));
-    position: relative; overflow: hidden;
-  }
-  /* Subtle radial glow behind the number */
-  .hero-card::after {
-    content: '';
-    position: absolute; top: -40px; left: 50%; transform: translateX(-50%);
-    width: 240px; height: 240px;
-    background: radial-gradient(circle, color-mix(in srgb, var(--ac, transparent) 12%, transparent) 0%, transparent 70%);
-    pointer-events: none;
-  }
-  .hero-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-  .hero-updated { font-size: 0.58rem; color: var(--t3); font-variant-numeric: tabular-nums; }
-  .hero-num-wrap { text-align: center; padding: 12px 0 20px; position: relative; z-index: 1; }
+  /* ── SIGNAL HERO CARD ────────────────────── */
+  .signal-card { border-top: 2px solid var(--ac, var(--t3)); }
+  .sc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 22px; }
+  .sc-time { font-size: 0.6rem; color: var(--t3); font-variant-numeric: tabular-nums; margin-top: 2px; }
+  .sc-hero { text-align: center; padding: 16px 0 20px; }
   .hero-num {
-    font-family: 'Rajdhani', sans-serif; font-weight: 700;
-    font-size: 4rem; line-height: 1; transition: color 0.5s;
+    display: block;
+    font-size: 4.5rem; font-weight: 600;
+    line-height: 1; letter-spacing: -0.03em;
+    transition: color 0.5s;
   }
-  .hero-unit {
-    font-size: 0.58rem; color: var(--t3); margin-top: 8px;
-    text-transform: uppercase; letter-spacing: 0.12em;
-  }
+  .hero-unit { font-size: 0.6rem; color: var(--t3); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px; }
   @media (max-width: 600px) {
-    .hero-num { font-size: 5.5rem; }
-    .hero-num-wrap { padding: 20px 0 26px; }
+    .hero-num { font-size: 6rem; }
+    .sc-hero { padding: 22px 0 26px; }
   }
 
-  /* Range bar */
-  .range-bar { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
-  .range-track { flex: 1; }
-  .range-label { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.55rem; letter-spacing: 0.04em; white-space: nowrap; }
+  /* range bar */
+  .range-row { display: flex; align-items: center; gap: 9px; margin-bottom: 18px; }
+  .range-bar { flex: 1; }
+  .range-cap { font-size: 0.58rem; font-weight: 600; white-space: nowrap; letter-spacing: 0.02em; }
 
-  /* Signals list */
-  .signals { display: flex; flex-direction: column; gap: 6px; margin-bottom: 20px; }
-  .sig-row { display: flex; align-items: center; gap: 8px; font-size: 0.7rem; color: var(--t3); transition: color 0.2s; }
-  .sig-row--on { color: var(--t1); }
-  .sig-dot { font-size: 0.45rem; flex-shrink: 0; }
-  .sig-row--on .sig-dot { color: var(--green-hi); }
+  /* signals */
+  .sigs { display: flex; flex-direction: column; gap: 7px; margin-bottom: 22px; padding: 14px 0; border-top: 1px solid var(--b1); border-bottom: 1px solid var(--b1); }
+  .sig { display: flex; align-items: center; gap: 10px; font-size: 0.7rem; color: var(--t3); transition: color 0.2s; }
+  .sig--on { color: var(--t1); }
+  .sig-indicator { width: 12px; font-size: 0.5rem; text-align: center; color: var(--t3); flex-shrink: 0; }
+  .sig--on .sig-indicator { color: var(--orange); }
   .sig-name { flex: 1; }
-  .sig-boost { font-size: 0.62rem; color: var(--green-hi); }
+  .sig-boost { font-size: 0.63rem; color: var(--orange); font-weight: 500; }
 
-  /* Hero footer stats */
-  .hero-footer { display: flex; border-top: 1px solid var(--edge); padding-top: 16px; }
-  .hf-stat { flex: 1; display: flex; flex-direction: column; gap: 5px; text-align: center; }
-  .hf-val { font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 0.9rem; line-height: 1; color: var(--t1); }
-  .hf-div { width: 1px; background: var(--edge); flex-shrink: 0; margin: 0 4px; }
+  /* stat bar */
+  .sc-stats { display: flex; padding-top: 16px; }
+  .sc-stat { flex: 1; text-align: center; display: flex; flex-direction: column; gap: 5px; }
+  .sc-stat-val { font-size: 0.88rem; font-weight: 600; color: var(--t1); letter-spacing: -0.01em; }
+  .sc-div { width: 1px; background: var(--b1); flex-shrink: 0; }
 
-  /* ─── BTC NETWORK ────────────────────────── */
-  .halving { border-top: 1px solid var(--edge); margin-top: 18px; padding-top: 16px; }
-  .halving-head { display: flex; justify-content: space-between; align-items: center; }
-  .halving-days { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1rem; color: var(--orange); }
-  .halving-sub { font-size: 0.58rem; color: var(--t3); }
+  /* ── NETWORK CARD ────────────────────────── */
+  .stat3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-top: 14px; }
+  .s3 { display: flex; flex-direction: column; gap: 6px; }
+  .s3-val { font-size: 1.35rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1; color: var(--t1); }
+  .s3-val small { font-size: 0.48em; color: var(--t3); font-weight: 400; margin-left: 2px; }
+  .mb14 { margin-bottom: 14px; }
+  .halving { border-top: 1px solid var(--b1); margin-top: 16px; padding-top: 14px; }
+  .halving-row { display: flex; justify-content: space-between; align-items: center; }
+  .halving-days { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.02em; color: var(--orange); }
 
-  /* ─── STACK ─────────────────────────────── */
-  .btc-line { font-size: 0.72rem; color: var(--t2); margin-bottom: 16px; }
-  .goal-block { }
+  /* ── STACK CARD ──────────────────────────── */
+  .btc-line { font-size: 0.72rem; color: var(--t2); margin-bottom: 14px; }
   .goal-head { display: flex; justify-content: space-between; margin-bottom: 4px; }
-  .goal-sub { font-size: 0.58rem; color: var(--t3); text-align: right; margin-top: 4px; }
+  .goal-sub { font-size: 0.6rem; color: var(--t3); text-align: right; margin-top: 4px; }
 
-  /* ─── POLYMARKET ─────────────────────────── */
-  .mkt-item { padding: 14px 0; border-bottom: 1px solid var(--edge); }
-  .mkt-item:last-child { border-bottom: none; padding-bottom: 0; }
-  .mkt-tags { display: flex; align-items: center; gap: 6px; margin-bottom: 7px; flex-wrap: wrap; }
-  .mkt-tag {
-    font-size: 0.55rem; color: var(--t3);
-    background: var(--s2); border: 1px solid var(--edge);
-    border-radius: 4px; padding: 2px 6px;
-    font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em;
-  }
-  .mkt-tag--pin { color: var(--blue); border-color: rgba(14,165,233,0.2); }
-  .mkt-hot { font-size: 0.58rem; color: var(--green-hi); }
-  .mkt-ends { font-size: 0.58rem; color: var(--t3); margin-left: auto; }
-  .mkt-body { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 0; }
+  /* ── POLYMARKET ──────────────────────────── */
+  .mkt { padding: 13px 0; border-bottom: 1px solid var(--b1); }
+  .mkt:last-child { border-bottom: none; padding-bottom: 0; }
+  .mkt-meta { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+  .mkt-tag { font-size: 0.55rem; color: var(--t3); background: var(--s2); border: 1px solid var(--b1); border-radius: 4px; padding: 2px 7px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.08em; }
+  .mkt-tag--pin { color: var(--orange); border-color: var(--orange2); }
+  .mkt-end { font-size: 0.58rem; color: var(--t3); margin-left: auto; }
+  .mkt-body { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
   .mkt-q { font-size: 0.78rem; color: var(--t2); line-height: 1.45; flex: 1; text-decoration: none; transition: color 0.15s; }
   .mkt-q:hover { color: var(--t1); }
-  .mkt-prob { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.6rem; line-height: 1; white-space: nowrap; }
-  .mkt-pct-sym { font-size: 0.65em; opacity: 0.6; }
+  .mkt-prob { font-size: 1.6rem; font-weight: 700; line-height: 1; white-space: nowrap; }
+  .mkt-prob small { font-size: 0.5em; opacity: 0.6; font-weight: 400; }
   .mkt-foot { display: flex; justify-content: space-between; align-items: center; }
 
-  /* ─── NEWS ──────────────────────────────── */
-  .news-row { padding: 11px 0; border-bottom: 1px solid var(--edge); }
+  /* ── NEWS ────────────────────────────────── */
+  .news-row { padding: 11px 0; border-bottom: 1px solid var(--b1); }
   .news-row:last-child { border-bottom: none; }
-  .news-title { display: block; font-size: 0.78rem; color: var(--t2); text-decoration: none; line-height: 1.48; margin-bottom: 5px; transition: color 0.15s; }
-  .news-title:hover { color: var(--t1); }
+  .news-link { display: block; font-size: 0.77rem; color: var(--t2); text-decoration: none; line-height: 1.48; margin-bottom: 5px; transition: color 0.15s; }
+  .news-link:hover { color: var(--t1); }
   .news-meta { display: flex; gap: 10px; align-items: center; }
   .news-src { font-size: 0.6rem; color: var(--orange); font-weight: 500; }
 
-  /* ─── ASSET CARD ─────────────────────────── */
-  .asset-card { flex: 1; min-width: 220px; }
-  .asset-rows { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
-  .a-row { display: grid; grid-template-columns: 88px 1fr 50px; align-items: center; gap: 10px; }
+  /* ── ASSETS ──────────────────────────────── */
+  .assets { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+  .a-row { display: grid; grid-template-columns: 86px 1fr 50px; align-items: center; gap: 10px; }
   .a-left { display: flex; flex-direction: column; gap: 1px; }
-  .a-ticker { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.82rem; }
+  .a-ticker { font-size: 0.8rem; font-weight: 600; letter-spacing: -0.01em; }
   .a-name { font-size: 0.58rem; color: var(--t3); }
-  .a-sub { font-size: 0.55rem; color: var(--t3); margin-top: 1px; }
-  .a-bar { }
-  .a-pct { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.8rem; text-align: right; }
-  .cpi-footer { font-size: 0.62rem; color: var(--t3); border-top: 1px solid var(--edge); padding-top: 12px; line-height: 1.5; }
+  .a-sub { font-size: 0.56rem; color: var(--t3); margin-top: 1px; }
+  .a-pct { font-size: 0.8rem; font-weight: 600; text-align: right; }
+  .cpi-note { font-size: 0.62rem; color: var(--t3); border-top: 1px solid var(--b1); padding-top: 12px; line-height: 1.55; }
 
-  /* ─── GHOSTFOLIO ─────────────────────────── */
-  .gf-card { flex: 2; }
+  /* ── GHOSTFOLIO ──────────────────────────── */
   .gf-top { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap; margin-bottom: 20px; }
-  .gf-hero { display: flex; flex-direction: column; gap: 6px; }
-  .gf-nw { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 2.4rem; line-height: 1; }
-  .gf-divider { width: 1px; height: 48px; background: var(--edge); align-self: center; flex-shrink: 0; }
+  .gf-hero { display: flex; flex-direction: column; gap: 7px; }
+  .gf-nw { font-size: 2.4rem; font-weight: 600; letter-spacing: -0.03em; line-height: 1; color: var(--t1); }
+  .gf-vdiv { width: 1px; height: 44px; background: var(--b1); align-self: center; flex-shrink: 0; }
   .gf-smalls { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; flex: 1; }
-  .gf-sm { display: flex; flex-direction: column; gap: 6px; }
-  .gf-sm-val { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.3rem; line-height: 1; }
-  .icon-btn {
-    background: none; border: 1px solid var(--edge); border-radius: 6px;
-    color: var(--t3); font-size: 0.8rem; padding: 4px 10px;
-    cursor: pointer; transition: all 0.15s;
-  }
-  .icon-btn:hover { border-color: var(--edge-hi); color: var(--t2); }
-  .pulse-dot { display: inline-block; width: 6px; height: 6px; background: var(--green-hi); border-radius: 50%; animation: blink 1s infinite; }
+  .gf-sm { display: flex; flex-direction: column; gap: 7px; }
+  .gf-sm-v { font-size: 1.2rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+  .icon-btn { background: none; border: 1px solid var(--b1); border-radius: 6px; color: var(--t3); font-size: 0.8rem; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
+  .icon-btn:hover { border-color: var(--b2); color: var(--t2); }
+  .pulse-dot { display: inline-block; width: 6px; height: 6px; background: var(--orange); border-radius: 50%; animation: blink 1s infinite; }
 
   /* ROI strip */
-  .roi-strip { display: flex; border: 1px solid var(--edge); border-radius: 9px; overflow: hidden; margin-bottom: 18px; }
-  .roi-cell { flex: 1; padding: 13px 15px; border-right: 1px solid var(--edge); display: flex; flex-direction: column; gap: 4px; min-width: 80px; }
+  .roi-strip { display: flex; border: 1px solid var(--b1); border-radius: 10px; overflow: hidden; margin-bottom: 18px; }
+  .roi-cell { flex: 1; padding: 13px 15px; border-right: 1px solid var(--b1); display: flex; flex-direction: column; gap: 4px; min-width: 80px; }
   .roi-cell:last-child { border-right: none; }
-  .roi-val { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 1.15rem; line-height: 1; }
-  .roi-unit { font-size: 0.65em; opacity: 0.6; }
+  .roi-v { font-size: 1.1rem; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+  .roi-u { font-size: 0.6em; opacity: 0.55; font-weight: 400; }
   .roi-vs { font-size: 0.58rem; }
 
   /* Holdings */
-  .holdings { border-top: 1px solid var(--edge); padding-top: 16px; }
-  .holdings-toggle {
-    background: none; border: none; color: var(--t3); font-size: 0.68rem;
-    font-family: 'Inter', sans-serif; cursor: pointer;
-    display: flex; align-items: center; padding: 0; margin-bottom: 14px;
-    transition: color 0.15s;
-  }
-  .holdings-toggle:hover { color: var(--t2); }
-  .hgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(172px, 1fr)); gap: 8px; }
-  .h-item { background: var(--s2); border: 1px solid var(--edge); border-radius: 9px; padding: 13px; }
+  .holdings { border-top: 1px solid var(--b1); padding-top: 16px; }
+  .hold-toggle { background: none; border: none; color: var(--t3); font-size: 0.68rem; font-family: 'Inter', sans-serif; cursor: pointer; display: flex; align-items: center; padding: 0; margin-bottom: 14px; transition: color 0.15s; }
+  .hold-toggle:hover { color: var(--t2); }
+  .hgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px,1fr)); gap: 8px; }
+  .h-item { background: var(--s2); border: 1px solid var(--b1); border-radius: 10px; padding: 13px; }
   .h-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; }
-  .h-sym { font-family: 'Rajdhani', sans-serif; font-weight: 700; font-size: 0.9rem; }
+  .h-sym { font-size: 0.88rem; font-weight: 600; }
   .h-pct { font-size: 0.7rem; font-weight: 500; }
   .h-name { font-size: 0.6rem; color: var(--t3); margin-bottom: 6px; }
   .h-foot { display: flex; justify-content: space-between; font-size: 0.62rem; color: var(--t3); }
 
-  @media (max-width: 960px) {
+  @media (max-width: 800px) {
+    .gf-top { gap: 16px; }
+    .gf-vdiv { display: none; }
     .roi-strip { flex-wrap: wrap; }
     .roi-cell { min-width: calc(50% - 1px); }
-    .gf-top { gap: 16px; }
-    .gf-divider { display: none; }
   }
   @media (max-width: 600px) {
     .gf-nw { font-size: 2rem; }
-    .gf-smalls { gap: 14px; }
     .hgrid { grid-template-columns: 1fr 1fr; }
     .roi-cell { min-width: calc(50% - 1px); }
   }
 
-  /* ─── MOBILE NAV ─────────────────────────── */
+  /* ── MOBILE NAV ──────────────────────────── */
   .bnav { display: none; }
   @media (max-width: 600px) {
     .bnav {
       display: flex; position: fixed; bottom: 0; left: 0; right: 0; z-index: 200;
-      background: rgba(8,8,8,0.95);
-      backdrop-filter: blur(24px) saturate(160%);
-      border-top: 1px solid var(--edge);
+      background: rgba(10,10,10,0.96); backdrop-filter: blur(28px) saturate(150%);
+      border-top: 1px solid var(--b1);
       padding-bottom: env(safe-area-inset-bottom, 0px);
     }
   }
-  .bnav-tab {
-    flex: 1; display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
-    padding: 10px 0 8px; gap: 3px;
-    background: none; border: none; cursor: pointer; position: relative;
-  }
-  .bnav-glyph { font-size: 1rem; color: var(--t3); transition: color 0.15s; }
-  .bnav-label { font-size: 0.52rem; color: var(--t3); font-weight: 400; transition: color 0.15s; letter-spacing: 0.04em; }
-  .bnav-tab--on .bnav-glyph,
-  .bnav-tab--on .bnav-label { color: var(--t1); }
-  .bnav-pip { position: absolute; top: 8px; right: 22%; width: 5px; height: 5px; border-radius: 50%; }
+  .bnav-tab { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 10px 0 8px; gap: 3px; background: none; border: none; cursor: pointer; position: relative; }
+  .bnav-g { font-size: 1rem; color: var(--t3); transition: color 0.15s; }
+  .bnav-l { font-size: 0.52rem; color: var(--t3); transition: color 0.15s; letter-spacing: 0.04em; }
+  .bnav-tab--on .bnav-g, .bnav-tab--on .bnav-l { color: var(--orange); }
+  .bnav-pip { position: absolute; top: 8px; right: 20%; width: 5px; height: 5px; border-radius: 50%; }
 
-  /* ─── FOOTER ─────────────────────────────── */
-  .site-footer {
-    border-top: 1px solid var(--edge); padding: 12px 20px;
-    display: flex; justify-content: space-between; flex-wrap: wrap;
-    gap: 6px; font-size: 0.58rem; color: var(--t3); margin-top: 4px;
-  }
+  /* ── FOOTER ──────────────────────────────── */
+  .site-footer { border-top: 1px solid var(--b1); padding: 12px 24px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px; font-size: 0.58rem; color: var(--t3); margin-top: 4px; }
   @media (max-width: 600px) { .site-footer { display: none; } }
 
-  /* ─── ANIMS ──────────────────────────────── */
+  /* ── ANIMATIONS ──────────────────────────── */
   @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
   .blink { animation: blink 2s step-end infinite; }
 </style>

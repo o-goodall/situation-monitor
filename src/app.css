@@ -1,64 +1,77 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=Rajdhani:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── TOKENS ────────────────────────────────── */
+/* ══════════════════════════════════════════════
+   DESIGN TOKENS — Bitcoin Orange system
+   One accent color, everything else neutral.
+   ══════════════════════════════════════════════ */
 :root {
-  --bg:        #080808;
-  --s1:        #0e0e12;   /* card surface     */
-  --s2:        #131318;   /* nested surface   */
-  --edge:      rgba(255,255,255,0.05);  /* subtle border */
-  --edge-hi:   rgba(255,255,255,0.09);
-  --t1:        #ededf0;   /* primary text     */
-  --t2:        #5c5c66;   /* secondary text   */
-  --t3:        #2a2a32;   /* tertiary / dim   */
-  --orange:    #f7931a;
-  --green:     #16a34a;
-  --green-hi:  #22c55e;
-  --red:       #e11d48;
-  --red-hi:    #f43f5e;
-  --blue:      #0ea5e9;
+  /* Surfaces */
+  --bg:      #0a0a0a;
+  --s1:      #111111;
+  --s2:      #191919;
+
+  /* Borders */
+  --b1:      rgba(255,255,255,0.06);
+  --b2:      rgba(255,255,255,0.10);
+
+  /* Text */
+  --t1:      #f0f0f0;
+  --t2:      #666666;
+  --t3:      #303030;
+
+  /* BRAND — Bitcoin orange, the only accent */
+  --orange:  #f7931a;
+  --orange2: rgba(247,147,26,0.12);
+  --orange3: rgba(247,147,26,0.06);
+
+  /* Functional only — gains / losses */
+  --up:      #22c55e;
+  --dn:      #ef4444;
 }
 
-/* ── RESET ─────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { font-size: 16px; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
 
-/* ── BASE ──────────────────────────────────── */
+html {
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
   background: var(--bg);
   color: var(--t1);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   font-size: 0.875rem;
   font-weight: 400;
-  line-height: 1.5;
+  line-height: 1.55;
+  letter-spacing: -0.008em;
   min-height: 100vh;
-  letter-spacing: -0.005em;
 }
 
-/* ── CARD ──────────────────────────────────── */
+/* Card — barely-there surface */
 .card {
   background: var(--s1);
-  border: 1px solid var(--edge);
-  border-radius: 12px;
-  padding: 24px;
+  border: 1px solid var(--b1);
+  border-radius: 14px;
+  padding: 22px;
 }
 
-/* ── PROGRESS BAR ──────────────────────────── */
-.pbar  { height: 1px; background: var(--edge); border-radius: 1px; overflow: hidden; }
+/* Thin progress bar */
+.pbar  { height: 1px; background: var(--b1); border-radius: 1px; overflow: hidden; }
 .pfill { height: 100%; border-radius: 1px; transition: width 0.7s cubic-bezier(.4,0,.2,1); }
 
-/* ── SCROLLBAR ─────────────────────────────── */
+/* Scrollbar */
 ::-webkit-scrollbar { width: 2px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--edge-hi); }
+::-webkit-scrollbar-thumb { background: var(--b2); }
 
-/* ── ANIM ──────────────────────────────────── */
+/* Blink */
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .blink { animation: blink 2s step-end infinite; }
 
-/* ── MOBILE ────────────────────────────────── */
 @media (max-width: 600px) {
-  .card { padding: 20px; border-radius: 10px; }
+  .card { padding: 18px; border-radius: 12px; }
 }
