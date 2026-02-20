@@ -80,6 +80,89 @@
     if($settings.ghostfolio?.token)fetchGhostfolio();
     intervals=[setInterval(fetchBtc,60000),setInterval(fetchDCA,300000),setInterval(fetchPoly,300000),setInterval(fetchNews,300000),setInterval(fetchMarkets,300000),setInterval(()=>{if($settings.ghostfolio?.token)fetchGhostfolio();},300000)];
     window.addEventListener('scroll',handleScroll,{passive:true});
+
+    // ── CYBER HORNET SWARM ─────────────────────────────────────
+    (function() {
+      const canvas = document.getElementById('hornet-canvas') as HTMLCanvasElement;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d')!;
+      let W: number, H: number, hornets: any[] = [], animId: number;
+      const ORANGE = 'rgba(247,147,26,';
+      const ELECTRIC = 'rgba(0,200,255,';
+      const COUNT = 55;
+
+      function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+
+      class Hornet {
+        x=0; y=0; vx=0; vy=0; size=0; hue='o'; alpha=0; angle=0; spin=0;
+        surgeTimer=0; surging=false; trail: {x:number,y:number}[]=[]; trailLen=0;
+        constructor() { this.reset(); }
+        reset() {
+          this.x = Math.random()*(W||window.innerWidth);
+          this.y = Math.random()*(H||window.innerHeight);
+          this.vx = (Math.random()-0.5)*0.55;
+          this.vy = (Math.random()-0.5)*0.55;
+          this.size = 2.2+Math.random()*2.0;
+          this.hue  = Math.random()<0.72?'o':'e';
+          this.alpha = 0.18+Math.random()*0.45;
+          this.angle = Math.random()*Math.PI*2;
+          this.spin  = (Math.random()-0.5)*0.02;
+          this.surgeTimer = 60+Math.floor(Math.random()*200);
+          this.surging = false;
+          this.trail = [];
+          this.trailLen = 6+Math.floor(Math.random()*8);
+        }
+        update(all: any[]) {
+          this.trail.push({x:this.x,y:this.y});
+          if (this.trail.length>this.trailLen) this.trail.shift();
+          this.angle += this.spin;
+          this.surgeTimer--;
+          if (this.surgeTimer<=0) {
+            this.surging = !this.surging;
+            this.surgeTimer = this.surging ? 20+Math.floor(Math.random()*40) : 80+Math.floor(Math.random()*180);
+            if (this.surging) {
+              const t = all[Math.floor(Math.random()*all.length)];
+              const dx=t.x-this.x, dy=t.y-this.y, dist=Math.sqrt(dx*dx+dy*dy)||1, spd=1.4+Math.random()*1.0;
+              this.vx=(dx/dist)*spd; this.vy=(dy/dist)*spd;
+            } else { this.vx=(Math.random()-0.5)*0.55; this.vy=(Math.random()-0.5)*0.55; }
+          }
+          this.x+=this.vx; this.y+=this.vy;
+          if (this.x<-20) this.x=W+20; if (this.x>W+20) this.x=-20;
+          if (this.y<-20) this.y=H+20; if (this.y>H+20) this.y=-20;
+        }
+        draw() {
+          const col = this.hue==='o'?ORANGE:ELECTRIC;
+          if (this.trail.length>1) {
+            for (let i=1;i<this.trail.length;i++) {
+              const t=i/this.trail.length, a=t*this.alpha*0.45;
+              ctx.beginPath(); ctx.moveTo(this.trail[i-1].x,this.trail[i-1].y); ctx.lineTo(this.trail[i].x,this.trail[i].y);
+              ctx.strokeStyle=col+a+')'; ctx.lineWidth=this.size*t*0.55; ctx.stroke();
+            }
+          }
+          ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.angle);
+          const s=this.size, glow=this.surging?this.alpha*1.6:this.alpha;
+          ctx.shadowBlur=this.surging?10:5; ctx.shadowColor=col+'0.8)';
+          ctx.beginPath(); ctx.moveTo(0,-s*1.6); ctx.lineTo(-s*0.9,s); ctx.lineTo(0,s*0.4); ctx.lineTo(s*0.9,s); ctx.closePath();
+          ctx.fillStyle=col+Math.min(glow,0.9)+')'; ctx.fill();
+          ctx.beginPath(); ctx.moveTo(0,-s*1.4); ctx.lineTo(0,s*0.3);
+          ctx.strokeStyle=(this.hue==='o'?ELECTRIC:ORANGE)+(glow*0.7)+')'; ctx.lineWidth=0.7; ctx.shadowBlur=4; ctx.stroke();
+          ctx.restore();
+        }
+      }
+
+      function init() { hornets=[]; for(let i=0;i<COUNT;i++) hornets.push(new Hornet()); }
+      function loop() {
+        ctx.clearRect(0,0,W,H);
+        for(let i=0;i<hornets.length;i++) for(let j=i+1;j<hornets.length;j++) {
+          const dx=hornets[i].x-hornets[j].x, dy=hornets[i].y-hornets[j].y, dist=Math.sqrt(dx*dx+dy*dy);
+          if(dist<90){const a=(1-dist/90)*0.08;ctx.beginPath();ctx.moveTo(hornets[i].x,hornets[i].y);ctx.lineTo(hornets[j].x,hornets[j].y);ctx.strokeStyle=ORANGE+a+')';ctx.lineWidth=0.5;ctx.stroke();}
+        }
+        hornets.forEach(h=>{h.update(hornets);h.draw();});
+        animId=requestAnimationFrame(loop);
+      }
+      resize(); init(); loop();
+      window.addEventListener('resize',()=>{resize();init();},{passive:true});
+    })();
   });
   onDestroy(()=>{clearInterval(clockInterval);intervals.forEach(clearInterval);window.removeEventListener('scroll',handleScroll);});
 </script>
@@ -170,173 +253,9 @@
   <span class="footer-sources">mempool.space · alternative.me · binance · exchangerate-api · ghostfol.io · worldbank</span>
 </footer>
 
-<!-- ══ HORNET SWARM SCRIPT ════════════════════════════════════ -->
-<script>
-// Cyber-hornet swarm — hive-mind particle system
-// Each hornet: small angular body, drifts slowly, occasionally surges
-// toward nearby hornets (flocking), emits a faint electric trail
-(function() {
-  const canvas = document.getElementById('hornet-canvas');
-  if (!canvas) return;
-  const ctx = canvas.getContext('2d');
-  let W, H, hornets = [], animId;
-  const ORANGE = 'rgba(247,147,26,';
-  const ELECTRIC = 'rgba(0,200,255,';
-  const COUNT = 55;
+<!-- hornet canvas JS is now inside the top-level onMount above -->
 
-  function resize() {
-    W = canvas.width  = window.innerWidth;
-    H = canvas.height = window.innerHeight;
-  }
 
-  class Hornet {
-    constructor() { this.reset(true); }
-    reset(init) {
-      this.x  = Math.random() * (W || window.innerWidth);
-      this.y  = Math.random() * (H || window.innerHeight);
-      // Slow base velocity — hive-mind drift
-      this.vx = (Math.random() - 0.5) * 0.55;
-      this.vy = (Math.random() - 0.5) * 0.55;
-      this.size = 2.2 + Math.random() * 2.0;
-      // Each hornet cycles between orange and electric-blue
-      this.hue  = Math.random() < 0.72 ? 'o' : 'e'; // orange dominant
-      this.alpha = 0.18 + Math.random() * 0.45;
-      this.angle = Math.random() * Math.PI * 2;
-      this.spin  = (Math.random() - 0.5) * 0.02;
-      // Surge state — occasionally a hornet accelerates like it's targeting
-      this.surgeTimer = 60 + Math.floor(Math.random() * 200);
-      this.surging = false;
-      // Trail history
-      this.trail = [];
-      this.trailLen = 6 + Math.floor(Math.random() * 8);
-    }
-
-    update(all) {
-      // Trail
-      this.trail.push({x:this.x, y:this.y});
-      if (this.trail.length > this.trailLen) this.trail.shift();
-
-      this.angle += this.spin;
-      this.surgeTimer--;
-
-      if (this.surgeTimer <= 0) {
-        this.surging = !this.surging;
-        this.surgeTimer = this.surging
-          ? 20 + Math.floor(Math.random() * 40)   // surge lasts ~30 frames
-          : 80 + Math.floor(Math.random() * 180);  // rest lasts ~130 frames
-        if (this.surging) {
-          // Surge toward a random nearby hornet — hive-mind targeting
-          const target = all[Math.floor(Math.random() * all.length)];
-          const dx = target.x - this.x, dy = target.y - this.y;
-          const dist = Math.sqrt(dx*dx+dy*dy) || 1;
-          const spd = 1.4 + Math.random() * 1.0;
-          this.vx = (dx/dist) * spd;
-          this.vy = (dy/dist) * spd;
-        } else {
-          // Return to slow drift
-          this.vx = (Math.random()-0.5)*0.55;
-          this.vy = (Math.random()-0.5)*0.55;
-        }
-      }
-
-      this.x += this.vx;
-      this.y += this.vy;
-
-      // Wrap edges softly
-      if (this.x < -20) this.x = W + 20;
-      if (this.x > W+20) this.x = -20;
-      if (this.y < -20) this.y = H + 20;
-      if (this.y > H+20) this.y = -20;
-    }
-
-    draw() {
-      const col = this.hue === 'o' ? ORANGE : ELECTRIC;
-
-      // Trail — fading electric streak
-      if (this.trail.length > 1) {
-        for (let i = 1; i < this.trail.length; i++) {
-          const t  = i / this.trail.length;
-          const a  = t * this.alpha * 0.45;
-          ctx.beginPath();
-          ctx.moveTo(this.trail[i-1].x, this.trail[i-1].y);
-          ctx.lineTo(this.trail[i].x,   this.trail[i].y);
-          ctx.strokeStyle = col + a + ')';
-          ctx.lineWidth   = this.size * t * 0.55;
-          ctx.stroke();
-        }
-      }
-
-      // Hornet body — angular chevron shape, rotated by angle
-      ctx.save();
-      ctx.translate(this.x, this.y);
-      ctx.rotate(this.angle);
-
-      const s = this.size;
-      const glow = this.surging ? this.alpha * 1.6 : this.alpha;
-
-      // Outer glow
-      ctx.shadowBlur  = this.surging ? 10 : 5;
-      ctx.shadowColor = col + '0.8)';
-
-      // Body — two small triangles forming a chevron/stinger
-      ctx.beginPath();
-      ctx.moveTo(0, -s * 1.6);    // tip
-      ctx.lineTo(-s * 0.9, s);     // left wing
-      ctx.lineTo(0, s * 0.4);      // inner notch
-      ctx.lineTo(s * 0.9, s);      // right wing
-      ctx.closePath();
-      ctx.fillStyle = col + Math.min(glow, 0.9) + ')';
-      ctx.fill();
-
-      // Electric accent stripe down body
-      ctx.beginPath();
-      ctx.moveTo(0, -s * 1.4);
-      ctx.lineTo(0, s * 0.3);
-      ctx.strokeStyle = (this.hue === 'o' ? ELECTRIC : ORANGE) + (glow * 0.7) + ')';
-      ctx.lineWidth = 0.7;
-      ctx.shadowBlur = 4;
-      ctx.stroke();
-
-      ctx.restore();
-    }
-  }
-
-  function init() {
-    hornets = [];
-    for (let i = 0; i < COUNT; i++) hornets.push(new Hornet());
-  }
-
-  function loop() {
-    ctx.clearRect(0, 0, W, H);
-
-    // Draw faint connection lines between very close hornets — hive network
-    for (let i = 0; i < hornets.length; i++) {
-      for (let j = i+1; j < hornets.length; j++) {
-        const dx = hornets[i].x - hornets[j].x;
-        const dy = hornets[i].y - hornets[j].y;
-        const dist = Math.sqrt(dx*dx+dy*dy);
-        if (dist < 90) {
-          const a = (1 - dist/90) * 0.08;
-          ctx.beginPath();
-          ctx.moveTo(hornets[i].x, hornets[i].y);
-          ctx.lineTo(hornets[j].x, hornets[j].y);
-          ctx.strokeStyle = ORANGE + a + ')';
-          ctx.lineWidth = 0.5;
-          ctx.stroke();
-        }
-      }
-    }
-
-    hornets.forEach(h=>{ h.update(hornets); h.draw(); });
-    animId = requestAnimationFrame(loop);
-  }
-
-  resize();
-  init();
-  loop();
-  window.addEventListener('resize', ()=>{ resize(); init(); }, {passive:true});
-})();
-</script>
 
 <style>
   /* Canvas — fixed, behind everything */
