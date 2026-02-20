@@ -1,35 +1,24 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ══════════════════════════════════════════════
-   DESIGN TOKENS — Bitcoin Orange system
-   One accent color, everything else neutral.
-   ══════════════════════════════════════════════ */
+/* ══ TOKENS ══════════════════════════════════════ */
 :root {
-  /* Surfaces */
-  --bg:      #0a0a0a;
-  --s1:      #111111;
-  --s2:      #191919;
-
-  /* Borders */
-  --b1:      rgba(255,255,255,0.06);
-  --b2:      rgba(255,255,255,0.10);
-
-  /* Text */
-  --t1:      #f0f0f0;
-  --t2:      #666666;
-  --t3:      #303030;
-
-  /* BRAND — Bitcoin orange, the only accent */
-  --orange:  #f7931a;
-  --orange2: rgba(247,147,26,0.12);
-  --orange3: rgba(247,147,26,0.06);
-
-  /* Functional only — gains / losses */
-  --up:      #22c55e;
-  --dn:      #ef4444;
+  --bg:        #060606;
+  --orange:    #f7931a;
+  --orange-lo: rgba(247,147,26,0.08);
+  --orange-md: rgba(247,147,26,0.15);
+  --orange-hi: rgba(247,147,26,0.25);
+  --glass-bg:  rgba(255,255,255,0.04);
+  --glass-bg2: rgba(255,255,255,0.07);
+  --glass-bd:  rgba(255,255,255,0.08);
+  --glass-bd2: rgba(255,255,255,0.12);
+  --t1: #f0f0f0;
+  --t2: #606060;
+  --t3: #2c2c2c;
+  --up: #22c55e;
+  --dn: #ef4444;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -40,38 +29,91 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* ══ ANIMATED BACKGROUND ══════════════════════════ */
 body {
   background: var(--bg);
   color: var(--t1);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-size: 0.875rem;
   font-weight: 400;
+  font-size: 0.875rem;
   line-height: 1.55;
   letter-spacing: -0.008em;
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
-/* Card — barely-there surface */
+/* Rich ambient background — orange/amber, not purple */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background:
+    radial-gradient(circle at 12% 80%, rgba(247,147,26,0.18) 0%, transparent 45%),
+    radial-gradient(circle at 88% 15%, rgba(247,100,10,0.14) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(180,80,0,0.08) 0%, transparent 60%),
+    radial-gradient(circle at 75% 80%, rgba(120,60,0,0.10) 0%, transparent 40%);
+  animation: ambientPulse 16s ease-in-out infinite;
+}
+
+@keyframes ambientPulse {
+  0%, 100% { opacity: 0.85; }
+  50%       { opacity: 1; }
+}
+
+/* Neural scan lines — faint orange horizontals */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    linear-gradient(180deg,
+      transparent 0%,
+      transparent 49.8%,
+      rgba(247,147,26,0.015) 50%,
+      transparent 50.2%
+    );
+  background-size: 100% 80px;
+  pointer-events: none;
+}
+
+/* ══ GLASS CARD ═══════════════════════════════════ */
 .card {
-  background: var(--s1);
-  border: 1px solid var(--b1);
-  border-radius: 14px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--glass-bd);
+  border-radius: 16px;
   padding: 22px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* Thin progress bar */
-.pbar  { height: 1px; background: var(--b1); border-radius: 1px; overflow: hidden; }
+.card:hover {
+  border-color: rgba(247,147,26,0.12);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5), 0 0 0 1px rgba(247,147,26,0.06), inset 0 1px 0 rgba(255,255,255,0.08);
+}
+
+/* ══ PROGRESS BAR ══════════════════════════════════ */
+.pbar  { height: 1px; background: rgba(255,255,255,0.06); border-radius: 1px; overflow: hidden; }
 .pfill { height: 100%; border-radius: 1px; transition: width 0.7s cubic-bezier(.4,0,.2,1); }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 2px; }
+/* ══ SCROLLBAR ═════════════════════════════════════ */
+::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--b2); }
+::-webkit-scrollbar-thumb { background: rgba(247,147,26,0.3); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(247,147,26,0.5); }
 
-/* Blink */
+/* ══ ANIM ══════════════════════════════════════════ */
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .blink { animation: blink 2s step-end infinite; }
 
+@keyframes orangeGlow {
+  0%, 100% { box-shadow: 0 0 12px rgba(247,147,26,0.3); }
+  50%       { box-shadow: 0 0 24px rgba(247,147,26,0.6); }
+}
+
 @media (max-width: 600px) {
-  .card { padding: 18px; border-radius: 12px; }
+  .card { padding: 18px; border-radius: 14px; }
 }
