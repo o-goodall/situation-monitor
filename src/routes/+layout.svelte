@@ -12,6 +12,7 @@
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
+    gfDividendTotal, gfDividendYtd, gfCash, gfAnnualizedPct, gfFirstOrderDate, gfOrdersCount,
     persistSettings, fxRates, btcWsConnected, btcMa200
   } from '$lib/store';
 
@@ -174,6 +175,12 @@
         $gfNetWorth = d.netWorth; $gfTotalInvested = d.totalInvested;
         $gfNetGainPct = d.netGainPct; $gfNetGainYtdPct = d.netGainYtdPct;
         $gfTodayChangePct = d.todayChangePct; $gfHoldings = d.holdings ?? [];
+        $gfDividendTotal = d.dividendTotal ?? null;
+        $gfDividendYtd   = d.dividendYtd   ?? null;
+        $gfCash          = d.cash          ?? null;
+        $gfAnnualizedPct = d.annualizedPerformancePct ?? null;
+        $gfFirstOrderDate = d.firstOrderDate ?? null;
+        $gfOrdersCount   = d.ordersCount   ?? null;
         $gfUpdated = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
       }
     } catch { $gfError = 'Connection failed'; } finally { $gfLoading = false; }

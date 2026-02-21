@@ -26,11 +26,12 @@ export async function GET({ url }) {
 
   const headers = { Authorization: `Bearer ${bearer}` };
 
-  const [perfMaxRes, perfYtdRes, perf1dRes, holdingsRes] = await Promise.allSettled([
+  const [perfMaxRes, perfYtdRes, perf1dRes, holdingsRes, summaryRes] = await Promise.allSettled([
     fetch(`${GF_BASE}/api/v2/portfolio/performance?range=max`, { headers }),
     fetch(`${GF_BASE}/api/v2/portfolio/performance?range=ytd`, { headers }),
     fetch(`${GF_BASE}/api/v2/portfolio/performance?range=1d`, { headers }),
     fetch(`${GF_BASE}/api/v1/portfolio/holdings`, { headers }),
+    fetch(`${GF_BASE}/api/v1/portfolio/summary`, { headers }),
   ]);
 
   let netWorth: number | null = null;
@@ -96,5 +97,27 @@ export async function GET({ url }) {
     }
   }
 
-  return json({ netWorth, totalInvested, netGain, netGainPct, netGainYtdPct, todayChangePct, holdings });
+  let dividendTotal: number | null = null;
+  let dividendYtd: number | null = null;
+  let cash: number | null = null;
+  let annualizedPerformancePct: number | null = null;
+  let firstOrderDate: string | null = null;
+  let ordersCount: number | null = null;
+
+  if (summaryRes.status === 'fulfilled' && summaryRes.value.ok) {
+    const d = await summaryRes.value.json();
+    dividendTotal = d?.dividend?.totalReceived?.withCurrencyEffect ?? d?.dividend?.totalReceived ?? null;
+    dividendYtd   = d?.dividend?.currentYear?.withCurrencyEffect ?? d?.dividend?.currentYear ?? null;
+    cash          = d?.cash ?? null;
+    firstOrderDate = d?.firstOrderDate ?? null;
+    ordersCount   = d?.ordersCount ?? null;
+    annualizedPerformancePct = d?.annualizedPerformancePercent ?? null;
+    // Ghostfolio may return this as a decimal fraction (e.g. 0.12 = 12%) or already
+    // as a percentage (e.g. 12). Normalise: if |value| < 1 and non-zero, it's a fraction.
+    if (annualizedPerformancePct !== null && Math.abs(annualizedPerformancePct) < 1 && annualizedPerformancePct !== 0) {
+      annualizedPerformancePct = annualizedPerformancePct * 100;
+    }
+  }
+
+  return json({ netWorth, totalInvested, netGain, netGainPct, netGainYtdPct, todayChangePct, holdings, dividendTotal, dividendYtd, cash, annualizedPerformancePct, firstOrderDate, ordersCount });
 }
