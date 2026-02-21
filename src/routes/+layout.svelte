@@ -431,11 +431,14 @@
 
 <canvas id="net-canvas" aria-hidden="true"></canvas>
 
+<!-- ══ SKIP NAVIGATION ═══════════════════════════════════════ -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
 <!-- ══ HEADER ════════════════════════════════════════════════ -->
-<header class="hdr" class:hdr--scrolled={scrolled}>
+<header class="hdr" class:hdr--scrolled={scrolled} role="banner">
 
   <!-- Brand — always left -->
-  <a href="/" class="brand">
+  <a href="/" class="brand" aria-label="gl4nce home">
     <div class="globe-wrap" aria-hidden="true">
       <div class="globe">
         <div class="wire w-eq"></div><div class="wire w-lg1"></div>
@@ -444,40 +447,41 @@
         <div class="ping ping-3"></div><div class="ping ping-4"></div><div class="ping ping-5"></div>
       </div>
     </div>
-    <span class="brand-name">
+    <span class="brand-name" aria-hidden="true">
       <span class="b-gl">gl</span><span class="b-4">4</span><span class="b-nce">nce</span><span class="b-dot">.</span>
     </span>
   </a>
 
   <!-- Desktop nav — left-aligned after brand (Electric Xtra style) -->
-  <nav class="page-nav desktop-only">
+  <nav class="page-nav desktop-only" aria-label="Main navigation">
     <a href="#signal"    class="nav-link">₿ Signal</a>
     <a href="#portfolio" class="nav-link">↗ Portfolio</a>
     <a href="#intel"     class="nav-link">◈ Intel</a>
   </nav>
 
   <!-- Spacer pushes right controls to far right on desktop -->
-  <div class="hdr-spacer"></div>
+  <div class="hdr-spacer" aria-hidden="true"></div>
 
   <!-- Desktop right controls -->
   <div class="hdr-right desktop-only">
-    <span class="hdr-clock">{$time}</span>
+    <time class="hdr-clock" aria-label="Current time">{$time}</time>
     <!-- Live price feed status -->
-    <span class="ws-badge" class:ws-badge--live={$btcWsConnected} title="{$btcWsConnected?'Live price feed connected (Binance WebSocket)':'Price polling fallback — attempting live connection…'}">
-      <span class="ws-dot"></span>{$btcWsConnected?'LIVE':'POLL'}
+    <span class="ws-badge" class:ws-badge--live={$btcWsConnected}
+      role="status"
+      aria-label="{$btcWsConnected?'Live price feed connected':'Price polling fallback'}"
+      title="{$btcWsConnected?'Live price feed connected (Binance WebSocket)':'Price polling fallback — attempting live connection…'}">
+      <span class="ws-dot" aria-hidden="true"></span>{$btcWsConnected?'LIVE':'POLL'}
     </span>
 
     <!-- Dark/Light mode toggle -->
     <button class="mode-toggle btn-ghost" on:click={() => $lightMode = !$lightMode}
-      aria-label="Toggle {$lightMode ? 'dark' : 'light'} mode" title="Toggle light/dark mode">
+      aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
       {#if $lightMode}
-        <!-- Moon icon for dark mode -->
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
         </svg>
       {:else}
-        <!-- Sun icon for light mode -->
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
           <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
           <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
           <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
@@ -489,8 +493,9 @@
 
     <!-- Settings gear -->
     <button class="btn-ghost settings-btn" class:settings-btn--on={$showSettings}
-      on:click={() => { $showSettings = !$showSettings; mobileMenuOpen = false; }} aria-label="Settings">
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round">
+      on:click={() => { $showSettings = !$showSettings; mobileMenuOpen = false; }}
+      aria-label="Settings" aria-expanded={$showSettings} aria-controls="settings-drawer">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
         <circle cx="12" cy="12" r="3"/>
         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
       </svg>
@@ -498,7 +503,9 @@
   </div>
 
   <!-- Mobile burger — only visible on small screens -->
-  <button class="burger mobile-only" on:click={toggleMobileMenu} aria-label="Menu"
+  <button class="burger mobile-only" on:click={toggleMobileMenu}
+    aria-label="{mobileMenuOpen ? 'Close menu' : 'Open menu'}"
+    aria-expanded={mobileMenuOpen} aria-controls="mobile-menu"
     class:burger--open={mobileMenuOpen}>
     <span></span><span></span><span></span>
   </button>
@@ -507,7 +514,7 @@
 
 <!-- ══ SETTINGS DRAWER (desktop) ══════════════════════════════ -->
 {#if $showSettings}
-<div class="drawer">
+<div class="drawer" id="settings-drawer" role="region" aria-label="Settings">
   <div class="drawer-inner">
     <div class="dg"><p class="dg-hd">DCA Stack</p>
       <div class="dfields">
@@ -586,26 +593,28 @@
 
 <!-- ══ MOBILE FULL-SCREEN MENU ════════════════════════════════ -->
 {#if mobileMenuOpen}
-<!-- svelte-ignore a11y-click-events-have-key-events -->
-<!-- svelte-ignore a11y-no-static-element-interactions -->
-<div class="mobile-menu" on:click|self={closeMobileMenu}>
+<div class="mobile-menu" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Navigation menu">
+  <!-- svelte-ignore a11y-click-events-have-key-events -->
+  <!-- svelte-ignore a11y-no-static-element-interactions -->
+  <div class="mobile-menu-backdrop" on:click={closeMobileMenu}></div>
   <div class="mobile-menu-panel">
     <!-- Nav links -->
-    <nav class="mobile-nav">
+    <nav class="mobile-nav" aria-label="Mobile navigation">
       <a href="#signal"    class="mobile-nav-link" on:click={closeMobileMenu}>₿ Signal</a>
       <a href="#portfolio" class="mobile-nav-link" on:click={closeMobileMenu}>↗ Portfolio</a>
       <a href="#intel"     class="mobile-nav-link" on:click={closeMobileMenu}>◈ Intel</a>
     </nav>
 
-    <div class="mobile-divider"></div>
+    <div class="mobile-divider" aria-hidden="true"></div>
 
     <!-- Theme toggle -->
-    <button class="mobile-theme-toggle" on:click={() => { $lightMode = !$lightMode; }}>
-      <span class="mobile-menu-icon">{$lightMode ? '☀' : '☾'}</span>
+    <button class="mobile-theme-toggle" on:click={() => { $lightMode = !$lightMode; }}
+      aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
+      <span class="mobile-menu-icon" aria-hidden="true">{$lightMode ? '☀' : '☾'}</span>
       {$lightMode ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
     </button>
 
-    <div class="mobile-divider"></div>
+    <div class="mobile-divider" aria-hidden="true"></div>
 
     <!-- Settings inline in mobile menu -->
     <p class="mobile-section-title">Settings</p>
@@ -646,7 +655,7 @@
                 <input type="checkbox" checked={feed.enabled} on:change={()=>toggleCustomFeed(i)} />
                 <span class="feed-name">{feed.name}</span>
               </label>
-              <button on:click={()=>removeSource(i)} class="dtag-x">×</button>
+              <button on:click={()=>removeSource(i)} class="dtag-x" aria-label="Remove {feed.name}">×</button>
             </div>
           {/each}
         </div>
@@ -662,10 +671,10 @@
 {/if}
 
 <!-- ══ PAGE ═══════════════════════════════════════════════════ -->
-<main class="page-wrap"><slot /></main>
+<main class="page-wrap" id="main-content" role="main"><slot /></main>
 
 <!-- ══ FOOTER ════════════════════════════════════════════════ -->
-<footer class="site-footer">
+<footer class="site-footer" role="contentinfo">
   <span class="footer-brand">gl<span style="color:var(--orange);">4</span>nce.</span>
   <span class="footer-sources">mempool.space · alternative.me · binance · exchangerate-api · ghostfol.io · worldbank</span>
 </footer>
@@ -795,7 +804,11 @@
   /* ── MOBILE FULL-SCREEN MENU ─────────────────────────────── */
   .mobile-menu {
     position:fixed; inset:0; z-index:400;
+  }
+  .mobile-menu-backdrop {
+    position:absolute; inset:0;
     background:rgba(0,0,0,.55); backdrop-filter:blur(4px);
+    cursor:pointer;
   }
   .mobile-menu-panel {
     position:absolute; top:54px; left:0; right:0;
@@ -906,6 +919,7 @@
   :global(html.light) .footer-brand { color:rgba(0,0,0,.4); }
   :global(html.light) .footer-sources { color:rgba(0,0,0,.3); }
   :global(html.light) .mobile-menu-panel { background:rgba(255,255,255,.98); }
+  :global(html.light) .mobile-menu-backdrop { background:rgba(0,0,0,.25); }
   :global(html.light) .mobile-nav-link { color:rgba(0,0,0,.75); border-bottom-color:rgba(0,0,0,.06); }
   :global(html.light) .mobile-theme-toggle { color:rgba(0,0,0,.6); }
   :global(html.light) .mobile-section-title { color:rgba(247,147,26,.9); }

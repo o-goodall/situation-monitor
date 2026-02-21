@@ -166,6 +166,25 @@ body::after {
   box-shadow: 0 0 10px rgba(247,147,26,0.6);
 }
 
+/* ══ SKIP LINK ══════════════════════════════════════════ */
+.skip-link {
+  position: fixed; top: -100%; left: 50%; transform: translateX(-50%);
+  z-index: 9999; padding: 10px 20px;
+  background: var(--orange); color: #000;
+  font-family: 'Inter', sans-serif; font-size: 0.875rem; font-weight: 600;
+  border-radius: 0 0 6px 6px; text-decoration: none;
+  transition: top 0.2s;
+}
+.skip-link:focus { top: 0; }
+
+/* ══ FOCUS-VISIBLE ══════════════════════════════════════ */
+:focus-visible {
+  outline: 2px solid var(--orange);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+:focus:not(:focus-visible) { outline: none; }
+
 /* ══ SCROLLBAR ══════════════════════════════════════════ */
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
