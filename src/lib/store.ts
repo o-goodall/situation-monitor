@@ -6,6 +6,9 @@ export const settings = writable<Settings>(DEFAULT_SETTINGS);
 export const showSettings = writable(false);
 export const saved = writable(false);
 
+// ── SECTION NAVIGATION ────────────────────────────────────────
+export const activeSection = writable<'signal' | 'portfolio' | 'intel'>('signal');
+
 // ── CLOCK ─────────────────────────────────────────────────────
 export const time = writable('');
 

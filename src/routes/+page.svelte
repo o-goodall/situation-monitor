@@ -9,7 +9,7 @@
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfAnnualizedPct, gfFirstOrderDate, gfOrdersCount,
     markets, newsItems, btcDisplayPrice, btcWsConnected, btcMa200,
-    btcHashrate
+    btcHashrate, activeSection
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
   import { audUsd } from '$lib/store';
@@ -134,9 +134,10 @@
 <!-- ══════════════════════════════════════════════════════════
   ① SIGNAL SECTION
 ═══════════════════════════════════════════════════════════ -->
-<section id="signal" class="section" aria-label="Signal Analysis">
+{#if $activeSection === 'signal'}
+<section id="signal" class="section" aria-label="Signal">
   <div class="section-header">
-    <h2 class="sect-title">Signal Analysis</h2>
+    <h2 class="sect-title">Signal</h2>
   </div>
 
   <!-- KEY METRICS STRIP — combined BTC price + sats + halving -->
@@ -414,16 +415,15 @@
 
   </div>
 </section>
-
-<div class="section-divider"></div>
+{/if}
 
 <!-- ══════════════════════════════════════════════════════════
   ② PORTFOLIO SECTION
 ═══════════════════════════════════════════════════════════ -->
+{#if $activeSection === 'portfolio'}
 <section id="portfolio" class="section" aria-label="Portfolio">
   <div class="section-header">
     <h2 class="sect-title">Portfolio</h2>
-    <span class="dim">Assets &amp; Performance</span>
   </div>
 
   <div class="port-grid">
@@ -433,9 +433,9 @@
       <div class="gc-head">
         <p class="gc-title">Asset Comparison</p>
         <div style="display:flex;align-items:center;gap:8px;">
-          <span class="live-dot" class:blink={$btcWsConnected} title="{$btcWsConnected?'BTC price live via WebSocket':'BTC price polling'}"></span>
-          <p class="dim">Since DCA Start</p>
-        </div>
+            <span class="live-dot" class:blink={$btcWsConnected} title="{$btcWsConnected?'BTC price live via WebSocket':'BTC price polling'}"></span>
+            <p class="dim">YTD (USD)</p>
+          </div>
       </div>
       <div class="asset-panels">
         {#each [
@@ -460,7 +460,7 @@
           </div>
         {/each}
       </div>
-      {#if $cpiAnnual!==null}<p class="dim" style="margin-top:14px;line-height:1.6;">Purchasing power erosion since DCA start: <span style="color:var(--dn);">−{cpiLoss.toFixed(1)}%</span></p>{/if}
+      {#if $cpiAnnual!==null}<p class="dim" style="margin-top:14px;line-height:1.6;">Purchasing power erosion (annualized): <span style="color:var(--dn);">−{cpiLoss.toFixed(1)}%</span></p>{/if}
     </div>
 
     <!-- GHOSTFOLIO -->
@@ -612,16 +612,15 @@
 
   </div>
 </section>
-
-<div class="section-divider"></div>
+{/if}
 
 <!-- ══════════════════════════════════════════════════════════
   ③ INTEL SECTION
 ═══════════════════════════════════════════════════════════ -->
-<section id="intel" class="section" aria-label="Intel: Markets and News">
+{#if $activeSection === 'intel'}
+<section id="intel" class="section" aria-label="Intel">
   <div class="section-header">
     <h2 class="sect-title">Intel</h2>
-    <span class="dim">Markets &amp; News</span>
   </div>
 
   <div class="intel-grid">
@@ -690,6 +689,7 @@
 
   </div>
 </section>
+{/if}
 
 <style>
   /* ── LAYOUT ──────────────────────────────────────────────── */
@@ -1029,11 +1029,11 @@
   .news-img::before {
     content:''; position:absolute; inset:-6px;
     background:inherit; background-size:cover; background-position:center;
-    filter:blur(8px) saturate(90%); z-index:0; border-radius:8px;
+    filter:blur(8px) saturate(110%) sepia(15%); z-index:0; border-radius:8px;
     transform:scale(1.05);
   }
   .news-img-overlay {
-    position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.72) 60%, rgba(0,0,0,.92) 100%);
+    position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(247,147,26,.07) 0%, rgba(15,7,0,.72) 55%, rgba(8,3,0,.92) 100%);
     border-radius:8px;
   }
   .news-img-content {
