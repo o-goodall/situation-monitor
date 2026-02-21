@@ -101,6 +101,10 @@
     return b.valueInBaseCurrency - a.valueInBaseCurrency;
   });
 
+  // Mobile feed carousels — duplicate items so the CSS loop is seamless
+  $: newsLoop = $newsItems.length ? [...$newsItems, ...$newsItems] : [];
+  $: marketsLoop = $markets.length ? [...$markets.slice(0,8), ...$markets.slice(0,8)] : [];
+
   // Class accent colours for allocation breakdown
   const CLASS_COLOR: Record<string,string> = {
     EQUITY:'#6366f1', CRYPTOCURRENCY:'#f7931a', FIXED_INCOME:'#38bdf8',
@@ -617,30 +621,32 @@
       {#if $markets.length===0}
         <p class="dim">Fetching live markets…</p>
       {:else}
-        {#each $markets.slice(0,8) as m}
-          <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="mkt">
-            <div class="mkt-row">
-              <div class="mkt-left">
-                <div class="mkt-tags">
-                  {#if m.pinned}<span class="mkt-tag mkt-pin">★ Watching</span>{:else}<span class="mkt-tag">{m.tag}</span>{/if}
+        <div class="feed-carousel" style="--scroll-dur:{Math.max(20, marketsLoop.length / 2 * 4)}s">
+          {#each marketsLoop as m}
+            <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="mkt mkt-slide">
+              <div class="mkt-row">
+                <div class="mkt-left">
+                  <div class="mkt-tags">
+                    {#if m.pinned}<span class="mkt-tag mkt-pin">★ Watching</span>{:else}<span class="mkt-tag">{m.tag}</span>{/if}
+                  </div>
+                  <p class="mkt-q">{m.question}</p>
+                  <div class="mkt-meta-row">
+                    {#if m.endDate}<span class="dim">Closes {fmtDate(m.endDate)}</span>{/if}
+                    <span class="dim">· {fmtVol(m.volume)} vol</span>
+                  </div>
                 </div>
-                <p class="mkt-q">{m.question}</p>
-                <div class="mkt-meta-row">
-                  {#if m.endDate}<span class="dim">Closes {fmtDate(m.endDate)}</span>{/if}
-                  <span class="dim">· {fmtVol(m.volume)} vol</span>
+                <div class="mkt-right">
+                  <span class="mkt-prob" style="color:{pc(m.probability)};">{m.probability}<span class="mkt-pct">%</span></span>
+                  <span class="mkt-outcome-badge" style="background:{pc(m.probability)}22;color:{pc(m.probability)};border-color:{pc(m.probability)}44;">{m.topOutcome}</span>
                 </div>
               </div>
-              <div class="mkt-right">
-                <span class="mkt-prob" style="color:{pc(m.probability)};">{m.probability}<span class="mkt-pct">%</span></span>
-                <span class="mkt-outcome-badge" style="background:{pc(m.probability)}22;color:{pc(m.probability)};border-color:{pc(m.probability)}44;">{m.topOutcome}</span>
+              <div class="mkt-bar">
+                <div class="mkt-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
+                <div class="mkt-fill-rest" style="width:{100-m.probability}%;"></div>
               </div>
-            </div>
-            <div class="mkt-bar">
-              <div class="mkt-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
-              <div class="mkt-fill-rest" style="width:{100-m.probability}%;"></div>
-            </div>
-          </a>
-        {/each}
+            </a>
+          {/each}
+        </div>
       {/if}
     </div>
 
@@ -650,23 +656,25 @@
       {#if $newsItems.length===0}
         <p class="dim">Fetching RSS feeds…</p>
       {:else}
-        {#each $newsItems as item}
-          <a href={item.link} target="_blank" rel="noopener noreferrer" class="news">
-            {#if item.image}
-              <div class="news-img" style="background-image:url('{item.image}');">
-                <div class="news-img-overlay"></div>
-                <div class="news-img-content">
-                  <p class="news-title">{item.title}</p>
-                  <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
+        <div class="feed-carousel" style="--scroll-dur:{Math.max(24, newsLoop.length / 2 * 3)}s">
+          {#each newsLoop as item}
+            <a href={item.link} target="_blank" rel="noopener noreferrer" class="news news-slide">
+              {#if item.image}
+                <div class="news-img" style="background-image:url('{item.image}');">
+                  <div class="news-img-overlay"></div>
+                  <div class="news-img-content">
+                    <p class="news-title">{item.title}</p>
+                    <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
+                  </div>
                 </div>
-              </div>
-            {:else}
-              <p class="news-title">{item.title}</p>
-              {#if item.description}<p class="news-desc">{item.description}</p>{/if}
-              <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
-            {/if}
-          </a>
-        {/each}
+              {:else}
+                <p class="news-title">{item.title}</p>
+                {#if item.description}<p class="news-desc">{item.description}</p>{/if}
+                <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
+              {/if}
+            </a>
+          {/each}
+        </div>
       {/if}
     </div>
 
@@ -690,9 +698,9 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:600px) {
-    .section { padding:32px 16px 0; min-height: calc(100vh - 60px); }
-    .section-header { margin-bottom:20px; }
-    .section-divider { margin-top:32px; }
+    .section { padding:20px 12px 0; min-height: calc(100vh - 60px); }
+    .section-header { margin-bottom:12px; }
+    .section-divider { margin-top:24px; }
   }
 
   /* ── STAT STRIP ─────────────────────────────────────────── */
@@ -738,16 +746,17 @@
 
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(2,1fr); } .stat-tile--wide { grid-column:span 2; } }
   @media (max-width:500px) {
-    .stat-strip{ grid-template-columns:repeat(2,1fr); gap:8px; }
-    .stat-n { font-size:1.15rem; }
-    .stat-tile { padding:12px 10px; }
-    .stat-tile--chart .stat-l-row { padding-bottom:48px; }
+    .stat-strip{ grid-template-columns:repeat(2,1fr); gap:6px; }
+    .stat-n { font-size:1.05rem; }
+    .stat-tile { padding:10px 8px; }
+    .stat-tile--chart .stat-l-row { padding-bottom:44px; }
+    .halving-epoch { display:none; }
   }
 
   /* ── SIGNAL GRID ────────────────────────────────────────── */
   .signal-grid { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:14px; }
   @media (max-width:1100px) { .signal-grid{grid-template-columns:1fr 1fr;} }
-  @media (max-width:700px)  { .signal-grid{grid-template-columns:1fr;} }
+  @media (max-width:700px)  { .signal-grid{grid-template-columns:1fr; gap:10px;} }
 
   /* ── GLASS CARD ─────────────────────────────────────────── */
   .gc {
@@ -761,7 +770,7 @@
   .gc:hover { border-color:rgba(247,147,26,.2); box-shadow:0 10px 38px rgba(0,0,0,.48),0 0 0 1px rgba(247,147,26,.06),inset 0 1px 0 rgba(255,255,255,.08); }
   .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; }
   .gc-title { font-family:'Orbitron',monospace; font-size:.72rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.08em; }
-  @media (max-width:600px) { .gc { padding:18px 16px; } }
+  @media (max-width:600px) { .gc { padding:14px 12px; } }
 
   /* ── ATOMS ──────────────────────────────────────────────── */
   .eyebrow { font-size:.58rem; font-weight:500; text-transform:uppercase; letter-spacing:.12em; color:var(--t2); }
@@ -880,8 +889,10 @@
   .btc-pill  { display:flex; align-items:baseline; padding:12px 14px; background:rgba(247,147,26,.05); border:1px solid rgba(247,147,26,.12); border-radius:4px; margin-bottom:16px; flex-wrap:wrap; gap:4px; }
   .goal-head { display:flex; justify-content:space-between; margin-bottom:7px; }
   @media (max-width:500px) {
-    .met3 { grid-template-columns:repeat(3,1fr); gap:8px; }
-    .met-n { font-size:1.1rem; }
+    .met3 { grid-template-columns:repeat(3,1fr); gap:6px; margin-top:10px; }
+    .met-n { font-size:1rem; }
+    .met { gap:4px; }
+    .btc-pill { padding:8px 10px; margin-bottom:12px; }
   }
 
   /* ── HASH RATE ROW ───────────────────────────────────────── */
@@ -979,7 +990,36 @@
   .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:900px) { .intel-grid{grid-template-columns:1fr;} }
   @media (max-width:700px) {
-    .intel-grid .gc { max-height:360px; overflow-y:auto; }
+    .intel-grid .gc { overflow:hidden; }
+  }
+
+  /* ── FEED CAROUSEL (mobile horizontal auto-scroll) ───────── */
+  /* Desktop: normal vertical list flow */
+  .feed-carousel { display:block; }
+
+  /* Animation keyframes (declared globally so they work inside media queries) */
+  @keyframes feedScroll {
+    from { transform:translateX(0); }
+    to   { transform:translateX(-50%); }
+  }
+
+  @media (max-width:700px) {
+    .feed-carousel {
+      display:flex;
+      gap:12px;
+      animation:feedScroll var(--scroll-dur,24s) linear infinite;
+      will-change:transform;
+    }
+    .feed-carousel:hover { animation-play-state:paused; }
+
+    /* Each slide item takes ~88% viewport width so 1–2 are visible */
+    .news-slide, .mkt-slide {
+      min-width:min(88vw,300px);
+      flex-shrink:0;
+      border-bottom:none !important;
+      margin-bottom:0 !important;
+    }
+    .news-slide .news-img { min-height:140px; }
   }
 
   /* Prediction market — PolyMarket-inspired */
