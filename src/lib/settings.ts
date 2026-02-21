@@ -4,6 +4,8 @@ export interface RssFeed {
   enabled: boolean;
 }
 
+export type DcaFrequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly';
+
 export interface Settings {
   dca: {
     startDate: string;
@@ -13,6 +15,7 @@ export interface Settings {
     lowPrice: number;
     highPrice: number;
     maxDcaAud: number;
+    dcaFrequency: DcaFrequency;
   };
   polymarket: { keywords: string[] };
   news: {
@@ -36,7 +39,7 @@ export const DEFAULT_RSS_FEEDS: RssFeed[] = [
 ];
 
 export const DEFAULT_SETTINGS: Settings = {
-  dca: { startDate: new Date().toISOString().split('T')[0], dailyAmount: 10, btcHeld: 0, goalBtc: 1, lowPrice: 55000, highPrice: 125000, maxDcaAud: 1000 },
+  dca: { startDate: new Date().toISOString().split('T')[0], dailyAmount: 10, btcHeld: 0, goalBtc: 1, lowPrice: 55000, highPrice: 125000, maxDcaAud: 1000, dcaFrequency: 'fortnightly' },
   polymarket: { keywords: ['Bitcoin', 'Ukraine ceasefire', 'US Iran'] },
   news: {
     defaultFeeds: DEFAULT_RSS_FEEDS.map(f => ({...f})),
@@ -73,7 +76,7 @@ export function loadSettings(): Settings {
           }
         }
       }
-      return { ...DEFAULT_SETTINGS, ...parsed, dca: { ...DEFAULT_SETTINGS.dca, ...parsed.dca }, displayCurrency: parsed.displayCurrency ?? DEFAULT_SETTINGS.displayCurrency };
+      return { ...DEFAULT_SETTINGS, ...parsed, dca: { ...DEFAULT_SETTINGS.dca, ...parsed.dca, dcaFrequency: parsed.dca?.dcaFrequency ?? 'fortnightly' }, displayCurrency: parsed.displayCurrency ?? DEFAULT_SETTINGS.displayCurrency };
     }
   } catch {}
   return DEFAULT_SETTINGS;

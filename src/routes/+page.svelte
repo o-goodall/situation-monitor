@@ -7,7 +7,7 @@
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
-    markets, newsItems, btcDisplayPrice, btcWsConnected
+    markets, newsItems, btcDisplayPrice, btcWsConnected, btcMa200
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
   import { audUsd } from '$lib/store';
@@ -56,6 +56,11 @@
   $: goalPct  = s.goalBtc>0?Math.min(100,(s.btcHeld/s.goalBtc)*100):0;
   $: satsHeld = Math.round(s.btcHeld*1e8);
   $: satsLeft = Math.max(0,Math.round((s.goalBtc-s.btcHeld)*1e8));
+
+  // DCA frequency label and description
+  $: freqLabel = ({daily:'day',weekly:'week',fortnightly:'fortnight',monthly:'month'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'fortnight';
+  $: freqDesc  = ({daily:'daily buy',weekly:'weekly buy',fortnightly:'fortnightly buy',monthly:'monthly buy'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'fortnightly buy';
+  $: freqHint  = ({daily:'How much to buy today',weekly:'How much to buy this week',fortnightly:'How much to buy this fortnight',monthly:'How much to buy this month'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'How much to buy this fortnight';
 
   // CPI-adjusted real value: use portfolio duration from Ghostfolio if possible,
   // otherwise fall back to DCA start date duration
@@ -118,8 +123,16 @@
       {/if}
     </div>
     <div class="stat-tile">
-      <span class="stat-n" style="color:{zoneColor};">{priceZone}</span>
-      <span class="stat-l">Price Zone</span>
+      {#if $btcMa200}
+        <span class="stat-n">${n($btcMa200,0)}</span>
+        <span class="stat-l">200-Week MA</span>
+        <span class="stat-l" style="margin-top:4px;color:{$btcPrice>0?($btcPrice>=$btcMa200?'var(--up)':'var(--dn)'):'var(--t3)'};">
+          {$btcPrice>0?($btcPrice>=$btcMa200?'▲ Above':'▼ Below'):''}
+        </span>
+      {:else}
+        <span class="stat-n muted">—</span>
+        <span class="stat-l">200-Week MA</span>
+      {/if}
     </div>
   </div>
 
@@ -143,7 +156,7 @@
       <div class="gc-head">
         <div>
           <p class="eyebrow orange">DCA Signal</p>
-          <p class="dim" style="margin-top:3px;">How much to buy this fortnight</p>
+          <p class="dim" style="margin-top:3px;">{freqHint}</p>
         </div>
         <span class="ts">{$dcaUpdated||'—'}</span>
       </div>
@@ -153,10 +166,10 @@
           <span class="dca-n muted">—</span>
         {:else if $dca.finalAud===0}
           <span class="dca-n" style="color:var(--dn);text-shadow:0 0 60px rgba(239,68,68,.3);">PASS</span>
-          <p class="dca-sub">Price too high — skip this fortnight</p>
+          <p class="dca-sub">Price too high — skip this {freqLabel}</p>
         {:else}
           <span class="dca-n" style="color:{$accentColor};text-shadow:0 0 70px {$accentColor}30;">${$dca.finalAud.toLocaleString()}</span>
-          <p class="dca-sub">AUD · fortnightly buy</p>
+          <p class="dca-sub">AUD · {freqDesc}</p>
         {/if}
       </div>
 
@@ -334,13 +347,13 @@
         <p class="gc-title">Asset Comparison</p>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="live-dot" class:blink={$btcWsConnected} title="{$btcWsConnected?'BTC price live via WebSocket':'BTC price polling'}"></span>
-          <p class="dim">1-Year Performance</p>
+          <p class="dim">Since DCA Start</p>
         </div>
       </div>
       <div class="asset-panels">
         {#each [
           {ticker:'BTC', name:'Bitcoin',  icon:'₿', pct:$btcYtdPct,   color:'#f7931a', sub:$btcPrice?'$'+n($btcPrice):'—', live:$btcWsConnected},
-          {ticker:'XAU', name:'Gold',     icon:'◈', pct:$goldYtdPct,  color:'#c9a84c', sub:$goldPriceUsd?'$'+n($goldPriceUsd,0)+'/oz':'—', live:false},
+          {ticker:'XAU', name:'Gold',     icon:'◈', pct:$goldYtdPct,  color:'#c9a84c', sub:$goldPriceUsd?'$'+n($goldPriceUsd,0)+' USD/oz':'—', live:false},
           {ticker:'SPX', name:'S&P 500',  icon:'↗', pct:$sp500YtdPct, color:'#888',    sub:$sp500Price?'$'+n($sp500Price,0):'—', live:false},
           {ticker:'CPI', name:'Inflation',icon:'↓', pct:$cpiAnnual,   color:'#ef4444', sub:'Annual rate', live:false},
         ] as a}

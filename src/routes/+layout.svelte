@@ -12,7 +12,7 @@
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
-    persistSettings, fxRates, btcWsConnected
+    persistSettings, fxRates, btcWsConnected, btcMa200
   } from '$lib/store';
 
   let newKeyword = '', newSource = '', newSourceName = '';
@@ -26,6 +26,7 @@
   // Each message delivers the latest executed trade price.
   const PRICE_HISTORY_SIZE = 60;          // rolling sparkline data points
   const HISTORY_UPDATE_INTERVAL_MS = 10_000; // push to history at most every 10 s
+  const DAY_MS = 24 * 60 * 60 * 1000;   // milliseconds in one day
 
   let priceWs: WebSocket | null = null;
   let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -145,11 +146,20 @@
 
   async function fetchMarkets() {
     try {
-      const d = await fetch('/api/markets').then(r=>r.json());
+      const since = $settings.dca.startDate;
+      const url = since ? `/api/markets?since=${encodeURIComponent(since)}` : '/api/markets';
+      const d = await fetch(url).then(r=>r.json());
       $goldPriceUsd = d.gold?.priceUsd ?? null; $goldYtdPct = d.gold?.ytdPct ?? null;
       $sp500Price = d.sp500?.price ?? null; $sp500YtdPct = d.sp500?.ytdPct ?? null;
       $cpiAnnual = d.cpiAnnual ?? null;
       $btcYtdPct = d.btc?.ytdPct ?? null;
+    } catch {}
+  }
+
+  async function fetchMa200() {
+    try {
+      const d = await fetch('/api/bitcoin/ma200').then(r=>r.json());
+      $btcMa200 = d.ma200 ?? null;
     } catch {}
   }
 
@@ -171,7 +181,7 @@
 
   function saveAll() {
     persistSettings($settings);
-    fetchPoly(); fetchNews();
+    fetchPoly(); fetchNews(); fetchMarkets();
     if ($settings.ghostfolio?.token) fetchGhostfolio();
   }
 
@@ -203,7 +213,7 @@
     $settings = loadSettings();
     tick();
     clockInterval = setInterval(tick, 1000);
-    fetchBtc(); fetchDCA(); fetchPoly(); fetchNews(); fetchMarkets();
+    fetchBtc(); fetchDCA(); fetchPoly(); fetchNews(); fetchMarkets(); fetchMa200();
     if ($settings.ghostfolio?.token) fetchGhostfolio();
     // Start WebSocket for real-time price; keep 60s poll for block/fee/mempool data
     connectPriceWs();
@@ -211,6 +221,7 @@
       setInterval(fetchBtc, 60000), setInterval(fetchDCA, 300000),
       setInterval(fetchPoly, 300000), setInterval(fetchNews, 300000),
       setInterval(fetchMarkets, 60000),
+      setInterval(fetchMa200, DAY_MS), // refresh MA200 once per day
       setInterval(() => { if ($settings.ghostfolio?.token) fetchGhostfolio(); }, 300000),
     ];
     window.addEventListener('scroll', handleScroll, {passive:true});
@@ -499,6 +510,14 @@
         <label class="df"><span class="dlbl">Low Price (USD)</span><input type="number" bind:value={$settings.dca.lowPrice} class="dinp"/></label>
         <label class="df"><span class="dlbl">High Price (USD)</span><input type="number" bind:value={$settings.dca.highPrice} class="dinp"/></label>
         <label class="df"><span class="dlbl">Max DCA (AUD)</span><input type="number" bind:value={$settings.dca.maxDcaAud} class="dinp"/></label>
+        <label class="df"><span class="dlbl">DCA Frequency</span>
+          <select bind:value={$settings.dca.dcaFrequency} class="dinp">
+            <option value="daily">Daily</option>
+            <option value="weekly">Weekly</option>
+            <option value="fortnightly">Fortnightly</option>
+            <option value="monthly">Monthly</option>
+          </select>
+        </label>
       </div>
     </div>
     <div class="dg"><p class="dg-hd">Display Currency <span class="dhint">BTC price second currency</span></p>
@@ -592,6 +611,14 @@
           <label class="df"><span class="dlbl">Low Price (USD)</span><input type="number" bind:value={$settings.dca.lowPrice} class="dinp"/></label>
           <label class="df"><span class="dlbl">High Price (USD)</span><input type="number" bind:value={$settings.dca.highPrice} class="dinp"/></label>
           <label class="df"><span class="dlbl">Max DCA (AUD)</span><input type="number" bind:value={$settings.dca.maxDcaAud} class="dinp"/></label>
+          <label class="df"><span class="dlbl">DCA Frequency</span>
+            <select bind:value={$settings.dca.dcaFrequency} class="dinp">
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="fortnightly">Fortnightly</option>
+              <option value="monthly">Monthly</option>
+            </select>
+          </label>
         </div>
       </div>
       <div class="dg"><p class="dg-hd">News Feeds</p>

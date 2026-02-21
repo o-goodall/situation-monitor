@@ -21,6 +21,7 @@ export const halvingBlocksLeft = writable(0);
 export const halvingDays   = writable(0);
 export const halvingDate   = writable('');
 export const halvingProgress = writable(0);
+export const btcMa200      = writable<number|null>(null); // 200-week moving average
 
 // ── LATEST BLOCK / MEMPOOL ────────────────────────────────────
 export type LatestBlock = { height:number; timestamp:number; size:number; txCount:number; miner:string; weight:number; medianFee:number|null; totalFees:number|null; reward:number|null };
