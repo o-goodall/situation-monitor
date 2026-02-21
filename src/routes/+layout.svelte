@@ -49,6 +49,7 @@
   let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let wsReconnectDelay = 2000; // ms, doubles on each failure (max 30s)
   let lastHistoryUpdate = 0;   // timestamp of last price-history push
+  let flashTimer: ReturnType<typeof setTimeout> | null = null;
 
   function connectPriceWs() {
     if (typeof WebSocket === 'undefined') return;
@@ -69,10 +70,11 @@
           const prev = $btcPrice;
           $btcPrice = price;
 
-          // Flash animation on direction change
+          // Flash animation on direction change — 3 s debounced
           if (prev > 0 && price !== prev) {
             $priceFlash = price > prev ? 'up' : 'down';
-            setTimeout(() => { $priceFlash = ''; }, 1200);
+            if (flashTimer) clearTimeout(flashTimer);
+            flashTimer = setTimeout(() => { $priceFlash = ''; flashTimer = null; }, 3000);
           }
 
           // Add to rolling history at most once every HISTORY_UPDATE_INTERVAL_MS
@@ -119,7 +121,8 @@
         $btcPrice = d.price;
         if ($prevPrice && $btcPrice !== $prevPrice) {
           $priceFlash = $btcPrice > $prevPrice ? 'up' : 'down';
-          setTimeout(() => $priceFlash = '', 1200);
+          if (flashTimer) clearTimeout(flashTimer);
+          flashTimer = setTimeout(() => { $priceFlash = ''; flashTimer = null; }, 3000);
         }
         if ($btcPrice > 0) $priceHistory = [...$priceHistory.slice(-(PRICE_HISTORY_SIZE - 1)), $btcPrice];
       }
@@ -463,6 +466,7 @@
     clearInterval(clockInterval);
     intervals.forEach(clearInterval);
     disconnectPriceWs();
+    if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
     window.removeEventListener('scroll', handleScroll);
     if (sectionObserver) sectionObserver.disconnect();
   });

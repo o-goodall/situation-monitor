@@ -16,34 +16,39 @@ async function getYahooChart(
 ): Promise<{ current: number; startPrice: number; pctChange: number } | null> {
   try {
     const encoded = encodeURIComponent(ticker);
-    let queryStr: string;
+    const queryStrings: string[] = [];
 
     if (sinceDate) {
       const period1 = Math.floor(sinceDate.getTime() / 1000);
       const period2 = Math.floor(Date.now() / 1000);
-      queryStr = `period1=${period1}&period2=${period2}&interval=1wk&includePrePost=false`;
+      // Try daily interval first (more data points, more reliable), then weekly as fallback
+      queryStrings.push(`period1=${period1}&period2=${period2}&interval=1d&includePrePost=false`);
+      queryStrings.push(`period1=${period1}&period2=${period2}&interval=1wk&includePrePost=false`);
+      queryStrings.push(`range=ytd&interval=1d&includePrePost=false`);
     } else {
-      queryStr = 'range=1y&interval=1mo&includePrePost=false';
+      queryStrings.push('range=1y&interval=1mo&includePrePost=false');
+      queryStrings.push('range=1y&interval=1wk&includePrePost=false');
     }
 
-    const urls = [
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
-      `https://query2.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
-    ];
-
-    for (const url of urls) {
-      try {
-        const res = await fetch(url, { headers: HEADERS });
-        if (!res.ok) continue;
-        const d = await res.json();
-        const closes: number[] = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
-        const valid = closes.filter((v: any) => v !== null && !isNaN(v));
-        if (valid.length < 2) continue;
-        const current = valid[valid.length - 1];
-        const startPrice = valid[0];
-        const pctChange = ((current - startPrice) / startPrice) * 100;
-        return { current, startPrice, pctChange };
-      } catch { continue; }
+    for (const queryStr of queryStrings) {
+      const urls = [
+        `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
+        `https://query2.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
+      ];
+      for (const url of urls) {
+        try {
+          const res = await fetch(url, { headers: HEADERS });
+          if (!res.ok) continue;
+          const d = await res.json();
+          const closes: number[] = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
+          const valid = closes.filter((v: any) => v !== null && !isNaN(v));
+          if (valid.length < 2) continue;
+          const current = valid[valid.length - 1];
+          const startPrice = valid[0];
+          const pctChange = ((current - startPrice) / startPrice) * 100;
+          return { current, startPrice, pctChange };
+        } catch { continue; }
+      }
     }
     return null;
   } catch {

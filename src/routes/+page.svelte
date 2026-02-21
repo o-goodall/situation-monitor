@@ -614,7 +614,7 @@
 
     <!-- PREDICTION MARKETS — PolyMarket-inspired layout -->
     <div class="gc">
-      <div class="gc-head" style="margin-bottom:18px;">
+      <div class="gc-head" style="margin-bottom:12px;">
         <div><p class="gc-title">Prediction Markets</p><p class="dim" style="margin-top:2px;">What the crowd expects</p></div>
         <a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open Polymarket in new tab">Polymarket ↗</a>
       </div>
@@ -652,7 +652,7 @@
 
     <!-- NEWS -->
     <div class="gc">
-      <div class="gc-head" style="margin-bottom:18px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.length} articles</span></div>
+      <div class="gc-head" style="margin-bottom:12px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.length} articles</span></div>
       {#if $newsItems.length===0}
         <p class="dim">Fetching RSS feeds…</p>
       {:else}
@@ -704,7 +704,7 @@
   }
 
   /* ── STAT STRIP ─────────────────────────────────────────── */
-  .stat-strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .stat-strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
   .stat-tile {
     padding: 16px 14px; text-align: center;
     background: var(--glass-bg); border: 1px solid var(--glass-bd);
@@ -990,36 +990,39 @@
   .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:900px) { .intel-grid{grid-template-columns:1fr;} }
   @media (max-width:700px) {
-    .intel-grid .gc { overflow:hidden; }
+    .intel-grid .gc { overflow:hidden; padding:12px 10px; }
   }
 
-  /* ── FEED CAROUSEL (mobile horizontal auto-scroll) ───────── */
+  /* Intel section: no forced full-height — content determines height */
+  #intel.section { min-height: auto; padding-bottom: 64px; }
+  @media (max-width:700px) {
+    #intel.section { padding-top: 20px; }
+    #intel .section-header { margin-bottom: 10px; }
+  }
+
+  /* ── FEED CAROUSEL ───────────────────────────────────────── */
   /* Desktop: normal vertical list flow */
   .feed-carousel { display:block; }
 
-  /* Animation keyframes (declared globally so they work inside media queries) */
+  /* Animation keyframes kept for potential future use */
   @keyframes feedScroll {
     from { transform:translateX(0); }
     to   { transform:translateX(-50%); }
   }
 
   @media (max-width:700px) {
-    .feed-carousel {
-      display:flex;
-      gap:12px;
-      animation:feedScroll var(--scroll-dur,24s) linear infinite;
-      will-change:transform;
-    }
-    .feed-carousel:hover { animation-play-state:paused; }
+    /* Mobile: static vertical list, no auto-scroll */
+    .feed-carousel { display:block; }
 
-    /* Each slide item takes ~88% viewport width so 1–2 are visible */
+    /* Limit feed to first 5 items on mobile */
+    .news-slide:nth-child(n+6),
+    .mkt-slide:nth-child(n+6) { display:none; }
+
+    /* Restore normal block layout for slides */
     .news-slide, .mkt-slide {
-      min-width:min(88vw,300px);
-      flex-shrink:0;
-      border-bottom:none !important;
-      margin-bottom:0 !important;
+      min-width:unset;
+      flex-shrink:unset;
     }
-    .news-slide .news-img { min-height:140px; }
   }
 
   /* Prediction market — PolyMarket-inspired */
