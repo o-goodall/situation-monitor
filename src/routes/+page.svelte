@@ -31,11 +31,16 @@
   const blockAge = (ts:number) => {const m=Math.floor((Date.now()/1000-ts)/60);return m<1?'just now':m<60?`${m}m ago`:`${Math.floor(m/60)}h ${m%60}m ago`;};
 
   // Price zone label
-  $: priceZone = $btcPrice<=55000?'LOW':$btcPrice<=75000?'LOW–MID':$btcPrice<=95000?'MID':$btcPrice<=110000?'MID–HIGH':'HIGH';
-  $: zoneColor = $btcPrice<=55000?'var(--up)':$btcPrice<=75000?'#4ade80':$btcPrice<=95000?'var(--orange)':$btcPrice<=110000?'#f97316':'var(--dn)';
+  $: low   = $settings.dca.lowPrice;
+  $: high  = $settings.dca.highPrice;
+  $: range = high - low;
+  $: third = range / 3;
+
+  $: priceZone = $btcPrice<=low?'LOW':$btcPrice<=(low+third)?'LOW–MID':$btcPrice<=(low+2*third)?'MID':$btcPrice<=high?'MID–HIGH':'HIGH';
+  $: zoneColor = $btcPrice<=low?'var(--up)':$btcPrice<=(low+third)?'#4ade80':$btcPrice<=(low+2*third)?'var(--orange)':$btcPrice<=high?'#f97316':'var(--dn)';
 
   // DCA zone background GIF: red=low(cheap/fear), amber=mid, green=high(expensive/greed)
-  $: dcaZoneGif = $btcPrice <= 0 ? '' : $btcPrice <= 78000 ? '/dca-red.gif' : $btcPrice <= 102000 ? '/dca-amber.gif' : '/dca-green.gif';
+  $: dcaZoneGif = $btcPrice <= 0 ? '' : $btcPrice <= (low+third) ? '/dca-red.gif' : $btcPrice <= (low+2*third) ? '/dca-amber.gif' : '/dca-green.gif';
 
   $: s        = $settings.dca;
   $: dcaDays  = Math.max(0,Math.floor((Date.now()-new Date(s.startDate).getTime())/86400000));
@@ -158,16 +163,16 @@
             <div class="vzone vzone--mid"></div>
             <div class="vzone vzone--high"></div>
           </div>
-          {#if $btcPrice<=55000}
+          {#if $btcPrice<=low}
             <div class="vband-dot" style="left:2%;"></div>
-          {:else if $btcPrice>=125000}
+          {:else if $btcPrice>=high}
             <div class="vband-dot" style="left:98%;"></div>
           {:else}
-            <div class="vband-dot" style="left:{(($btcPrice-55000)/70000)*100}%;"></div>
+            <div class="vband-dot" style="left:{(($btcPrice-low)/range)*100}%;"></div>
           {/if}
         </div>
         <div class="vband-labels">
-          <span>$55K</span><span>$90K</span><span>$125K</span>
+          <span>${(low/1000).toFixed(0)}K</span><span>${((low+high)/2/1000).toFixed(0)}K</span><span>${(high/1000).toFixed(0)}K</span>
         </div>
       </div>
       {/if}

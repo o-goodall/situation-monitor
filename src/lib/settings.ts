@@ -5,7 +5,15 @@ export interface RssFeed {
 }
 
 export interface Settings {
-  dca: { startDate: string; dailyAmount: number; btcHeld: number; goalBtc: number };
+  dca: {
+    startDate: string;
+    dailyAmount: number;
+    btcHeld: number;
+    goalBtc: number;
+    lowPrice: number;
+    highPrice: number;
+    maxDcaAud: number;
+  };
   polymarket: { keywords: string[] };
   news: {
     defaultFeeds: RssFeed[];   // Pre-selected feeds (toggleable)
@@ -27,7 +35,7 @@ export const DEFAULT_RSS_FEEDS: RssFeed[] = [
 ];
 
 export const DEFAULT_SETTINGS: Settings = {
-  dca: { startDate: new Date().toISOString().split('T')[0], dailyAmount: 10, btcHeld: 0, goalBtc: 1 },
+  dca: { startDate: new Date().toISOString().split('T')[0], dailyAmount: 10, btcHeld: 0, goalBtc: 1, lowPrice: 55000, highPrice: 125000, maxDcaAud: 1000 },
   polymarket: { keywords: ['Bitcoin', 'Ukraine ceasefire', 'US Iran'] },
   news: {
     defaultFeeds: DEFAULT_RSS_FEEDS.map(f => ({...f})),
@@ -63,7 +71,7 @@ export function loadSettings(): Settings {
           }
         }
       }
-      return { ...DEFAULT_SETTINGS, ...parsed };
+      return { ...DEFAULT_SETTINGS, ...parsed, dca: { ...DEFAULT_SETTINGS.dca, ...parsed.dca } };
     }
   } catch {}
   return DEFAULT_SETTINGS;
@@ -91,19 +99,29 @@ export interface LiveSignals {
   difficultyChange: number | null;
   fundingRate: number | null;
   audUsd: number | null;
+  halvingDaysLeft: number | null;
 }
 
-export function calcDCA(btcUsd: number, live: LiveSignals) {
+export function calcDCA(
+  btcUsd: number,
+  live: LiveSignals,
+  lowPrice = 55000,
+  highPrice = 125000,
+  maxDcaAud = 1000
+) {
+  const usingFallback = live.audUsd === null;
   const audUsd = live.audUsd ?? 1.58;
 
-  // Price-based taper: 100% allocation at $55k, 0% at $125k, linear
-  const base = Math.max(0, Math.min(100, ((125000 - btcUsd) / 70000) * 100));
+  // Price-based taper: 100% allocation at lowPrice, 0% at highPrice, linear
+  const range = highPrice - lowPrice;
+  const base = Math.max(0, Math.min(100, ((highPrice - btcUsd) / range) * 100));
 
   const fg = live.fearGreed;
   const diff = live.difficultyChange;
   const funding = live.fundingRate;
-  const now = new Date();
-  const halvingActive = now >= new Date('2026-05-01') && now < new Date('2027-05-01');
+
+  // Active if halving is within the next 365 days (halvingDaysLeft is null when not yet loaded)
+  const halvingActive = live.halvingDaysLeft !== null && live.halvingDaysLeft <= 365;
 
   const signals = [
     {
@@ -122,9 +140,9 @@ export function calcDCA(btcUsd: number, live: LiveSignals) {
     },
     {
       name: 'Mining Distress',
-      active: diff !== null && diff < -7,
+      active: diff !== null && diff < -5, // threshold lowered from -7 for earlier signal
       value: diff !== null ? `${diff.toFixed(1)}%` : '--',
-      boost: 15,
+      boost: 10,
       source: 'mempool.space',
     },
     {
@@ -137,15 +155,16 @@ export function calcDCA(btcUsd: number, live: LiveSignals) {
     {
       name: 'Halving Window',
       active: halvingActive,
-      value: halvingActive ? 'Active' : 'Post-April 2026',
+      value: halvingActive ? 'Active' : 'Inactive',
       boost: 10,
       source: 'schedule',
     },
   ];
 
   const totalBoost = signals.filter(s => s.active).reduce((a, s) => a + s.boost, 0);
-  const totalPct = Math.max(0, Math.min(100, base + totalBoost));
-  const raw = (totalPct / 100) * 1000;
+  const boostMultiplier = 1 + (totalBoost / 100);
+  const totalPct = Math.max(0, Math.min(100, base * boostMultiplier));
+  const raw = (totalPct / 100) * maxDcaAud;
   const finalAud = Math.round(raw / 50) * 50;
 
   return {
@@ -156,7 +175,7 @@ export function calcDCA(btcUsd: number, live: LiveSignals) {
     conviction: signals.filter(s => s.active).length,
     audUsd,
     btcAud: btcUsd * audUsd,
-    usingFallback: false,
+    usingFallback,
     mvrv: null,
   };
 }
