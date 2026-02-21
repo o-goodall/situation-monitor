@@ -39,7 +39,7 @@ export const dcaUpdated     = writable('');
 // ── MARKETS / NEWS ────────────────────────────────────────────
 export type Market = { id:string; question:string; topOutcome:string; probability:number; volume:number; volume24hr:number; endDate:string; tag:string; url:string; pinned:boolean };
 export const markets = writable<Market[]>([]);
-export type NewsItem = { title:string; link:string; source:string; pubDate:string; description:string };
+export type NewsItem = { title:string; link:string; source:string; pubDate:string; description:string; image:string };
 export const newsItems = writable<NewsItem[]>([]);
 
 // ── ASSET MARKETS ─────────────────────────────────────────────
@@ -48,6 +48,7 @@ export const goldYtdPct    = writable<number|null>(null);
 export const sp500Price    = writable<number|null>(null);
 export const sp500YtdPct   = writable<number|null>(null);
 export const cpiAnnual     = writable<number|null>(null);
+export const btcYtdPct     = writable<number|null>(null);
 
 // ── GHOSTFOLIO ────────────────────────────────────────────────
 export type Holding = { symbol:string; name:string; allocationInPercentage:number; valueInBaseCurrency:number; netPerformancePercentWithCurrencyEffect:number; assetClass:string };
@@ -61,14 +62,18 @@ export const gfError          = writable('');
 export const gfLoading        = writable(false);
 export const gfUpdated        = writable('');
 
+// ── FX RATES ─────────────────────────────────────────────────
+// Map of currency code → rate from 1 USD (e.g. AUD: 1.58 means 1 USD = 1.58 AUD)
+export const fxRates = writable<Record<string, number>>({});
+
 // ── DERIVED ───────────────────────────────────────────────────
 export const liveSignals = derived(
   [fearGreed, difficultyChange, fundingRate, audUsd, halvingDays],
   ([$fg, $dc, $fr, $au, $hd]) => ({ fearGreed: $fg, difficultyChange: $dc, fundingRate: $fr, audUsd: $au, halvingDaysLeft: $hd > 0 ? $hd : null }) as LiveSignals
 );
 
-export const dca = derived([btcPrice, liveSignals, settings], ([$p, $s, $settings]) =>
-  $p > 0 ? calcDCA($p, $s, $settings.dca.lowPrice, $settings.dca.highPrice, $settings.dca.maxDcaAud) : null
+export const dca = derived([btcPrice, liveSignals, settings, halvingDate], ([$p, $s, $settings, $hd]) =>
+  $p > 0 ? calcDCA($p, $s, $settings.dca.lowPrice, $settings.dca.highPrice, $settings.dca.maxDcaAud, $hd) : null
 );
 
 export const accentColor = derived(dca, ($d) =>
@@ -83,8 +88,18 @@ export const btcAud = derived([btcPrice, audUsd], ([$p, $a]) =>
   $p > 0 && $a !== null ? $p * $a : null
 );
 
-export const satsPerAud = derived(btcAud, ($ba) =>
-  $ba !== null && $ba > 0 ? Math.round(1e8 / $ba) : null
+// BTC price in the user's chosen display currency
+export const btcDisplayPrice = derived([btcPrice, settings, fxRates, audUsd], ([$p, $s, $fx, $au]) => {
+  if ($p <= 0) return null;
+  const cur = ($s.displayCurrency ?? 'AUD').toUpperCase();
+  if (cur === 'USD') return $p;
+  const rate = $fx[cur] ?? ($au !== null && cur === 'AUD' ? $au : null);
+  return rate !== null ? $p * rate : null;
+});
+
+// satsPerAud is now per the user's chosen display currency (not just AUD)
+export const satsPerAud = derived(btcDisplayPrice, ($bdp) =>
+  $bdp !== null && $bdp > 0 ? Math.round(1e8 / $bdp) : null
 );
 
 // ── SAVE HELPER ───────────────────────────────────────────────

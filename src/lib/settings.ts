@@ -20,6 +20,7 @@ export interface Settings {
     customFeeds: RssFeed[];    // User-added feeds (toggleable)
   };
   ghostfolio: { token: string; currency: string };
+  displayCurrency: string;   // User's preferred display currency (e.g. AUD, EUR, GBP)
 }
 
 // Default Bitcoin/crypto RSS feeds
@@ -42,6 +43,7 @@ export const DEFAULT_SETTINGS: Settings = {
     customFeeds: [],
   },
   ghostfolio: { token: '', currency: 'AUD' },
+  displayCurrency: 'AUD',
 };
 
 export function loadSettings(): Settings {
@@ -71,7 +73,7 @@ export function loadSettings(): Settings {
           }
         }
       }
-      return { ...DEFAULT_SETTINGS, ...parsed, dca: { ...DEFAULT_SETTINGS.dca, ...parsed.dca } };
+      return { ...DEFAULT_SETTINGS, ...parsed, dca: { ...DEFAULT_SETTINGS.dca, ...parsed.dca }, displayCurrency: parsed.displayCurrency ?? DEFAULT_SETTINGS.displayCurrency };
     }
   } catch {}
   return DEFAULT_SETTINGS;
@@ -107,7 +109,8 @@ export function calcDCA(
   live: LiveSignals,
   lowPrice = 55000,
   highPrice = 125000,
-  maxDcaAud = 1000
+  maxDcaAud = 1000,
+  halvingDate = ''
 ) {
   const usingFallback = live.audUsd === null;
   const audUsd = live.audUsd ?? 1.58;
@@ -126,27 +129,31 @@ export function calcDCA(
   const signals = [
     {
       name: 'Extreme Fear',
+      description: 'Fear & Greed index ≤ 20 — market in extreme fear',
       active: fg !== null && fg <= 20,
-      value: fg !== null ? `F&G ${fg}` : '--',
+      value: fg !== null ? `F&G: ${fg}` : '--',
       boost: 20,
       source: 'alternative.me',
     },
     {
       name: 'Fear Zone',
+      description: 'Fear & Greed index 21–40 — market in fear',
       active: fg !== null && fg > 20 && fg <= 40,
-      value: fg !== null ? `F&G ${fg}` : '--',
+      value: fg !== null ? `F&G: ${fg}` : '--',
       boost: 10,
       source: 'alternative.me',
     },
     {
       name: 'Mining Distress',
+      description: 'Hash rate difficulty dropped >5% — miners under pressure',
       active: diff !== null && diff < -5, // threshold lowered from -7 for earlier signal
-      value: diff !== null ? `${diff.toFixed(1)}%` : '--',
+      value: diff !== null ? `Δ ${diff.toFixed(1)}%` : '--',
       boost: 10,
       source: 'mempool.space',
     },
     {
       name: 'Funding Negative',
+      description: 'Futures funding rate negative — shorts paying longs',
       active: funding !== null && funding < -0.05,
       value: funding !== null ? `${funding.toFixed(3)}%` : '--',
       boost: 10,
@@ -154,8 +161,9 @@ export function calcDCA(
     },
     {
       name: 'Halving Window',
+      description: 'Within 365 days of the next Bitcoin halving event',
       active: halvingActive,
-      value: halvingActive ? 'Active' : 'Inactive',
+      value: halvingDate ? halvingDate : (halvingActive ? 'Active' : 'Inactive'),
       boost: 10,
       source: 'schedule',
     },

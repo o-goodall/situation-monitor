@@ -9,10 +9,10 @@
     latestBlock, mempoolStats,
     fearGreed, fearGreedLabel, difficultyChange, fundingRate, audUsd, dcaUpdated,
     markets, newsItems,
-    goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual,
+    goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
-    persistSettings
+    persistSettings, fxRates
   } from '$lib/store';
 
   let newKeyword = '', newSource = '', newSourceName = '';
@@ -56,6 +56,7 @@
       const d = await fetch('/api/dca').then(r=>r.json());
       $fearGreed = d.fearGreed; $fearGreedLabel = d.fearGreedLabel;
       $difficultyChange = d.difficultyChange; $fundingRate = d.fundingRate; $audUsd = d.audUsd;
+      if (d.fxRates && typeof d.fxRates === 'object') $fxRates = d.fxRates;
       $dcaUpdated = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
     } catch {}
   }
@@ -81,6 +82,7 @@
       $goldPriceUsd = d.gold?.priceUsd ?? null; $goldYtdPct = d.gold?.ytdPct ?? null;
       $sp500Price = d.sp500?.price ?? null; $sp500YtdPct = d.sp500?.ytdPct ?? null;
       $cpiAnnual = d.cpiAnnual ?? null;
+      $btcYtdPct = d.btc?.ytdPct ?? null;
     } catch {}
   }
 
@@ -425,6 +427,20 @@
         <label class="df"><span class="dlbl">Max DCA (AUD)</span><input type="number" bind:value={$settings.dca.maxDcaAud} class="dinp"/></label>
       </div>
     </div>
+    <div class="dg"><p class="dg-hd">Display Currency <span class="dhint">BTC price second currency</span></p>
+      <div class="dfields" style="align-items:flex-end;">
+        <label class="df" style="max-width:120px;">
+          <span class="dlbl">Currency code</span>
+          <input bind:value={$settings.displayCurrency} placeholder="AUD" class="dinp" style="text-transform:uppercase;" maxlength="3"/>
+        </label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:2px;">
+          {#each ['AUD','EUR','GBP','CAD','JPY','CHF','NZD','SGD'] as c}
+            <button class="curr-preset" class:curr-preset--active={($settings.displayCurrency||'AUD').toUpperCase()===c}
+              on:click={()=>$settings.displayCurrency=c}>{c}</button>
+          {/each}
+        </div>
+      </div>
+    </div>
     <div class="dg"><p class="dg-hd">Watchlist <span class="dhint">pinned in markets</span></p>
       <div class="dtags">{#each $settings.polymarket.keywords as kw,i}<span class="dtag">{kw}<button on:click={()=>removeKeyword(i)} class="dtag-x">×</button></span>{/each}</div>
       <div class="dinp-row"><input bind:value={newKeyword} on:keydown={(e)=>e.key==='Enter'&&handleAddKeyword()} placeholder="Add keyword…" class="dinp"/><button on:click={handleAddKeyword} class="btn-ghost" style="white-space:nowrap;">Add</button></div>
@@ -690,7 +706,13 @@
   .mobile-settings { padding:0 20px; display:flex; flex-direction:column; gap:18px; }
 
   /* ── SETTINGS DRAWER (desktop) ───────────────────────────── */
-  .drawer { background:rgba(8,8,8,.97); backdrop-filter:blur(24px); border-bottom:1px solid rgba(247,147,26,.15); position:relative; z-index:200; }
+  .drawer {
+    position: fixed; top: 64px; left: 0; right: 0; z-index: 200;
+    overflow-y: auto; max-height: calc(100vh - 64px);
+    background:rgba(8,8,8,.97); backdrop-filter:blur(24px);
+    border-bottom:1px solid rgba(247,147,26,.15);
+  }
+  @media (max-width:768px) { .drawer { top: 54px; max-height: calc(100vh - 54px); } }
   .drawer-inner { max-width:900px; margin:0 auto; padding:28px 24px; display:flex; flex-direction:column; gap:22px; }
   .dg-hd { font-size:.72rem; font-weight:600; color:rgba(255,255,255,.5); margin-bottom:12px; display:flex; align-items:center; gap:8px; font-family:'Orbitron',monospace; letter-spacing:.06em; text-transform:uppercase; }
   .dhint { font-size:.62rem; color:rgba(255,255,255,.2); font-weight:400; font-family:'Inter',sans-serif; text-transform:none; letter-spacing:0; }
@@ -706,6 +728,11 @@
   .dinp-row { display:flex; gap:8px; flex-wrap:wrap; }
   .dinp-row .dinp { min-width:120px; }
   .dsrcs { max-height:68px; overflow-y:auto; margin-bottom:8px; }
+  .curr-preset { padding:4px 10px; font-size:.62rem; font-weight:600; font-family:'Orbitron',monospace; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:3px; color:rgba(255,255,255,.4); cursor:pointer; transition:all .2s; letter-spacing:.04em; }
+  .curr-preset:hover { border-color:rgba(247,147,26,.3); color:var(--orange); }
+  .curr-preset--active { background:rgba(247,147,26,.15); border-color:var(--orange)!important; color:var(--orange)!important; }
+  :global(html.light) .curr-preset { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.5); }
+  :global(html.light) .curr-preset--active { background:rgba(247,147,26,.1); }
   .dsrc { display:flex; justify-content:space-between; align-items:center; padding:3px 0; font-size:.62rem; color:rgba(255,255,255,.25); }
   .dsrc-url { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:300px; }
   .d-save--ok { background:linear-gradient(45deg,#22c55e,#15803d)!important; }
