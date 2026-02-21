@@ -1,23 +1,52 @@
-# Situation Monitor
+# gl4nce
 
-Welcome to Situation Monitor!
+**At a glance.** A situation monitor for bitcoiners and finance enthusiasts.
 
-This project is designed to help you monitor various situations effectively.
+## About
+
+gl4nce is an early-stage project designed to replace endless scrolling through social media, news feeds, and multiple investing platforms. Get the information you need, at a glance.
+
+Built with Claude AI (vibe coded), gl4nce pulls real-time Bitcoin data from mempool and other reliable sources to give you a quick, focused view of what matters.
+
+**Target Audience:** Bitcoiners, finance enthusiasts, and anyone tired of information overload.
 
 ## Features
 
-- User-friendly interface
-- Real-time updates
-- Data visualization
+- Real-time Bitcoin data from mempool
+- Clean, minimalist interface for quick overview
+- AI-assisted development with Claude
+- Built for the finance-focused user
 
-For more information visit our website. Neither gl4nce nor any content provided by users should be misinterpreted. 
+## Tech Stack
 
-## Installation
+- **Frontend:** Svelte (69.6%)
+- **Language:** TypeScript (22.9%)
+- **Styling:** CSS (6.8%)
 
-To install, follow these steps...
+## Getting Started
 
-## Usage
+### Installation
 
-Example usage includes...
+```bash
+git clone https://github.com/o-goodall/situation-monitor.git
+cd situation-monitor
+npm install
+```
 
-Thank you for using Situation Monitor!
+### Development
+
+```bash
+npm run dev
+```
+
+## Live Demo
+
+Check out gl4nce at [gl4nce.xyz](https://gl4nce.xyz)
+
+## Status
+
+**Early Development** - This project is actively being built and refined.
+
+## License
+
+MIT
