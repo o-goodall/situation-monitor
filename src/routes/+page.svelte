@@ -1,6 +1,6 @@
 <script lang="ts">
   import {
-    settings, btcPrice, priceFlash, btcBlock, btcFees,
+    settings, btcPrice, priceFlash, priceHistory, btcBlock, btcFees,
     halvingBlocksLeft, halvingDays, halvingDate, halvingProgress,
     dcaUpdated, dca, accentColor, priceColor, btcAud, satsPerAud,
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual,
@@ -8,6 +8,13 @@
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     markets, newsItems
   } from '$lib/store';
+  import Sparkline from '$lib/Sparkline.svelte';
+
+  // Derive AUD price history from USD history + current AUD/USD rate
+  import { audUsd } from '$lib/store';
+  $: audHistory = $audUsd && $priceHistory.length
+    ? $priceHistory.map(p => p * $audUsd!)
+    : [];
 
   let showHoldings = false;
 
@@ -51,10 +58,18 @@
 
   <!-- KEY METRICS STRIP -->
   <div class="stat-strip">
-    <div class="stat-tile">
+
+    <!-- BTC/USD — with sparkline behind glass -->
+    <div class="stat-tile stat-tile--chart">
+      {#if $priceHistory.length >= 2}
+        <div class="tile-spark">
+          <Sparkline prices={$priceHistory} height={52} opacity={0.28} />
+        </div>
+      {/if}
       <span class="stat-n" style="color:{$priceColor};transition:color .5s;">{$btcPrice>0?'$'+n($btcPrice):'—'}</span>
       <span class="stat-l">BTC / USD</span>
     </div>
+
     <div class="stat-tile">
       <span class="stat-n" style="color:var(--orange);">{$satsPerAud?$satsPerAud.toLocaleString():'—'}</span>
       <span class="stat-l">Sats per A$1</span>
@@ -75,8 +90,14 @@
       <span class="stat-n">{$halvingDays>0?$halvingDays.toLocaleString():'—'}</span>
       <span class="stat-l">Days to Halving</span>
     </div>
-    <div class="stat-tile">
-      <span class="stat-n" style="color:rgba(255,255,255,.7);">{$btcAud?'A$'+n($btcAud,0):'—'}</span>
+    <!-- BTC/AUD — with sparkline behind glass -->
+    <div class="stat-tile stat-tile--chart">
+      {#if audHistory.length >= 2}
+        <div class="tile-spark">
+          <Sparkline prices={audHistory} height={52} opacity={0.28} />
+        </div>
+      {/if}
+      <span class="stat-n" style="color:rgba(255,255,255,.75);">{$btcAud?'A$'+n($btcAud,0):'—'}</span>
       <span class="stat-l">BTC / AUD</span>
     </div>
   </div>
@@ -396,6 +417,24 @@
   }
   .stat-tile:hover { transform:translateY(-4px); border-color:rgba(247,147,26,.28); box-shadow:0 10px 28px rgba(247,147,26,.1); }
   .stat-tile:hover::before { width:100%; }
+
+  /* Sparkline tiles — chart sits absolute behind content */
+  .stat-tile--chart { padding-bottom: 0; }
+  .tile-spark {
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 52px;
+    opacity: 0.7;
+    pointer-events: none;
+  }
+  /* Ensure text sits above the sparkline */
+  .stat-tile--chart .stat-n,
+  .stat-tile--chart .stat-l {
+    position: relative; z-index: 1;
+  }
+  .stat-tile--chart .stat-n { margin-top: 10px; margin-bottom: 4px; }
+  .stat-tile--chart .stat-l { display: block; padding-bottom: 58px; }
+
   .stat-n { display:block; font-size:1.45rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:#eaeaea; }
   .stat-l { font-size:.57rem; color:rgba(255,255,255,.28); text-transform:uppercase; letter-spacing:.1em; }
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(3,1fr); } }
