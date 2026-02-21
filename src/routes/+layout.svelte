@@ -21,11 +21,16 @@
   let intervals: ReturnType<typeof setInterval>[] = [];
   let scrolled = false;
   let mobileMenuOpen = false;
+  let sectionObserver: IntersectionObserver | null = null;
 
   function navigateTo(section: 'signal' | 'portfolio' | 'intel') {
     $activeSection = section;
     mobileMenuOpen = false;
-    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+    if (typeof window !== 'undefined') {
+      const el = document.getElementById(section);
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      else window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
   }
 
   function toggleLightMode() {
@@ -247,7 +252,27 @@
     ];
     window.addEventListener('scroll', handleScroll, {passive:true});
 
-    // ── NETWORK DATA PULSE ─────────────────────────────────────
+    // ── INTERSECTION OBSERVER — track active section on scroll ─
+    const sectionIds: Array<'signal' | 'portfolio' | 'intel'> = ['signal', 'portfolio', 'intel'];
+    sectionObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.3) {
+            $activeSection = entry.target.id as 'signal' | 'portfolio' | 'intel';
+          }
+        }
+      },
+      { threshold: 0.3 }
+    );
+    // Wait for the next animation frame so the page sections are rendered before observing
+    requestAnimationFrame(() => {
+      sectionIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && sectionObserver) sectionObserver.observe(el);
+      });
+    });
+
+
     // Subtle network visualization: semi-static anchor nodes with faint
     // connections, data packets traveling between them, and expanding pings.
     (function() {
@@ -439,6 +464,7 @@
     intervals.forEach(clearInterval);
     disconnectPriceWs();
     window.removeEventListener('scroll', handleScroll);
+    if (sectionObserver) sectionObserver.disconnect();
   });
 </script>
 
@@ -793,11 +819,11 @@
   .burger {
     display:none; flex-direction:column; justify-content:center; gap:5px;
     width:36px; height:36px; padding:6px;
-    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
+    background:rgba(247,147,26,.1); border:1px solid rgba(247,147,26,.4);
     border-radius:3px; cursor:pointer; transition:border-color .2s;
   }
   .burger span {
-    display:block; height:2px; width:100%; background:rgba(255,255,255,1);
+    display:block; height:2px; width:100%; background:var(--orange);
     border-radius:1px; transition:all .25s ease; transform-origin:center;
   }
   .burger:hover { border-color:rgba(247,147,26,.4); }

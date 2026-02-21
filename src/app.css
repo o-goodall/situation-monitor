@@ -26,7 +26,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; scroll-snap-type: y mandatory; scroll-padding-top: 64px; }
 
 body {
   background: var(--bg);
@@ -196,6 +196,10 @@ body::after {
 .blink { animation: blink 2s step-end infinite; }
 
 @media (max-width:600px) { .card { padding:16px; border-radius:6px; } }
+
+@media (max-width:768px) {
+  html { scroll-padding-top: 54px; }
+}
 
 /* ── LIGHT MODE GLOBAL OVERRIDES ══════════════════════════ */
 html.light body::before {
