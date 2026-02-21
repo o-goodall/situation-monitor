@@ -1,7 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { onMount, onDestroy } from 'svelte';
-  import { loadSettings } from '$lib/settings';
+  import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
   import {
     settings, showSettings, saved, time, lightMode,
     btcPrice, prevPrice, priceFlash, priceHistory, btcBlock, btcFees,
@@ -15,7 +15,7 @@
     persistSettings
   } from '$lib/store';
 
-  let newKeyword = '', newSource = '';
+  let newKeyword = '', newSource = '', newSourceName = '';
   let clockInterval: ReturnType<typeof setInterval>;
   let intervals: ReturnType<typeof setInterval>[] = [];
   let scrolled = false;
@@ -69,7 +69,8 @@
 
   async function fetchNews() {
     try {
-      const src = encodeURIComponent(JSON.stringify($settings.news.sources));
+      const urls = getEnabledFeedUrls($settings.news);
+      const src = encodeURIComponent(JSON.stringify(urls));
       $newsItems = (await fetch(`/api/news?sources=${src}`).then(r=>r.json())).items ?? [];
     } catch {}
   }
@@ -110,9 +111,15 @@
   }
   function removeKeyword(i:number) { $settings.polymarket.keywords = $settings.polymarket.keywords.filter((_,j)=>j!==i); }
   function handleAddSource() {
-    if (newSource.trim()) { $settings.news.sources = [...$settings.news.sources, newSource.trim()]; newSource = ''; }
+    if (newSource.trim()) {
+      const name = newSourceName.trim() || (() => { try { return new URL(newSource.trim()).hostname.replace('www.','').replace('feeds.',''); } catch { return 'Custom'; } })();
+      $settings.news.customFeeds = [...$settings.news.customFeeds, { url: newSource.trim(), name, enabled: true }];
+      newSource = ''; newSourceName = '';
+    }
   }
-  function removeSource(i:number) { $settings.news.sources = $settings.news.sources.filter((_,j)=>j!==i); }
+  function removeSource(i:number) { $settings.news.customFeeds = $settings.news.customFeeds.filter((_,j)=>j!==i); }
+  function toggleDefaultFeed(i:number) { $settings.news.defaultFeeds[i].enabled = !$settings.news.defaultFeeds[i].enabled; $settings.news.defaultFeeds = [...$settings.news.defaultFeeds]; }
+  function toggleCustomFeed(i:number) { $settings.news.customFeeds[i].enabled = !$settings.news.customFeeds[i].enabled; $settings.news.customFeeds = [...$settings.news.customFeeds]; }
 
   function handleScroll() { scrolled = window.scrollY > 40; }
   function toggleMobileMenu() { mobileMenuOpen = !mobileMenuOpen; if (mobileMenuOpen) $showSettings = false; }
@@ -137,110 +144,190 @@
     ];
     window.addEventListener('scroll', handleScroll, {passive:true});
 
-    // ── CYBER HORNET SWARM ─────────────────────────────────────
-    // Desktop: 80 hornets spread wide. Mobile: 40 hornets tighter.
+    // ── NETWORK DATA PULSE ─────────────────────────────────────
+    // Subtle network visualization: semi-static anchor nodes with faint
+    // connections, data packets traveling between them, and expanding pings.
     (function() {
-      const canvas = document.getElementById('hornet-canvas') as HTMLCanvasElement;
+      const canvas = document.getElementById('net-canvas') as HTMLCanvasElement;
       if (!canvas) return;
       const ctx = canvas.getContext('2d')!;
-      let W: number, H: number, hornets: any[] = [], animId: number;
+      let W: number, H: number, animId: number;
       const ORANGE = 'rgba(247,147,26,';
       const ELECTRIC = 'rgba(0,200,255,';
 
-      function getCount() { return window.innerWidth >= 1024 ? 80 : 40; }
-      // Desktop: wider spread (spawn across full area, faster connection distance)
-      function getConnDist() { return window.innerWidth >= 1024 ? 130 : 90; }
+      function isMobile() { return window.innerWidth < 768; }
+      const NODE_COUNT = () => isMobile() ? 16 : 32;
+      const CONN_DIST = () => isMobile() ? 180 : 220;
 
-      function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+      let resizeTimer: any;
+      function resize() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; init(); }, 200);
+        if (!W) { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+      }
 
-      class Hornet {
-        x=0; y=0; vx=0; vy=0; size=0; hue='o'; alpha=0; angle=0; spin=0;
-        surgeTimer=0; surging=false; trail:{x:number,y:number}[]=[]; trailLen=0;
-        constructor() { this.reset(); }
-        reset() {
-          this.x = Math.random()*(W||window.innerWidth);
-          this.y = Math.random()*(H||window.innerHeight);
-          // Desktop: slightly more varied velocity so they spread out
-          const spd = window.innerWidth >= 1024 ? 0.65 : 0.55;
-          this.vx = (Math.random()-0.5)*spd;
-          this.vy = (Math.random()-0.5)*spd;
-          this.size = 2.2+Math.random()*2.2;
-          this.hue  = Math.random()<0.72?'o':'e';
-          this.alpha = 0.18+Math.random()*0.45;
-          this.angle = Math.random()*Math.PI*2;
-          this.spin  = (Math.random()-0.5)*0.02;
-          this.surgeTimer = 60+Math.floor(Math.random()*200);
-          this.surging = false;
-          this.trail = [];
-          this.trailLen = 6+Math.floor(Math.random()*10);
+      class Node {
+        x: number; y: number; baseX: number; baseY: number;
+        driftAngle: number; driftSpeed: number; radius: number;
+        constructor() {
+          this.baseX = this.x = Math.random() * (W || window.innerWidth);
+          this.baseY = this.y = Math.random() * (H || window.innerHeight);
+          this.driftAngle = Math.random() * Math.PI * 2;
+          this.driftSpeed = 0.001 + Math.random() * 0.002;
+          this.radius = 1.5 + Math.random() * 1.5;
         }
-        update(all:any[]) {
-          this.trail.push({x:this.x,y:this.y});
-          if (this.trail.length>this.trailLen) this.trail.shift();
-          this.angle += this.spin;
-          this.surgeTimer--;
-          if (this.surgeTimer<=0) {
-            this.surging = !this.surging;
-            this.surgeTimer = this.surging ? 20+Math.floor(Math.random()*40) : 80+Math.floor(Math.random()*180);
-            if (this.surging) {
-              const t = all[Math.floor(Math.random()*all.length)];
-              const dx=t.x-this.x, dy=t.y-this.y, dist=Math.sqrt(dx*dx+dy*dy)||1;
-              const spd = 1.4+Math.random()*1.0;
-              this.vx=(dx/dist)*spd; this.vy=(dy/dist)*spd;
-            } else {
-              const s = window.innerWidth >= 1024 ? 0.65 : 0.55;
-              this.vx=(Math.random()-0.5)*s; this.vy=(Math.random()-0.5)*s;
-            }
-          }
-          this.x+=this.vx; this.y+=this.vy;
-          if (this.x<-20) this.x=W+20; if (this.x>W+20) this.x=-20;
-          if (this.y<-20) this.y=H+20; if (this.y>H+20) this.y=-20;
+        update() {
+          this.driftAngle += this.driftSpeed;
+          this.x = this.baseX + Math.sin(this.driftAngle) * 12;
+          this.y = this.baseY + Math.cos(this.driftAngle * 0.7) * 10;
         }
         draw() {
-          const col = this.hue==='o'?ORANGE:ELECTRIC;
-          if (this.trail.length>1) {
-            for (let i=1;i<this.trail.length;i++) {
-              const t=i/this.trail.length, a=t*this.alpha*0.45;
-              ctx.beginPath(); ctx.moveTo(this.trail[i-1].x,this.trail[i-1].y);
-              ctx.lineTo(this.trail[i].x,this.trail[i].y);
-              ctx.strokeStyle=col+a+')'; ctx.lineWidth=this.size*t*0.55; ctx.stroke();
-            }
-          }
-          ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.angle);
-          const s=this.size, glow=this.surging?this.alpha*1.6:this.alpha;
-          ctx.shadowBlur=this.surging?10:5; ctx.shadowColor=col+'0.8)';
-          ctx.beginPath(); ctx.moveTo(0,-s*1.6); ctx.lineTo(-s*0.9,s);
-          ctx.lineTo(0,s*0.4); ctx.lineTo(s*0.9,s); ctx.closePath();
-          ctx.fillStyle=col+Math.min(glow,0.9)+')'; ctx.fill();
-          ctx.beginPath(); ctx.moveTo(0,-s*1.4); ctx.lineTo(0,s*0.3);
-          ctx.strokeStyle=(this.hue==='o'?ELECTRIC:ORANGE)+(glow*0.7)+')';
-          ctx.lineWidth=0.7; ctx.shadowBlur=4; ctx.stroke();
-          ctx.restore();
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.fillStyle = ORANGE + '0.25)';
+          ctx.fill();
         }
       }
 
-      function init() {
-        hornets=[];
-        for(let i=0;i<getCount();i++) hornets.push(new Hornet());
+      class Transmission {
+        from: Node; to: Node; progress: number; speed: number; hue: string; size: number;
+        trail: {x:number,y:number,a:number}[];
+        constructor(from: Node, to: Node) {
+          this.from = from; this.to = to;
+          this.progress = 0;
+          this.speed = 0.008 + Math.random() * 0.012;
+          this.hue = Math.random() < 0.7 ? 'o' : 'e';
+          this.size = 1.5 + Math.random() * 1.5;
+          this.trail = [];
+        }
+        update(): boolean {
+          this.progress += this.speed;
+          const x = this.from.x + (this.to.x - this.from.x) * this.progress;
+          const y = this.from.y + (this.to.y - this.from.y) * this.progress;
+          this.trail.push({x, y, a: 1});
+          if (this.trail.length > 12) this.trail.shift();
+          this.trail.forEach(t => t.a *= 0.88);
+          return this.progress >= 1;
+        }
+        draw() {
+          const col = this.hue === 'o' ? ORANGE : ELECTRIC;
+          // Trail
+          for (const t of this.trail) {
+            ctx.beginPath();
+            ctx.arc(t.x, t.y, this.size * t.a * 0.6, 0, Math.PI * 2);
+            ctx.fillStyle = col + (t.a * 0.3) + ')';
+            ctx.fill();
+          }
+          // Head
+          const x = this.from.x + (this.to.x - this.from.x) * this.progress;
+          const y = this.from.y + (this.to.y - this.from.y) * this.progress;
+          ctx.beginPath();
+          ctx.arc(x, y, this.size, 0, Math.PI * 2);
+          ctx.fillStyle = col + '0.7)';
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = col + '0.5)';
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
       }
+
+      class Ping {
+        x: number; y: number; radius: number; maxRadius: number; alpha: number;
+        constructor(x: number, y: number) {
+          this.x = x; this.y = y;
+          this.radius = 2; this.maxRadius = 18 + Math.random() * 12;
+          this.alpha = 0.5;
+        }
+        update(): boolean {
+          this.radius += 0.4;
+          this.alpha *= 0.96;
+          return this.radius >= this.maxRadius || this.alpha < 0.02;
+        }
+        draw() {
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = ORANGE + this.alpha + ')';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        }
+      }
+
+      let nodes: Node[] = [];
+      let transmissions: Transmission[] = [];
+      let pings: Ping[] = [];
+      let spawnTimer = 0;
+
+      function init() {
+        nodes = [];
+        transmissions = [];
+        pings = [];
+        for (let i = 0; i < NODE_COUNT(); i++) nodes.push(new Node());
+      }
+
+      function spawnTransmission() {
+        if (nodes.length < 2) return;
+        const a = nodes[Math.floor(Math.random() * nodes.length)];
+        // Find a nearby node
+        let best: Node | null = null, bestDist = Infinity;
+        for (const n of nodes) {
+          if (n === a) continue;
+          const dx = n.x - a.x, dy = n.y - a.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          if (d < CONN_DIST() && d < bestDist) { best = n; bestDist = d; }
+        }
+        if (best) transmissions.push(new Transmission(a, best));
+      }
+
       function loop() {
-        ctx.clearRect(0,0,W,H);
-        const cd = getConnDist();
-        for(let i=0;i<hornets.length;i++) for(let j=i+1;j<hornets.length;j++) {
-          const dx=hornets[i].x-hornets[j].x, dy=hornets[i].y-hornets[j].y;
-          const dist=Math.sqrt(dx*dx+dy*dy);
-          if(dist<cd){
-            const a=(1-dist/cd)*0.07;
-            ctx.beginPath(); ctx.moveTo(hornets[i].x,hornets[i].y);
-            ctx.lineTo(hornets[j].x,hornets[j].y);
-            ctx.strokeStyle=ORANGE+a+')'; ctx.lineWidth=0.5; ctx.stroke();
+        ctx.clearRect(0, 0, W, H);
+
+        // Draw faint connections
+        const cd = CONN_DIST();
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist < cd) {
+              const a = (1 - dist / cd) * 0.04;
+              ctx.beginPath();
+              ctx.moveTo(nodes[i].x, nodes[i].y);
+              ctx.lineTo(nodes[j].x, nodes[j].y);
+              ctx.strokeStyle = ORANGE + a + ')';
+              ctx.lineWidth = 0.5;
+              ctx.stroke();
+            }
           }
         }
-        hornets.forEach(h=>{h.update(hornets);h.draw();});
-        animId=requestAnimationFrame(loop);
+
+        // Update & draw nodes
+        nodes.forEach(n => { n.update(); n.draw(); });
+
+        // Spawn transmissions periodically
+        spawnTimer++;
+        const spawnRate = isMobile() ? 90 : 50;
+        if (spawnTimer >= spawnRate) {
+          spawnTransmission();
+          // Occasional burst
+          if (Math.random() < 0.2) { spawnTransmission(); spawnTransmission(); }
+          spawnTimer = 0;
+        }
+
+        // Update & draw transmissions
+        transmissions = transmissions.filter(t => {
+          const done = t.update();
+          t.draw();
+          if (done) pings.push(new Ping(t.to.x, t.to.y));
+          return !done;
+        });
+
+        // Update & draw pings
+        pings = pings.filter(p => { const done = p.update(); p.draw(); return !done; });
+
+        animId = requestAnimationFrame(loop);
       }
+
       resize(); init(); loop();
-      window.addEventListener('resize',()=>{resize();init();},{passive:true});
+      window.addEventListener('resize', resize, { passive: true });
     })();
   });
 
@@ -251,7 +338,7 @@
   });
 </script>
 
-<canvas id="hornet-canvas" aria-hidden="true"></canvas>
+<canvas id="net-canvas" aria-hidden="true"></canvas>
 
 <!-- ══ HEADER ════════════════════════════════════════════════ -->
 <header class="hdr" class:hdr--scrolled={scrolled}>
@@ -339,9 +426,32 @@
       <div class="dtags">{#each $settings.polymarket.keywords as kw,i}<span class="dtag">{kw}<button on:click={()=>removeKeyword(i)} class="dtag-x">×</button></span>{/each}</div>
       <div class="dinp-row"><input bind:value={newKeyword} on:keydown={(e)=>e.key==='Enter'&&handleAddKeyword()} placeholder="Add keyword…" class="dinp"/><button on:click={handleAddKeyword} class="btn-ghost" style="white-space:nowrap;">Add</button></div>
     </div>
-    <div class="dg"><p class="dg-hd">News RSS</p>
-      <div class="dsrcs">{#each $settings.news.sources as src,i}<div class="dsrc"><span class="dsrc-url">{src}</span><button on:click={()=>removeSource(i)} class="dtag-x">×</button></div>{/each}</div>
-      <div class="dinp-row"><input type="url" bind:value={newSource} on:keydown={(e)=>e.key==='Enter'&&handleAddSource()} placeholder="https://…" class="dinp"/><button on:click={handleAddSource} class="btn-ghost" style="white-space:nowrap;">Add</button></div>
+    <div class="dg"><p class="dg-hd">News Feeds <span class="dhint">toggle on/off · add custom</span></p>
+      <p class="dlbl" style="margin-bottom:6px;">Default Feeds</p>
+      <div class="feed-list">
+        {#each $settings.news.defaultFeeds as feed, i}
+          <label class="feed-toggle">
+            <input type="checkbox" checked={feed.enabled} on:change={()=>toggleDefaultFeed(i)} />
+            <span class="feed-name">{feed.name}</span>
+          </label>
+        {/each}
+      </div>
+      {#if $settings.news.customFeeds.length>0}
+      <p class="dlbl" style="margin:12px 0 6px;">Custom Feeds</p>
+      <div class="feed-list">
+        {#each $settings.news.customFeeds as feed, i}
+          <div class="feed-custom">
+            <label class="feed-toggle">
+              <input type="checkbox" checked={feed.enabled} on:change={()=>toggleCustomFeed(i)} />
+              <span class="feed-name">{feed.name}</span>
+            </label>
+            <button on:click={()=>removeSource(i)} class="dtag-x" title="Remove">×</button>
+          </div>
+        {/each}
+      </div>
+      {/if}
+      <p class="dlbl" style="margin:12px 0 6px;">Add Custom Feed</p>
+      <div class="dinp-row"><input type="url" bind:value={newSource} on:keydown={(e)=>e.key==='Enter'&&handleAddSource()} placeholder="https://example.com/feed.xml" class="dinp" style="flex:2;"/><input bind:value={newSourceName} placeholder="Feed name (optional)" class="dinp" style="flex:1;"/><button on:click={handleAddSource} class="btn-ghost" style="white-space:nowrap;">Add</button></div>
     </div>
     <div class="dg"><p class="dg-hd">Ghostfolio <span class="dhint">token stored locally</span></p>
       <div class="dfields" style="max-width:500px;">
@@ -388,6 +498,29 @@
           <label class="df"><span class="dlbl">Goal BTC</span><input type="number" step="0.001" bind:value={$settings.dca.goalBtc} class="dinp"/></label>
         </div>
       </div>
+      <div class="dg"><p class="dg-hd">News Feeds</p>
+        <div class="feed-list">
+          {#each $settings.news.defaultFeeds as feed, i}
+            <label class="feed-toggle">
+              <input type="checkbox" checked={feed.enabled} on:change={()=>toggleDefaultFeed(i)} />
+              <span class="feed-name">{feed.name}</span>
+            </label>
+          {/each}
+        </div>
+        {#if $settings.news.customFeeds.length>0}
+        <div class="feed-list" style="margin-top:6px;">
+          {#each $settings.news.customFeeds as feed, i}
+            <div class="feed-custom">
+              <label class="feed-toggle">
+                <input type="checkbox" checked={feed.enabled} on:change={()=>toggleCustomFeed(i)} />
+                <span class="feed-name">{feed.name}</span>
+              </label>
+              <button on:click={()=>removeSource(i)} class="dtag-x">×</button>
+            </div>
+          {/each}
+        </div>
+        {/if}
+      </div>
       <div class="dg"><p class="dg-hd">Ghostfolio Token</p>
         <label class="df"><span class="dlbl">Security token</span><input type="password" bind:value={$settings.ghostfolio.token} placeholder="your-security-token" class="dinp"/></label>
       </div>
@@ -408,7 +541,8 @@
 
 <style>
   /* Canvas */
-  #hornet-canvas { position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; }
+  #net-canvas { position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; will-change:transform; transition:opacity .5s; }
+  :global(html.light) #net-canvas { opacity:0.2; }
 
   /* ── HEADER ──────────────────────────────────────────────── */
   .hdr {
@@ -572,6 +706,17 @@
   /* ── PAGE WRAP ───────────────────────────────────────────── */
   .page-wrap { padding-top:64px; min-height:100vh; }
   @media (max-width:768px) { .page-wrap { padding-top:54px; } }
+
+  /* ── FEED TOGGLES ──────────────────────────────────────────── */
+  .feed-list { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
+  .feed-toggle { display:flex; align-items:center; gap:6px; cursor:pointer; padding:4px 10px; border-radius:3px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); transition:all .2s; font-size:.68rem; color:var(--t2); }
+  .feed-toggle:hover { border-color:rgba(247,147,26,.2); }
+  .feed-toggle input[type="checkbox"] { accent-color:var(--orange); width:13px; height:13px; cursor:pointer; }
+  .feed-toggle input[type="checkbox"]:checked + .feed-name { color:var(--t1); }
+  .feed-name { font-size:.65rem; font-weight:500; transition:color .2s; }
+  .feed-custom { display:flex; align-items:center; gap:4px; }
+  :global(html.light) .feed-toggle { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.08); }
+  :global(html.light) .feed-toggle:hover { border-color:rgba(247,147,26,.3); }
 
   /* ── FOOTER ──────────────────────────────────────────────── */
   .site-footer { border-top:1px solid rgba(247,147,26,.12); padding:18px 32px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:rgba(0,0,0,.5); }

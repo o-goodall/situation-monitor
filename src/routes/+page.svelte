@@ -438,13 +438,14 @@
 
     <!-- NEWS -->
     <div class="gc">
-      <div class="gc-head" style="margin-bottom:18px;"><p class="gc-title">News Feed</p></div>
+      <div class="gc-head" style="margin-bottom:18px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.length} articles</span></div>
       {#if $newsItems.length===0}
         <p class="dim">Fetching RSS feeds…</p>
       {:else}
         {#each $newsItems as item}
           <div class="news">
             <a href={item.link} target="_blank" rel="noopener noreferrer" class="news-title">{item.title}</a>
+            {#if item.description}<p class="news-desc">{item.description}</p>{/if}
             <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
           </div>
         {/each}
@@ -666,6 +667,8 @@
   .news-title:hover { opacity:1; }
   .news-meta { display:flex; gap:10px; align-items:center; }
   .news-src { font-size:.58rem; color:var(--orange); font-weight:600; }
+  .news-desc { font-size:.65rem; color:var(--t2); line-height:1.5; margin-bottom:6px; opacity:.7; }
+  :global(html.light) .news-desc { color:rgba(0,0,0,.45); }
 
   /* ── LIGHT MODE OVERRIDES (pbar, zone bar) ────────────── */
   :global(html.light) .pbar { background:rgba(0,0,0,.06); }

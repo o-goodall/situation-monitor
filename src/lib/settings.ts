@@ -1,14 +1,38 @@
+export interface RssFeed {
+  url: string;
+  name: string;
+  enabled: boolean;
+}
+
 export interface Settings {
   dca: { startDate: string; dailyAmount: number; btcHeld: number; goalBtc: number };
   polymarket: { keywords: string[] };
-  news: { sources: string[] };
+  news: {
+    defaultFeeds: RssFeed[];   // Pre-selected feeds (toggleable)
+    customFeeds: RssFeed[];    // User-added feeds (toggleable)
+  };
   ghostfolio: { token: string; currency: string };
 }
+
+// Default Bitcoin/crypto RSS feeds
+export const DEFAULT_RSS_FEEDS: RssFeed[] = [
+  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',       name: 'CoinDesk',          enabled: true },
+  { url: 'https://bitcoinmagazine.com/.rss/full/',                name: 'Bitcoin Magazine',   enabled: true },
+  { url: 'https://cointelegraph.com/rss',                         name: 'CoinTelegraph',     enabled: true },
+  { url: 'https://feeds.bbci.co.uk/news/business/rss.xml',        name: 'BBC Business',      enabled: true },
+  { url: 'https://feeds.reuters.com/reuters/businessNews',         name: 'Reuters Business',  enabled: false },
+  { url: 'https://www.theblock.co/rss.xml',                       name: 'The Block',         enabled: false },
+  { url: 'https://decrypt.co/feed',                                name: 'Decrypt',           enabled: false },
+  { url: 'https://www.btctimes.com/rss',                           name: 'BTC Times',         enabled: false },
+];
 
 export const DEFAULT_SETTINGS: Settings = {
   dca: { startDate: new Date().toISOString().split('T')[0], dailyAmount: 10, btcHeld: 0, goalBtc: 1 },
   polymarket: { keywords: ['Bitcoin', 'Ukraine ceasefire', 'US Iran'] },
-  news: { sources: ['https://feeds.bbci.co.uk/news/world/rss.xml', 'https://feeds.reuters.com/reuters/worldNews'] },
+  news: {
+    defaultFeeds: DEFAULT_RSS_FEEDS.map(f => ({...f})),
+    customFeeds: [],
+  },
   ghostfolio: { token: '', currency: 'AUD' },
 };
 
@@ -16,7 +40,31 @@ export function loadSettings(): Settings {
   if (typeof window === 'undefined') return DEFAULT_SETTINGS;
   try {
     const s = localStorage.getItem('sm_settings');
-    if (s) return { ...DEFAULT_SETTINGS, ...JSON.parse(s) };
+    if (s) {
+      const parsed = JSON.parse(s);
+      // Migrate old format: if news.sources exists (old string array), convert
+      if (parsed.news?.sources && !parsed.news?.defaultFeeds) {
+        const customUrls: string[] = parsed.news.sources;
+        parsed.news = {
+          defaultFeeds: DEFAULT_RSS_FEEDS.map(f => ({...f})),
+          customFeeds: customUrls.map((url: string) => ({
+            url,
+            name: new URL(url).hostname.replace('www.','').replace('feeds.',''),
+            enabled: true,
+          })),
+        };
+      }
+      // Ensure all default feeds exist (merge new defaults)
+      if (parsed.news?.defaultFeeds) {
+        const existingUrls = new Set(parsed.news.defaultFeeds.map((f: RssFeed) => f.url));
+        for (const df of DEFAULT_RSS_FEEDS) {
+          if (!existingUrls.has(df.url)) {
+            parsed.news.defaultFeeds.push({...df});
+          }
+        }
+      }
+      return { ...DEFAULT_SETTINGS, ...parsed };
+    }
   } catch {}
   return DEFAULT_SETTINGS;
 }
@@ -24,6 +72,18 @@ export function loadSettings(): Settings {
 export function saveSettings(s: Settings) {
   if (typeof window === 'undefined') return;
   localStorage.setItem('sm_settings', JSON.stringify(s));
+}
+
+// Get all enabled feed URLs
+export function getEnabledFeedUrls(news: Settings['news']): string[] {
+  const enabled: string[] = [];
+  for (const f of news.defaultFeeds) {
+    if (f.enabled) enabled.push(f.url);
+  }
+  for (const f of news.customFeeds) {
+    if (f.enabled) enabled.push(f.url);
+  }
+  return enabled;
 }
 
 export interface LiveSignals {
@@ -37,7 +97,6 @@ export function calcDCA(btcUsd: number, live: LiveSignals) {
   const audUsd = live.audUsd ?? 1.58;
 
   // Price-based taper: 100% allocation at $55k, 0% at $125k, linear
-  // This is the primary driver — clean, fast, no external API dependency
   const base = Math.max(0, Math.min(100, ((125000 - btcUsd) / 70000) * 100));
 
   const fg = live.fearGreed;
@@ -46,7 +105,6 @@ export function calcDCA(btcUsd: number, live: LiveSignals) {
   const now = new Date();
   const halvingActive = now >= new Date('2026-05-01') && now < new Date('2027-05-01');
 
-  // Only use the 3 fast/reliable signals — no CoinMetrics dependency
   const signals = [
     {
       name: 'Extreme Fear',

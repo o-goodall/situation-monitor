@@ -39,7 +39,7 @@ export const dcaUpdated     = writable('');
 // ── MARKETS / NEWS ────────────────────────────────────────────
 export type Market = { id:string; question:string; topOutcome:string; probability:number; volume:number; volume24hr:number; endDate:string; tag:string; url:string; pinned:boolean };
 export const markets = writable<Market[]>([]);
-export type NewsItem = { title:string; link:string; source:string; pubDate:string };
+export type NewsItem = { title:string; link:string; source:string; pubDate:string; description:string };
 export const newsItems = writable<NewsItem[]>([]);
 
 // ── ASSET MARKETS ─────────────────────────────────────────────
