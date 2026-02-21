@@ -105,12 +105,6 @@
   // Mobile feed carousels — duplicate items so the CSS loop is seamless
   $: newsLoop = $newsItems.length ? [...$newsItems, ...$newsItems] : [];
 
-  // Halving countdown dot visualization (max 50 dots, scaled by days remaining)
-  const MAX_HALVING_DOTS = 50;
-  $: halvingDotUnit = $halvingDays > 0 ? Math.max(1, Math.ceil($halvingDays / MAX_HALVING_DOTS)) : 1;
-  $: halvingDotCount = $halvingDays > 0 ? Math.ceil($halvingDays / halvingDotUnit) : 0;
-  $: halvingDots = halvingDotCount > 0 ? Array.from({length: halvingDotCount}) : [];
-
   // Class accent colours for allocation breakdown
   const CLASS_COLOR: Record<string,string> = {
     EQUITY:'#6366f1', CRYPTOCURRENCY:'#f7931a', FIXED_INCOME:'#38bdf8',
@@ -186,19 +180,13 @@
     </div>
 
     <div class="stat-tile halving-tile stat-tile--static">
-      {#if halvingDots.length > 0}
-        <div class="halving-dots" aria-hidden="true">
-          {#each halvingDots as _}
-            <div class="h-dot"></div>
-          {/each}
-        </div>
+      {#if $halvingDays > 0}
         <span class="stat-n halving-n">{$halvingDays.toLocaleString()}</span>
         <span class="stat-l">Days to Halving</span>
-        {#if halvingDotUnit > 1}
-          <span class="halving-dot-label">1 dot = {halvingDotUnit} days</span>
-        {/if}
         {#if $halvingProgress > 0}
-          <div class="halving-bar"><div class="halving-fill" style="width:{$halvingProgress}%;"></div></div>
+          <div class="halving-bar" aria-label="{$halvingProgress.toFixed(1)}% through epoch" role="progressbar" aria-valuenow={Math.round($halvingProgress)} aria-valuemin={0} aria-valuemax={100}>
+            <div class="halving-fill" style="width:{$halvingProgress}%;"></div>
+          </div>
           <span class="halving-epoch">{$halvingProgress.toFixed(1)}% through epoch</span>
         {/if}
       {:else}
@@ -778,22 +766,25 @@
   .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
   .stat-l { font-size:.58rem; color:var(--t2); text-transform:uppercase; letter-spacing:.1em; }
 
-  /* Halving progress bar */
-  .halving-bar { width:100%; height:3px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; margin-top:10px; }
-  .halving-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#f7931a,#00c8ff); box-shadow:0 0 6px rgba(247,147,26,.5); transition:width .8s cubic-bezier(.4,0,.2,1); }
+  /* Halving progress bar — electricity surge effect */
+  @keyframes electricSurge {
+    0%   { background-position: -200% center; }
+    100% { background-position: 200% center; }
+  }
+  .halving-bar { width:100%; height:8px; background:rgba(255,255,255,.07); border-radius:4px; overflow:hidden; margin-top:10px; }
+  .halving-fill {
+    height:100%; border-radius:4px;
+    background: linear-gradient(90deg, #c05c00 0%, #f7931a 35%, #ffd580 55%, #f7931a 75%, #c05c00 100%);
+    background-size: 300% 100%;
+    box-shadow: 0 0 12px rgba(247,147,26,.7), 0 0 4px rgba(255,180,50,.5);
+    animation: electricSurge 2s linear infinite;
+    transition: width .8s cubic-bezier(.4,0,.2,1);
+  }
   .halving-epoch { font-size:.52rem; color:var(--t3); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
   :global(html.light) .halving-bar { background:rgba(0,0,0,.07); }
 
-  /* Halving countdown dot grid */
-  .halving-dots { display:flex; flex-wrap:wrap; gap:3px; justify-content:center; margin-bottom:8px; }
-  .h-dot { width:5px; height:5px; border-radius:50%; background:var(--orange); box-shadow:0 0 4px rgba(247,147,26,.4); flex-shrink:0; }
-  :global(html.light) .h-dot { background:#c77a10; box-shadow:0 0 3px rgba(200,120,16,.3); }
-
   /* Halving number — Orbitron for crisp readability */
   .halving-n { font-family:'Orbitron','Courier New',Courier,monospace; font-size:1.2rem; font-weight:700; letter-spacing:.02em; }
-
-  /* Halving dot scale label */
-  .halving-dot-label { font-size:.52rem; color:var(--t3); text-transform:uppercase; letter-spacing:.08em; margin-top:3px; }
 
   /* Static stat tile — no hover lift or underline animation */
   .stat-tile--static { cursor:default; }
