@@ -134,7 +134,7 @@
 <!-- ══════════════════════════════════════════════════════════
   ① SIGNAL SECTION
 ═══════════════════════════════════════════════════════════ -->
-<section id="signal" class="section">
+<section id="signal" class="section" aria-label="Signal Analysis">
   <div class="section-header">
     <h2 class="sect-title">Signal Analysis</h2>
   </div>
@@ -145,11 +145,11 @@
     <!-- BTC Price — combined USD/alt currency toggle with sparkline -->
     <div class="stat-tile stat-tile--chart stat-tile--wide">
       {#if priceCurrency==='usd' && $priceHistory.length >= 2}
-        <div class="tile-spark"><Sparkline prices={$priceHistory} height={52} opacity={0.28} /></div>
+        <div class="tile-spark" aria-hidden="true"><Sparkline prices={$priceHistory} height={52} opacity={0.28} /></div>
       {:else if priceCurrency==='alt' && altHistory.length >= 2}
-        <div class="tile-spark"><Sparkline prices={altHistory} height={52} opacity={0.28} /></div>
+        <div class="tile-spark" aria-hidden="true"><Sparkline prices={altHistory} height={52} opacity={0.28} /></div>
       {/if}
-      <span class="stat-n" style="color:{$priceColor};transition:color .5s;">
+      <span class="stat-n" style="color:{$priceColor};transition:color .5s;" aria-live="polite" aria-atomic="true">
         {#if priceCurrency==='usd'}
           {$btcPrice>0?'$'+n($btcPrice):'—'}
         {:else}
@@ -158,9 +158,9 @@
       </span>
       <div class="stat-l-row">
         <span class="stat-l">BTC Price</span>
-        <div class="curr-toggle">
-          <button class="curr-btn" class:curr-btn--active={priceCurrency==='usd'} on:click={()=>priceCurrency='usd'}>USD</button>
-          <button class="curr-btn" class:curr-btn--active={priceCurrency==='alt'} on:click={()=>priceCurrency='alt'}>{displayCur}</button>
+        <div class="curr-toggle" role="group" aria-label="Price currency">
+          <button class="curr-btn" class:curr-btn--active={priceCurrency==='usd'} on:click={()=>priceCurrency='usd'} aria-pressed={priceCurrency==='usd'}>USD</button>
+          <button class="curr-btn" class:curr-btn--active={priceCurrency==='alt'} on:click={()=>priceCurrency='alt'} aria-pressed={priceCurrency==='alt'}>{displayCur}</button>
         </div>
       </div>
     </div>
@@ -222,7 +222,7 @@
         <span class="ts">{$dcaUpdated||'—'}</span>
       </div>
 
-      <div class="dca-hero">
+      <div class="dca-hero" aria-live="polite" aria-atomic="true">
         {#if !$dca}
           <span class="dca-n muted">—</span>
         {:else if $dca.finalAud===0}
@@ -288,7 +288,7 @@
     <div class="gc">
       <div class="gc-head">
         <p class="gc-title">Bitcoin Network</p>
-        <a href="https://mempool.space" target="_blank" rel="noopener noreferrer" class="btn-ghost">mempool ↗</a>
+        <a href="https://mempool.space" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open mempool.space in new tab">mempool ↗</a>
       </div>
 
       <!-- Latest Block -->
@@ -420,7 +420,7 @@
 <!-- ══════════════════════════════════════════════════════════
   ② PORTFOLIO SECTION
 ═══════════════════════════════════════════════════════════ -->
-<section id="portfolio" class="section">
+<section id="portfolio" class="section" aria-label="Portfolio">
   <div class="section-header">
     <h2 class="sect-title">Portfolio</h2>
     <span class="dim">Assets &amp; Performance</span>
@@ -473,9 +473,9 @@
         <div class="gc-head" style="margin-bottom:20px;">
           <div style="display:flex;align-items:center;gap:10px;"><p class="gc-title">Portfolio</p><span class="dim">via Ghostfolio</span></div>
           <div style="display:flex;align-items:center;gap:10px;">
-            {#if $gfLoading}<span class="live-dot blink"></span>{/if}
-            {#if $gfUpdated&&!$gfLoading}<span class="dim">{$gfUpdated}</span>{/if}
-            <button on:click={refreshGF} class="btn-ghost">↻ Refresh</button>
+            {#if $gfLoading}<span class="live-dot blink" aria-label="Loading portfolio data" role="status"></span>{/if}
+            {#if $gfUpdated&&!$gfLoading}<span class="dim" aria-label="Last updated at {$gfUpdated}">{$gfUpdated}</span>{/if}
+            <button on:click={refreshGF} class="btn-ghost" aria-label="Refresh portfolio data">↻ Refresh</button>
           </div>
         </div>
         {#if $gfError}
@@ -572,14 +572,15 @@
           {#if $gfHoldings.length>0}
           <div class="holdings-wrap">
             <div class="holdings-head">
-              <button class="btn-secondary" on:click={()=>showHoldings=!showHoldings} style="font-size:.62rem;padding:7px 16px;">
+              <button class="btn-secondary" on:click={()=>showHoldings=!showHoldings} style="font-size:.62rem;padding:7px 16px;"
+                aria-expanded={showHoldings}>
                 {showHoldings?'▲':'▼'} Holdings ({$gfHoldings.length})
               </button>
               {#if showHoldings}
-              <div class="sort-btns">
-                <button class="sort-btn" class:sort-btn--active={holdingsSort==='value'} on:click={()=>holdingsSort='value'}>Value</button>
-                <button class="sort-btn" class:sort-btn--active={holdingsSort==='perf'} on:click={()=>holdingsSort='perf'}>Return</button>
-                <button class="sort-btn" class:sort-btn--active={holdingsSort==='alloc'} on:click={()=>holdingsSort='alloc'}>Alloc</button>
+              <div class="sort-btns" role="group" aria-label="Sort holdings by">
+                <button class="sort-btn" class:sort-btn--active={holdingsSort==='value'} on:click={()=>holdingsSort='value'} aria-pressed={holdingsSort==='value'}>Value</button>
+                <button class="sort-btn" class:sort-btn--active={holdingsSort==='perf'} on:click={()=>holdingsSort='perf'} aria-pressed={holdingsSort==='perf'}>Return</button>
+                <button class="sort-btn" class:sort-btn--active={holdingsSort==='alloc'} on:click={()=>holdingsSort='alloc'} aria-pressed={holdingsSort==='alloc'}>Alloc</button>
               </div>
               {/if}
             </div>
@@ -617,7 +618,7 @@
 <!-- ══════════════════════════════════════════════════════════
   ③ INTEL SECTION
 ═══════════════════════════════════════════════════════════ -->
-<section id="intel" class="section">
+<section id="intel" class="section" aria-label="Intel: Markets and News">
   <div class="section-header">
     <h2 class="sect-title">Intel</h2>
     <span class="dim">Markets &amp; News</span>
@@ -629,7 +630,7 @@
     <div class="gc">
       <div class="gc-head" style="margin-bottom:18px;">
         <div><p class="gc-title">Prediction Markets</p><p class="dim" style="margin-top:2px;">What the crowd expects</p></div>
-        <a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="btn-ghost">Polymarket ↗</a>
+        <a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open Polymarket in new tab">Polymarket ↗</a>
       </div>
       {#if $markets.length===0}
         <p class="dim">Fetching live markets…</p>
