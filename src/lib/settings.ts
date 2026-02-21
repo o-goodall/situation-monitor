@@ -128,19 +128,17 @@ export function calcDCA(
 
   const signals = [
     {
-      name: 'Extreme Fear',
-      description: 'Fear & Greed index ≤ 20 — market in extreme fear',
-      active: fg !== null && fg <= 20,
-      value: fg !== null ? `F&G: ${fg}` : '--',
-      boost: 20,
-      source: 'alternative.me',
-    },
-    {
-      name: 'Fear Zone',
-      description: 'Fear & Greed index 21–40 — market in fear',
-      active: fg !== null && fg > 20 && fg <= 40,
-      value: fg !== null ? `F&G: ${fg}` : '--',
-      boost: 10,
+      name: 'Fear Signal',
+      description: fg === null
+        ? 'Fear & Greed index — market sentiment below 40'
+        : fg <= 20
+          ? 'Fear & Greed index ≤ 20 — market in extreme fear'
+          : fg <= 40
+            ? 'Fear & Greed index 21–40 — market in fear'
+            : 'Fear & Greed index > 40 — market not in fear',
+      active: fg !== null && fg <= 40,
+      value: fg !== null ? `F&G: ${fg}${fg <= 20 ? ' (Extreme)' : ''}` : '--',
+      boost: fg !== null && fg <= 20 ? 20 : 10,
       source: 'alternative.me',
     },
     {

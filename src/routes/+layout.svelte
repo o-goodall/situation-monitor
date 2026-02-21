@@ -210,7 +210,7 @@
     intervals = [
       setInterval(fetchBtc, 60000), setInterval(fetchDCA, 300000),
       setInterval(fetchPoly, 300000), setInterval(fetchNews, 300000),
-      setInterval(fetchMarkets, 300000),
+      setInterval(fetchMarkets, 60000),
       setInterval(() => { if ($settings.ghostfolio?.token) fetchGhostfolio(); }, 300000),
     ];
     window.addEventListener('scroll', handleScroll, {passive:true});
