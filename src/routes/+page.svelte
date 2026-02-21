@@ -77,7 +77,6 @@
 <section id="signal" class="section">
   <div class="section-header">
     <h2 class="sect-title">Signal Analysis</h2>
-    <span class="live-badge"><span class="blink" style="color:var(--orange);">●</span> Live</span>
   </div>
 
   <!-- KEY METRICS STRIP — combined BTC price + sats + halving -->
@@ -285,15 +284,6 @@
         <div class="met"><p class="eyebrow">Fee · High</p><p class="met-n dn">{$btcFees.high||'—'}<span class="met-u">sat/vB</span></p></div>
       </div>
 
-      {#if $halvingBlocksLeft>0}
-      <div class="halving">
-        <div class="halving-row">
-          <div><p class="eyebrow">Next Halving</p><p class="halving-days">{$halvingDays.toLocaleString()}<span class="halving-u"> days</span></p></div>
-          <div style="text-align:right;"><p class="eyebrow">{$halvingProgress.toFixed(1)}% complete</p><p class="dim" style="margin-top:2px;">{$halvingBlocksLeft.toLocaleString()} blocks</p></div>
-        </div>
-        <div class="pbar"><div class="pfill" style="width:{$halvingProgress}%;background:linear-gradient(90deg,rgba(247,147,26,.5),var(--orange));"></div></div>
-      </div>
-      {/if}
     </div>
 
     <!-- MY STACK -->
@@ -514,8 +504,6 @@
   /* ── LAYOUT ──────────────────────────────────────────────── */
   .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; }
   .section-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 28px; }
-  .live-badge { font-size:.65rem; color:var(--t2); display:flex; align-items:center; gap:5px; }
-  .live-dot { display:inline-block; width:7px; height:7px; border-radius:50%; background:var(--orange); box-shadow:0 0 10px var(--orange); }
 
   .section-divider {
     max-width:1440px; margin:48px auto 0;
@@ -686,7 +674,7 @@
   .latest-block { margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,.05); }
   .lb-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
   .lb-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
-  .lb-item { display:flex; flex-direction:column; gap:3px; }
+  .lb-item { display:flex; flex-direction:column; gap:3px; align-items:center; text-align:center; }
   .lb-label { font-size:.56rem; text-transform:uppercase; letter-spacing:.1em; color:var(--t2); font-weight:500; }
   .lb-val { font-size:.82rem; font-weight:600; color:var(--t1); line-height:1.2; }
   .lb-miner { color:var(--orange); }
@@ -703,10 +691,6 @@
   .met   { display:flex; flex-direction:column; gap:7px; text-align:center; align-items:center; }
   .met-n { font-size:1.4rem; font-weight:700; letter-spacing:-.03em; line-height:1; color:var(--t1); }
   .met-u { font-size:.48em; color:var(--t2); font-weight:400; margin-left:2px; }
-  .halving { border-top:1px solid rgba(255,255,255,.06); margin-top:18px; padding-top:16px; }
-  .halving-row { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; gap:12px; }
-  .halving-days { font-size:1.5rem; font-weight:700; letter-spacing:-.03em; color:var(--orange); line-height:1; }
-  .halving-u { font-size:.55em; color:rgba(247,147,26,.7); font-weight:400; }
   .btc-pill  { display:flex; align-items:baseline; padding:12px 14px; background:rgba(247,147,26,.05); border:1px solid rgba(247,147,26,.12); border-radius:4px; margin-bottom:16px; flex-wrap:wrap; gap:4px; }
   .goal-head { display:flex; justify-content:space-between; margin-bottom:7px; }
   @media (max-width:500px) {
@@ -719,7 +703,7 @@
   @media (max-width:1000px) { .port-grid{grid-template-columns:1fr;} }
 
   .asset-panels { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px; }
-  .ap { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:5px; padding:16px 14px; position:relative; overflow:hidden; transition:transform .3s,border-color .3s; }
+  .ap { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:5px; padding:16px 14px; position:relative; overflow:hidden; transition:transform .3s,border-color .3s; text-align:center; }
   .ap::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,var(--pc,rgba(247,147,26,.3)),transparent); }
   .ap:hover { transform:translateY(-4px); border-color:rgba(255,255,255,.12); }
   .ap-top { display:flex; align-items:center; gap:9px; margin-bottom:12px; }
@@ -739,7 +723,7 @@
   .gfp     { display:flex; flex-direction:column; gap:6px; }
   .gfp-v   { font-size:1.2rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
   .bench   { display:flex; border:1px solid rgba(255,255,255,.07); border-radius:5px; overflow:hidden; margin-bottom:18px; background:rgba(255,255,255,.02); flex-wrap:wrap; }
-  .bench-c { flex:1; padding:14px; border-right:1px solid rgba(255,255,255,.06); display:flex; flex-direction:column; gap:5px; min-width:80px; }
+  .bench-c { flex:1; padding:14px; border-right:1px solid rgba(255,255,255,.06); display:flex; flex-direction:column; gap:5px; min-width:80px; align-items:center; text-align:center; }
   .bench-c:last-child { border-right:none; }
   .bench-v { font-size:1.15rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
   .bench-vs { font-size:.6rem; }
@@ -789,21 +773,26 @@
 
   .news {
     display:block; padding:0; border-bottom:1px solid rgba(255,255,255,.05); text-decoration:none;
-    overflow:hidden; border-radius:4px; margin-bottom:10px; transition:transform .2s, box-shadow .2s;
+    overflow:hidden; border-radius:6px; margin-bottom:10px; transition:transform .2s, box-shadow .2s;
   }
   .news:last-child { border-bottom:none; margin-bottom:0; }
   .news:hover { transform:translateY(-2px); box-shadow:0 4px 18px rgba(0,0,0,.25); }
   /* News item with image */
   .news-img {
-    position:relative; background-size:cover; background-position:center; border-radius:4px;
+    position:relative; background-size:cover; background-position:center; border-radius:6px;
     min-height:110px; display:flex; flex-direction:column; justify-content:flex-end; overflow:hidden;
   }
+  .news-img::before {
+    content:''; position:absolute; inset:-4px;
+    background:inherit; background-size:cover; background-position:center;
+    filter:blur(3px); z-index:0;
+  }
   .news-img-overlay {
-    position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.75) 70%, rgba(0,0,0,.92) 100%);
-    border-radius:4px;
+    position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.75) 70%, rgba(0,0,0,.92) 100%);
+    border-radius:6px;
   }
   .news-img-content {
-    position:relative; z-index:1; padding:12px 14px 10px;
+    position:relative; z-index:2; padding:12px 14px 10px;
   }
   .news-img-content .news-title { color:#fff; opacity:.95; margin-bottom:4px; }
   .news-img-content .news-meta { opacity:.85; }
@@ -841,7 +830,6 @@
   :global(html.light) .mkt-fill-rest { background:rgba(0,0,0,.04); }
   :global(html.light) .mkt-tag { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); color:rgba(0,0,0,.5); }
   :global(html.light) .mkt-q { color:rgba(0,0,0,.75); }
-  :global(html.light) .halving { border-top-color:rgba(0,0,0,.06); }
   :global(html.light) .btc-pill { background:rgba(247,147,26,.04); border-color:rgba(247,147,26,.15); }
   :global(html.light) .ap { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
   :global(html.light) .ap:hover { border-color:rgba(0,0,0,.12); }
