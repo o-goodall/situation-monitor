@@ -9,7 +9,7 @@
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfAnnualizedPct, gfFirstOrderDate, gfOrdersCount,
     markets, newsItems, btcDisplayPrice, btcWsConnected, btcMa200,
-    btcHashrate, activeSection
+    btcHashrate
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
   import { audUsd } from '$lib/store';
@@ -134,7 +134,6 @@
 <!-- ══════════════════════════════════════════════════════════
   ① SIGNAL SECTION
 ═══════════════════════════════════════════════════════════ -->
-{#if $activeSection === 'signal'}
 <section id="signal" class="section" aria-label="Signal">
   <div class="section-header">
     <h2 class="sect-title">Signal</h2>
@@ -415,12 +414,10 @@
 
   </div>
 </section>
-{/if}
 
 <!-- ══════════════════════════════════════════════════════════
   ② PORTFOLIO SECTION
 ═══════════════════════════════════════════════════════════ -->
-{#if $activeSection === 'portfolio'}
 <section id="portfolio" class="section" aria-label="Portfolio">
   <div class="section-header">
     <h2 class="sect-title">Portfolio</h2>
@@ -612,12 +609,10 @@
 
   </div>
 </section>
-{/if}
 
 <!-- ══════════════════════════════════════════════════════════
   ③ INTEL SECTION
 ═══════════════════════════════════════════════════════════ -->
-{#if $activeSection === 'intel'}
 <section id="intel" class="section" aria-label="Intel">
   <div class="section-header">
     <h2 class="sect-title">Intel</h2>
@@ -689,11 +684,11 @@
 
   </div>
 </section>
-{/if}
 
 <style>
   /* ── LAYOUT ──────────────────────────────────────────────── */
-  .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; }
+  .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; min-height: 100vh; scroll-snap-align: start; scroll-snap-stop: always; position: relative; overflow: hidden; }
+  .section::before { content: ''; position: absolute; inset: -20% 0; z-index: -1; background: radial-gradient(ellipse at 50% 30%, rgba(247,147,26,.04) 0%, transparent 70%); transform: translateY(0); transition: transform 0.6s ease-out; pointer-events: none; }
   .section-header { display: flex; align-items: baseline; gap: 16px; margin-bottom: 28px; }
 
   .section-divider {
@@ -707,7 +702,7 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:600px) {
-    .section { padding:32px 16px 0; }
+    .section { padding:32px 16px 0; min-height: calc(100vh - 60px); }
     .section-header { margin-bottom:20px; }
     .section-divider { margin-top:32px; }
   }
