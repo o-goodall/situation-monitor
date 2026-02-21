@@ -7,7 +7,7 @@
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
-    markets, newsItems, btcDisplayPrice
+    markets, newsItems, btcDisplayPrice, btcWsConnected
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
   import { audUsd } from '$lib/store';
@@ -109,9 +109,13 @@
       <span class="stat-n" style="color:var(--orange);">{$satsPerAud?$satsPerAud.toLocaleString():'—'}</span>
       <span class="stat-l">Sats / {displayCur} 1</span>
     </div>
-    <div class="stat-tile">
+    <div class="stat-tile halving-tile">
       <span class="stat-n">{$halvingDays>0?$halvingDays.toLocaleString():'—'}</span>
       <span class="stat-l">Days to Halving</span>
+      {#if $halvingProgress > 0}
+        <div class="halving-bar"><div class="halving-fill" style="width:{$halvingProgress}%;"></div></div>
+        <span class="halving-epoch">{$halvingProgress.toFixed(1)}% through epoch</span>
+      {/if}
     </div>
     <div class="stat-tile">
       <span class="stat-n" style="color:{zoneColor};">{priceZone}</span>
@@ -326,16 +330,28 @@
 
     <!-- ASSET COMPARISON -->
     <div class="gc">
-      <div class="gc-head"><p class="gc-title">Asset Comparison</p><p class="dim">1-Year Performance</p></div>
+      <div class="gc-head">
+        <p class="gc-title">Asset Comparison</p>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <span class="live-dot" class:blink={$btcWsConnected} title="{$btcWsConnected?'BTC price live via WebSocket':'BTC price polling'}"></span>
+          <p class="dim">1-Year Performance</p>
+        </div>
+      </div>
       <div class="asset-panels">
         {#each [
-          {ticker:'BTC', name:'Bitcoin',  icon:'₿', pct:$btcYtdPct,   color:'#f7931a', sub:$btcPrice?'$'+n($btcPrice):'—'},
-          {ticker:'XAU', name:'Gold',     icon:'◈', pct:$goldYtdPct,  color:'#c9a84c', sub:$goldPriceUsd?'$'+n($goldPriceUsd,0)+'/oz':'—'},
-          {ticker:'SPX', name:'S&P 500',  icon:'↗', pct:$sp500YtdPct, color:'#888',    sub:$sp500Price?n($sp500Price,0):'—'},
-          {ticker:'CPI', name:'Inflation',icon:'↓', pct:$cpiAnnual,   color:'#ef4444', sub:'Annual rate'},
+          {ticker:'BTC', name:'Bitcoin',  icon:'₿', pct:$btcYtdPct,   color:'#f7931a', sub:$btcPrice?'$'+n($btcPrice):'—', live:$btcWsConnected},
+          {ticker:'XAU', name:'Gold',     icon:'◈', pct:$goldYtdPct,  color:'#c9a84c', sub:$goldPriceUsd?'$'+n($goldPriceUsd,0)+'/oz':'—', live:false},
+          {ticker:'SPX', name:'S&P 500',  icon:'↗', pct:$sp500YtdPct, color:'#888',    sub:$sp500Price?'$'+n($sp500Price,0):'—', live:false},
+          {ticker:'CPI', name:'Inflation',icon:'↓', pct:$cpiAnnual,   color:'#ef4444', sub:'Annual rate', live:false},
         ] as a}
           <div class="ap" style="--pc:{a.color};">
-            <div class="ap-top"><span class="ap-icon" style="color:{a.color};">{a.icon}</span><div><p class="ap-ticker" style="color:{a.color};">{a.ticker}</p><p class="ap-name">{a.name}</p></div></div>
+            <div class="ap-top">
+              <span class="ap-icon" style="color:{a.color};">{a.icon}</span>
+              <div>
+                <p class="ap-ticker" style="color:{a.color};">{a.ticker}{#if a.live}<span class="ap-live">●</span>{/if}</p>
+                <p class="ap-name">{a.name}</p>
+              </div>
+            </div>
             <p class="ap-pct" style="color:{a.pct===null?a.color:a.pct>=0?'var(--up)':'var(--dn)'};">
               {a.pct!==null?(a.pct>=0?'+':'')+a.pct.toFixed(1)+'%':'—'}
             </p>
@@ -453,13 +469,13 @@
                 </div>
                 <p class="mkt-q">{m.question}</p>
                 <div class="mkt-meta-row">
-                  <span class="mkt-outcome" style="color:{pc(m.probability)};font-weight:600;">{m.topOutcome}</span>
-                  {#if m.endDate}<span class="dim">· closes {fmtDate(m.endDate)}</span>{/if}
+                  {#if m.endDate}<span class="dim">Closes {fmtDate(m.endDate)}</span>{/if}
                   <span class="dim">· {fmtVol(m.volume)} vol</span>
                 </div>
               </div>
               <div class="mkt-right">
                 <span class="mkt-prob" style="color:{pc(m.probability)};">{m.probability}<span class="mkt-pct">%</span></span>
+                <span class="mkt-outcome-badge" style="background:{pc(m.probability)}22;color:{pc(m.probability)};border-color:{pc(m.probability)}44;">{m.topOutcome}</span>
               </div>
             </div>
             <div class="mkt-bar">
@@ -529,6 +545,7 @@
     border-radius: 6px; backdrop-filter: blur(16px);
     transition: transform .25s, border-color .25s, box-shadow .25s;
     position: relative; overflow: hidden;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
   }
   .stat-tile::before {
     content:''; position:absolute; bottom:0; left:0; width:0; height:2px;
@@ -547,6 +564,12 @@
 
   .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
   .stat-l { font-size:.58rem; color:var(--t2); text-transform:uppercase; letter-spacing:.1em; }
+
+  /* Halving progress bar */
+  .halving-bar { width:100%; height:3px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; margin-top:10px; }
+  .halving-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#f7931a,#00c8ff); box-shadow:0 0 6px rgba(247,147,26,.5); transition:width .8s cubic-bezier(.4,0,.2,1); }
+  .halving-epoch { font-size:.52rem; color:var(--t3); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
+  :global(html.light) .halving-bar { background:rgba(0,0,0,.07); }
 
   /* Currency toggle */
   .curr-toggle { display:flex; gap:2px; background:rgba(255,255,255,.06); border-radius:3px; padding:1px; }
@@ -711,7 +734,8 @@
   .ap-ticker { font-size:.8rem; font-weight:700; }
   .ap-name { font-size:.58rem; color:var(--t2); margin-top:1px; }
   .ap-pct { font-size:1.9rem; font-weight:800; letter-spacing:-.04em; line-height:1; margin-bottom:3px; }
-  .ap-sub { font-size:.6rem; color:var(--t2); margin-bottom:0; }
+  .ap-sub { font-size:.62rem; color:var(--t2); margin-bottom:0; font-variant-numeric:tabular-nums; }
+  .ap-live { font-size:.5em; color:var(--up); margin-left:4px; animation:blink 2s ease-in-out infinite; vertical-align:middle; }
   @keyframes apPulse { 0%,100%{opacity:.4} 50%{opacity:.8} }
   @media (max-width:400px) { .asset-panels { grid-template-columns:1fr; } .ap-pct { font-size:1.5rem; } }
 
@@ -722,6 +746,8 @@
   .gf-perf { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; flex:1; border-left:1px solid rgba(255,255,255,.06); padding-left:20px; min-width:0; }
   .gfp     { display:flex; flex-direction:column; gap:6px; }
   .gfp-v   { font-size:1.2rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
+  /* Live indicator dot (used in portfolio and loading states) */
+  .live-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--up); flex-shrink:0; }
   .bench   { display:flex; border:1px solid rgba(255,255,255,.07); border-radius:5px; overflow:hidden; margin-bottom:18px; background:rgba(255,255,255,.02); flex-wrap:wrap; }
   .bench-c { flex:1; padding:14px; border-right:1px solid rgba(255,255,255,.06); display:flex; flex-direction:column; gap:5px; min-width:80px; align-items:center; text-align:center; }
   .bench-c:last-child { border-right:none; }
@@ -750,58 +776,59 @@
 
   /* Prediction market — PolyMarket-inspired */
   .mkt {
-    display:block; padding:12px 0; border-bottom:1px solid rgba(255,255,255,.05);
-    text-decoration:none; transition:background .2s; border-radius:4px; margin:0 -8px; padding:12px 8px;
+    display:block; border-bottom:1px solid rgba(255,255,255,.05);
+    text-decoration:none; transition:background .2s; border-radius:6px; margin:0 -8px; padding:12px 8px;
   }
   .mkt:last-child { border-bottom:none; }
-  .mkt:hover { background:rgba(255,255,255,.03); }
+  .mkt:hover { background:rgba(255,255,255,.04); }
   .mkt-row { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:8px; }
   .mkt-left { flex:1; min-width:0; }
-  .mkt-right { flex-shrink:0; text-align:right; }
+  .mkt-right { flex-shrink:0; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
   .mkt-tags { margin-bottom:5px; }
-  .mkt-q { font-size:.82rem; color:var(--t1); line-height:1.5; display:block; margin-bottom:4px; font-weight:500; }
+  .mkt-q { font-size:.84rem; color:var(--t1); line-height:1.5; display:block; margin-bottom:5px; font-weight:500; }
   .mkt-prob { font-size:1.9rem; font-weight:800; line-height:1; letter-spacing:-.04em; }
   .mkt-pct { font-size:.65rem; font-weight:600; opacity:.55; }
-  .mkt-bar { height:6px; background:rgba(255,255,255,.04); border-radius:3px; overflow:hidden; display:flex; }
-  .mkt-fill { height:100%; border-radius:3px 0 0 3px; transition:width .7s; opacity:.7; }
+  .mkt-outcome-badge { font-size:.58rem; font-weight:700; padding:3px 8px; border-radius:4px; border:1px solid; white-space:nowrap; text-transform:uppercase; letter-spacing:.04em; }
+  .mkt-bar { height:5px; background:rgba(255,255,255,.04); border-radius:3px; overflow:hidden; display:flex; }
+  .mkt-fill { height:100%; border-radius:3px 0 0 3px; transition:width .7s; opacity:.75; }
   .mkt-fill-rest { height:100%; border-radius:0 3px 3px 0; background:rgba(255,255,255,.04); transition:width .7s; }
-  .mkt-meta-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .mkt-meta-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:3px; }
   .mkt-tag { font-size:.56rem; font-weight:600; text-transform:uppercase; letter-spacing:.07em; padding:3px 8px; border-radius:3px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); color:var(--t2); }
   .mkt-pin { background:rgba(247,147,26,.09); border-color:rgba(247,147,26,.24); color:var(--orange); }
-  .mkt-outcome { font-size:.65rem; font-weight:600; }
-  @media (max-width:500px) { .mkt-prob { font-size:1.5rem; } .mkt-q { font-size:.75rem; } }
+  @media (max-width:500px) { .mkt-prob { font-size:1.5rem; } .mkt-q { font-size:.78rem; } }
 
   .news {
     display:block; padding:0; border-bottom:1px solid rgba(255,255,255,.05); text-decoration:none;
-    overflow:hidden; border-radius:6px; margin-bottom:10px; transition:transform .2s, box-shadow .2s;
+    overflow:hidden; border-radius:8px; margin-bottom:10px; transition:transform .2s, box-shadow .2s;
   }
   .news:last-child { border-bottom:none; margin-bottom:0; }
   .news:hover { transform:translateY(-2px); box-shadow:0 4px 18px rgba(0,0,0,.25); }
   /* News item with image */
   .news-img {
-    position:relative; background-size:cover; background-position:center; border-radius:6px;
-    min-height:110px; display:flex; flex-direction:column; justify-content:flex-end; overflow:hidden;
+    position:relative; background-size:cover; background-position:center; border-radius:8px;
+    min-height:120px; display:flex; flex-direction:column; justify-content:flex-end; overflow:hidden;
   }
   .news-img::before {
-    content:''; position:absolute; inset:-4px;
+    content:''; position:absolute; inset:-6px;
     background:inherit; background-size:cover; background-position:center;
-    filter:blur(3px); z-index:0;
+    filter:blur(8px) saturate(90%); z-index:0; border-radius:8px;
+    transform:scale(1.05);
   }
   .news-img-overlay {
-    position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.75) 70%, rgba(0,0,0,.92) 100%);
-    border-radius:6px;
+    position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.72) 60%, rgba(0,0,0,.92) 100%);
+    border-radius:8px;
   }
   .news-img-content {
-    position:relative; z-index:2; padding:12px 14px 10px;
+    position:relative; z-index:2; padding:14px 14px 12px;
   }
-  .news-img-content .news-title { color:#fff; opacity:.95; margin-bottom:4px; }
-  .news-img-content .news-meta { opacity:.85; }
+  .news-img-content .news-title { color:#fff; opacity:.95; margin-bottom:5px; font-size:.82rem; line-height:1.45; }
+  .news-img-content .news-meta { opacity:.8; }
   /* News item without image */
-  .news-title { display:block; font-size:.78rem; color:var(--t1); opacity:.65; line-height:1.52; margin-bottom:5px; transition:opacity .2s; padding:10px 0 0; }
+  .news-title { display:block; font-size:.82rem; color:var(--t1); opacity:.75; line-height:1.5; margin-bottom:5px; transition:opacity .2s; padding:10px 0 0; font-weight:500; }
   .news:hover .news-title { opacity:1; }
   .news-meta { display:flex; gap:10px; align-items:center; padding-bottom:10px; }
-  .news-src { font-size:.6rem; color:var(--orange); font-weight:600; }
-  .news-desc { font-size:.66rem; color:var(--t2); line-height:1.5; margin-bottom:6px; opacity:.7; }
+  .news-src { font-size:.62rem; color:var(--orange); font-weight:700; text-transform:uppercase; letter-spacing:.05em; }
+  .news-desc { font-size:.68rem; color:var(--t2); line-height:1.55; margin-bottom:6px; opacity:.75; }
   :global(html.light) .news-desc { color:rgba(0,0,0,.45); }
   :global(html.light) .news { border-bottom-color:rgba(0,0,0,.06); }
   :global(html.light) .news-title { color:rgba(0,0,0,.65); }

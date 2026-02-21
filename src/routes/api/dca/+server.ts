@@ -31,6 +31,19 @@ export async function GET() {
       const raw = parseFloat(d?.lastFundingRate ?? '');
       if (!isNaN(raw)) fundingRate = parseFloat((raw * 100).toFixed(4));
     }
+    // Fallback: try Bybit public funding rate if Binance failed
+    if (fundingRate === null) {
+      try {
+        const bybitRes = await fetch('https://api.bybit.com/v5/market/funding/history?category=linear&symbol=BTCUSDT&limit=1');
+        if (bybitRes.ok) {
+          const d = await bybitRes.json();
+          const raw = parseFloat(d?.result?.list?.[0]?.fundingRate ?? '');
+          if (!isNaN(raw)) fundingRate = parseFloat((raw * 100).toFixed(4));
+        }
+      } catch (err) {
+        console.error('Bybit funding rate fallback failed:', err);
+      }
+    }
 
     let audUsd: number | null = null;
     let fxRates: Record<string, number> = {};

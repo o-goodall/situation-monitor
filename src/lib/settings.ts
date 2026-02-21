@@ -149,14 +149,15 @@ export function calcDCA(
       boost: 10,
       source: 'mempool.space',
     },
-    {
+    // Funding rate signal: only include when data is available
+    ...(funding !== null ? [{
       name: 'Funding Negative',
       description: 'Futures funding rate negative — shorts paying longs',
-      active: funding !== null && funding < -0.05,
-      value: funding !== null ? `${funding.toFixed(3)}%` : '--',
+      active: funding < -0.05,
+      value: `${funding.toFixed(3)}%`,
       boost: 10,
-      source: 'binance',
-    },
+      source: 'binance/bybit',
+    }] : []),
     {
       name: 'Halving Window',
       description: 'Within 365 days of the next Bitcoin halving event',
