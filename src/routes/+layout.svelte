@@ -3,7 +3,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
   import {
-    settings, showSettings, saved, time, lightMode,
+    settings, showSettings, saved, time, lightMode, activeSection,
     btcPrice, prevPrice, priceFlash, priceHistory, btcBlock, btcFees,
     halvingBlocksLeft, halvingDays, halvingDate, halvingProgress,
     latestBlock, mempoolStats,
@@ -21,6 +21,17 @@
   let intervals: ReturnType<typeof setInterval>[] = [];
   let scrolled = false;
   let mobileMenuOpen = false;
+
+  function navigateTo(section: 'signal' | 'portfolio' | 'intel') {
+    $activeSection = section;
+    mobileMenuOpen = false;
+    if (typeof window !== 'undefined') window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function toggleLightMode() {
+    $lightMode = !$lightMode;
+    try { localStorage.setItem('sm_lightMode', String($lightMode)); } catch {}
+  }
 
   // ── BINANCE WEBSOCKET — real-time BTC price ───────────────────
   // Uses the free, public, no-auth Binance aggTrade stream.
@@ -148,8 +159,8 @@
 
   async function fetchMarkets() {
     try {
-      const since = $settings.dca.startDate;
-      const url = since ? `/api/markets?since=${encodeURIComponent(since)}` : '/api/markets';
+      const ytdStart = `${new Date().getFullYear()}-01-01`;
+      const url = `/api/markets?since=${encodeURIComponent(ytdStart)}`;
       const d = await fetch(url).then(r=>r.json());
       $goldPriceUsd = d.gold?.priceUsd ?? null; $goldYtdPct = d.gold?.ytdPct ?? null;
       $sp500Price = d.sp500?.price ?? null; $sp500YtdPct = d.sp500?.ytdPct ?? null;
@@ -219,6 +230,8 @@
 
   onMount(() => {
     $settings = loadSettings();
+    // Restore light mode preference
+    try { const lm = localStorage.getItem('sm_lightMode'); if (lm !== null) $lightMode = lm === 'true'; } catch {}
     tick();
     clockInterval = setInterval(tick, 1000);
     fetchBtc(); fetchDCA(); fetchPoly(); fetchNews(); fetchMarkets(); fetchMa200();
@@ -454,9 +467,9 @@
 
   <!-- Desktop nav — left-aligned after brand (Electric Xtra style) -->
   <nav class="page-nav desktop-only" aria-label="Main navigation">
-    <a href="#signal"    class="nav-link">₿ Signal</a>
-    <a href="#portfolio" class="nav-link">↗ Portfolio</a>
-    <a href="#intel"     class="nav-link">◈ Intel</a>
+    <button class="nav-link" class:nav-link--active={$activeSection==='signal'}    on:click={()=>navigateTo('signal')}>₿ Signal</button>
+    <button class="nav-link" class:nav-link--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')}>↗ Portfolio</button>
+    <button class="nav-link" class:nav-link--active={$activeSection==='intel'}     on:click={()=>navigateTo('intel')}>◈ Intel</button>
   </nav>
 
   <!-- Spacer pushes right controls to far right on desktop -->
@@ -474,7 +487,7 @@
     </span>
 
     <!-- Dark/Light mode toggle -->
-    <button class="mode-toggle btn-ghost" on:click={() => $lightMode = !$lightMode}
+    <button class="mode-toggle btn-ghost" on:click={toggleLightMode}
       aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
       {#if $lightMode}
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
@@ -593,29 +606,11 @@
 
 <!-- ══ MOBILE FULL-SCREEN MENU ════════════════════════════════ -->
 {#if mobileMenuOpen}
-<div class="mobile-menu" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Navigation menu">
+<div class="mobile-menu" id="mobile-menu" role="dialog" aria-modal="true" aria-label="Settings menu">
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="mobile-menu-backdrop" on:click={closeMobileMenu}></div>
   <div class="mobile-menu-panel">
-    <!-- Nav links -->
-    <nav class="mobile-nav" aria-label="Mobile navigation">
-      <a href="#signal"    class="mobile-nav-link" on:click={closeMobileMenu}>₿ Signal</a>
-      <a href="#portfolio" class="mobile-nav-link" on:click={closeMobileMenu}>↗ Portfolio</a>
-      <a href="#intel"     class="mobile-nav-link" on:click={closeMobileMenu}>◈ Intel</a>
-    </nav>
-
-    <div class="mobile-divider" aria-hidden="true"></div>
-
-    <!-- Theme toggle -->
-    <button class="mobile-theme-toggle" on:click={() => { $lightMode = !$lightMode; }}
-      aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
-      <span class="mobile-menu-icon" aria-hidden="true">{$lightMode ? '☀' : '☾'}</span>
-      {$lightMode ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
-    </button>
-
-    <div class="mobile-divider" aria-hidden="true"></div>
-
     <!-- Settings inline in mobile menu -->
     <p class="mobile-section-title">Settings</p>
     <div class="mobile-settings">
@@ -670,6 +665,26 @@
 </div>
 {/if}
 
+<!-- ══ MOBILE BOTTOM TABS ═════════════════════════════════════ -->
+<nav class="mobile-tabs mobile-only" aria-label="Section navigation">
+  <button class="tab-btn" class:tab-btn--active={$activeSection==='signal'} on:click={()=>navigateTo('signal')} aria-label="Signal section">
+    <span class="tab-icon" aria-hidden="true">₿</span>
+    <span class="tab-label">Signal</span>
+  </button>
+  <button class="tab-btn" class:tab-btn--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')} aria-label="Portfolio section">
+    <span class="tab-icon" aria-hidden="true">↗</span>
+    <span class="tab-label">Portfolio</span>
+  </button>
+  <button class="tab-btn" class:tab-btn--active={$activeSection==='intel'} on:click={()=>navigateTo('intel')} aria-label="Intel section">
+    <span class="tab-icon" aria-hidden="true">◈</span>
+    <span class="tab-label">Intel</span>
+  </button>
+  <button class="tab-btn" on:click={toggleLightMode} aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
+    <span class="tab-icon" aria-hidden="true">{$lightMode ? '☀' : '☾'}</span>
+    <span class="tab-label">Theme</span>
+  </button>
+</nav>
+
 <!-- ══ PAGE ═══════════════════════════════════════════════════ -->
 <main class="page-wrap" id="main-content" role="main"><slot /></main>
 
@@ -714,6 +729,7 @@
     text-transform:uppercase; letter-spacing:.08em;
     position:relative; border:1px solid transparent;
     transition:all .25s ease; white-space:nowrap;
+    background:none; cursor:pointer;
   }
   .nav-link::after {
     content:''; position:absolute; bottom:0; left:0; width:0; height:2px;
@@ -722,6 +738,8 @@
   }
   .nav-link:hover { color:rgba(255,255,255,.9); border-color:rgba(247,147,26,.3); box-shadow:inset 0 0 12px rgba(247,147,26,.08); }
   .nav-link:hover::after { width:100%; }
+  .nav-link--active { color:var(--orange)!important; border-color:rgba(247,147,26,.3)!important; }
+  .nav-link--active::after { width:100%!important; }
 
   /* Spacer pushes clock/settings to far right */
   .hdr-spacer { flex:1; }
@@ -775,11 +793,11 @@
   .burger {
     display:none; flex-direction:column; justify-content:center; gap:5px;
     width:36px; height:36px; padding:6px;
-    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08);
+    background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.18);
     border-radius:3px; cursor:pointer; transition:border-color .2s;
   }
   .burger span {
-    display:block; height:2px; width:100%; background:rgba(255,255,255,.7);
+    display:block; height:2px; width:100%; background:rgba(255,255,255,1);
     border-radius:1px; transition:all .25s ease; transform-origin:center;
   }
   .burger:hover { border-color:rgba(247,147,26,.4); }
@@ -814,7 +832,7 @@
     position:absolute; top:54px; left:0; right:0;
     background:rgba(10,10,10,.97); backdrop-filter:blur(28px);
     border-bottom:1px solid rgba(247,147,26,.2);
-    padding:0 0 24px; max-height:calc(100vh - 54px); overflow-y:auto;
+    padding:0 0 24px; max-height:calc(100vh - 54px - 60px); overflow-y:auto;
   }
   .mobile-nav { display:flex; flex-direction:column; padding:8px 0; }
   .mobile-nav-link {
@@ -842,6 +860,29 @@
     text-transform:uppercase; letter-spacing:.15em;
   }
   .mobile-settings { padding:0 20px; display:flex; flex-direction:column; gap:18px; }
+
+  /* ── MOBILE BOTTOM TABS ──────────────────────────────────── */
+  .mobile-tabs {
+    position:fixed; bottom:0; left:0; right:0; z-index:300;
+    background:rgba(10,10,10,.97); backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border-top:1px solid rgba(247,147,26,.18);
+    padding:0; height:60px;
+  }
+  .tab-btn {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:3px; background:none; border:none; cursor:pointer;
+    color:rgba(255,255,255,.4); transition:color .2s;
+    padding:8px 4px; height:100%;
+  }
+  .tab-btn:hover { color:rgba(255,255,255,.75); }
+  .tab-btn--active { color:var(--orange); }
+  .tab-icon { font-size:1.1rem; line-height:1; }
+  .tab-label { font-size:.55rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; font-family:'Orbitron',monospace; }
+  :global(html.light) .mobile-tabs { background:rgba(255,255,255,.97); border-top-color:rgba(0,0,0,.1); }
+  :global(html.light) .tab-btn { color:rgba(0,0,0,.4); }
+  :global(html.light) .tab-btn:hover { color:rgba(0,0,0,.75); }
+  :global(html.light) .tab-btn--active { color:var(--orange); }
 
   /* ── SETTINGS DRAWER (desktop) ───────────────────────────── */
   .drawer {
@@ -877,7 +918,7 @@
 
   /* ── PAGE WRAP ───────────────────────────────────────────── */
   .page-wrap { padding-top:64px; min-height:100vh; }
-  @media (max-width:768px) { .page-wrap { padding-top:54px; } }
+  @media (max-width:768px) { .page-wrap { padding-top:54px; padding-bottom:64px; } }
 
   /* ── FEED TOGGLES ──────────────────────────────────────────── */
   .feed-list { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
@@ -907,6 +948,7 @@
   :global(html.light) .hdr-clock { color:rgba(0,0,0,.45); }
   :global(html.light) .nav-link { color:rgba(0,0,0,.55); }
   :global(html.light) .nav-link:hover { color:#111; border-color:rgba(247,147,26,.4); }
+  :global(html.light) .nav-link--active { color:#c77a10!important; border-color:rgba(247,147,26,.4)!important; }
   :global(html.light) .drawer { background:rgba(255,255,255,.98); border-bottom-color:rgba(0,0,0,.08); }
   :global(html.light) .dinp { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.15); color:#111; }
   :global(html.light) .dinp:focus { border-color:var(--orange); }
@@ -925,7 +967,8 @@
   :global(html.light) .mobile-section-title { color:rgba(247,147,26,.9); }
   :global(html.light) .btn-ghost { color:rgba(0,0,0,.5); border-color:rgba(0,0,0,.12); background:rgba(0,0,0,.02); }
   :global(html.light) .btn-ghost:hover { color:var(--orange); border-color:rgba(247,147,26,.3); background:rgba(247,147,26,.06); }
-  :global(html.light) .burger span { background:rgba(0,0,0,.6); }
+  :global(html.light) .burger span { background:rgba(0,0,0,.8); }
+  :global(html.light) .burger { background:rgba(0,0,0,.06); border-color:rgba(0,0,0,.15); }
 
   /* Light mode — page-level glass cards and content */
   :global(html.light) .gc { background:rgba(255,255,255,.72); border-color:rgba(0,0,0,.08); box-shadow:0 2px 16px rgba(0,0,0,.06),inset 0 1px 0 rgba(255,255,255,.9); backdrop-filter:blur(16px); }
