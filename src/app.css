@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -38,6 +38,28 @@ body {
   letter-spacing: -0.006em;
   min-height: 100vh;
   overflow-x: hidden;
+}
+
+/* ══ HEADING HIERARCHY ═════════════════════════════════════ */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Orbitron', monospace;
+  line-height: 1.2;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--t1);
+}
+h1 { font-size: clamp(1.6rem, 4vw, 2.4rem);  font-weight: 900; }
+h2 { font-size: clamp(1.2rem, 3vw, 1.6rem);  font-weight: 800; }
+h3 { font-size: clamp(1rem, 2.5vw, 1.2rem);  font-weight: 700; }
+h4 { font-size: clamp(0.85rem, 2vw, 1rem);   font-weight: 700; }
+h5 { font-size: 0.85rem; font-weight: 600; }
+h6 { font-size: 0.75rem; font-weight: 600; }
+
+/* ══ LINKS ═════════════════════════════════════════════════ */
+a {
+  font-family: inherit;
+  color: inherit;
+  text-decoration: none;
 }
 
 /* Lighter ambient — amber + electric blue like Electric Xtra */
@@ -115,8 +137,9 @@ body::after {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 6px 14px; background: rgba(255,255,255,0.04);
   border: 1px solid rgba(255,255,255,0.08); border-radius: 3px;
-  color: rgba(255,255,255,0.4); font-family: 'Inter', sans-serif;
-  font-size: 0.68rem; font-weight: 500;
+  color: rgba(255,255,255,0.4); font-family: 'Orbitron', monospace;
+  font-size: 0.72rem; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.08em;
   cursor: pointer; transition: all 0.2s;
   text-decoration: none;
 }
