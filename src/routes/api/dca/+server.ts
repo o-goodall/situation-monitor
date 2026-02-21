@@ -20,9 +20,11 @@ export async function GET() {
     }
 
     let difficultyChange: number | null = null;
+    let hashrate: number | null = null;
     if (diffRes.status === 'fulfilled' && diffRes.value.ok) {
       const d = await diffRes.value.json();
       difficultyChange = d?.difficultyChange ?? d?.estimatedRetarget ?? null;
+      hashrate = typeof d?.hashrate === 'number' ? d.hashrate : null;
     }
 
     let fundingRate: number | null = null;
@@ -56,7 +58,7 @@ export async function GET() {
       }
     }
 
-    return json({ fearGreed, fearGreedLabel, difficultyChange, fundingRate, audUsd, fxRates, errors: [
+    return json({ fearGreed, fearGreedLabel, difficultyChange, hashrate, fundingRate, audUsd, fxRates, errors: [
       ...(fngRes.status !== 'fulfilled' || !fngRes.value.ok ? ['Fear & Greed'] : []),
       ...(diffRes.status !== 'fulfilled' || !diffRes.value.ok ? ['Difficulty'] : []),
       ...(fundingRes.status !== 'fulfilled' || !fundingRes.value.ok ? ['Funding Rate'] : []),

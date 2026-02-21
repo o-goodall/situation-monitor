@@ -36,6 +36,7 @@ export const difficultyChange = writable<number|null>(null);
 export const fundingRate    = writable<number|null>(null);
 export const audUsd         = writable<number|null>(null);
 export const dcaUpdated     = writable('');
+export const btcHashrate    = writable<number|null>(null); // network hash rate in EH/s
 
 // ── MARKETS / NEWS ────────────────────────────────────────────
 export type Market = { id:string; question:string; topOutcome:string; probability:number; volume:number; volume24hr:number; endDate:string; tag:string; url:string; pinned:boolean };
