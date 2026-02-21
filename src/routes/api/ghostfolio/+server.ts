@@ -112,6 +112,8 @@ export async function GET({ url }) {
     firstOrderDate = d?.firstOrderDate ?? null;
     ordersCount   = d?.ordersCount ?? null;
     annualizedPerformancePct = d?.annualizedPerformancePercent ?? null;
+    // Ghostfolio may return this as a decimal fraction (e.g. 0.12 = 12%) or already
+    // as a percentage (e.g. 12). Normalise: if |value| < 1 and non-zero, it's a fraction.
     if (annualizedPerformancePct !== null && Math.abs(annualizedPerformancePct) < 1 && annualizedPerformancePct !== 0) {
       annualizedPerformancePct = annualizedPerformancePct * 100;
     }
