@@ -8,7 +8,7 @@
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfAnnualizedPct, gfFirstOrderDate, gfOrdersCount,
-    markets, newsItems, btcDisplayPrice, btcWsConnected, btcMa200,
+    markets, newsItems, btcDisplayPrice, btcWsConnected,
     btcHashrate
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
@@ -181,18 +181,6 @@
       {#if $halvingProgress > 0}
         <div class="halving-bar"><div class="halving-fill" style="width:{$halvingProgress}%;"></div></div>
         <span class="halving-epoch">{$halvingProgress.toFixed(1)}% through epoch</span>
-      {/if}
-    </div>
-    <div class="stat-tile">
-      {#if $btcMa200}
-        <span class="stat-n">${n($btcMa200,0)}</span>
-        <span class="stat-l">200-Week MA</span>
-        <span class="stat-l" style="margin-top:4px;color:{$btcPrice>0?($btcPrice>=$btcMa200?'var(--up)':'var(--dn)'):'var(--t3)'};">
-          {$btcPrice>0?($btcPrice>=$btcMa200?'▲ Above':'▼ Below'):''}
-        </span>
-      {:else}
-        <span class="stat-n muted">—</span>
-        <span class="stat-l">200-Week MA</span>
       {/if}
     </div>
   </div>
@@ -708,7 +696,7 @@
   }
 
   /* ── STAT STRIP ─────────────────────────────────────────── */
-  .stat-strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .stat-strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
   .stat-tile {
     padding: 16px 14px; text-align: center;
     background: var(--glass-bg); border: 1px solid var(--glass-bd);
@@ -748,7 +736,6 @@
   .curr-btn--active { background:var(--orange); color:#fff; }
   :global(html.light) .curr-toggle { background:rgba(0,0,0,.06); }
 
-  @media (max-width:1100px) { .stat-strip { grid-template-columns: repeat(3, 1fr); } .stat-tile--wide { grid-column: span 3; } }
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(2,1fr); } .stat-tile--wide { grid-column:span 2; } }
   @media (max-width:500px) {
     .stat-strip{ grid-template-columns:repeat(2,1fr); gap:8px; }
@@ -828,6 +815,11 @@
   .dca-hero    { text-align:center; padding:18px 0 16px; position:relative; z-index:2; }
   .dca-n       { display:block; font-size:clamp(3rem,7vw,5rem); font-weight:800; line-height:1; letter-spacing:-.045em; transition:color .5s,text-shadow .5s; }
   .dca-sub     { font-size:.62rem; color:var(--t2); text-transform:uppercase; letter-spacing:.12em; margin-top:8px; }
+  @media (max-width:700px) {
+    .dca-hero { padding:10px 0 10px; }
+    .dca-n    { font-size:clamp(2.2rem,10vw,3.5rem); }
+    .dca-sub  { margin-top:5px; }
+  }
 
   /* Zone bar — redesigned with visual zones */
   .vband       { margin-bottom:18px; position:relative; z-index:2; }
@@ -986,6 +978,9 @@
   /* ── INTEL GRID ─────────────────────────────────────────── */
   .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:900px) { .intel-grid{grid-template-columns:1fr;} }
+  @media (max-width:700px) {
+    .intel-grid .gc { max-height:360px; overflow-y:auto; }
+  }
 
   /* Prediction market — PolyMarket-inspired */
   .mkt {
