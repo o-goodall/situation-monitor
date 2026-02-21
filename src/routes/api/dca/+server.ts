@@ -19,7 +19,7 @@ export async function GET() {
     let difficultyChange: number | null = null;
     if (diffRes.status === 'fulfilled' && diffRes.value.ok) {
       const d = await diffRes.value.json();
-      difficultyChange = d?.difficultyChange ?? d?.estimatedDiffChange ?? null;
+      difficultyChange = d?.difficultyChange ?? d?.estimatedRetarget ?? null;
     }
 
     let fundingRate: number | null = null;
@@ -35,8 +35,13 @@ export async function GET() {
       audUsd = d?.rates?.AUD ?? null;
     }
 
-    return json({ fearGreed, fearGreedLabel, difficultyChange, fundingRate, audUsd });
+    return json({ fearGreed, fearGreedLabel, difficultyChange, fundingRate, audUsd, errors: [
+      ...(fngRes.status !== 'fulfilled' || !fngRes.value.ok ? ['Fear & Greed'] : []),
+      ...(diffRes.status !== 'fulfilled' || !diffRes.value.ok ? ['Difficulty'] : []),
+      ...(fundingRes.status !== 'fulfilled' || !fundingRes.value.ok ? ['Funding Rate'] : []),
+      ...(fxRes.status !== 'fulfilled' || !fxRes.value.ok ? ['AUD/USD FX'] : []),
+    ] });
   } catch {
-    return json({ fearGreed: null, fearGreedLabel: '', difficultyChange: null, fundingRate: null, audUsd: null });
+    return json({ fearGreed: null, fearGreedLabel: '', difficultyChange: null, fundingRate: null, audUsd: null, errors: ['Internal error'] });
   }
 }

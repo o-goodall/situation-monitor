@@ -63,12 +63,12 @@ export const gfUpdated        = writable('');
 
 // ── DERIVED ───────────────────────────────────────────────────
 export const liveSignals = derived(
-  [fearGreed, difficultyChange, fundingRate, audUsd],
-  ([$fg, $dc, $fr, $au]) => ({ fearGreed: $fg, difficultyChange: $dc, fundingRate: $fr, audUsd: $au }) as LiveSignals
+  [fearGreed, difficultyChange, fundingRate, audUsd, halvingDays],
+  ([$fg, $dc, $fr, $au, $hd]) => ({ fearGreed: $fg, difficultyChange: $dc, fundingRate: $fr, audUsd: $au, halvingDaysLeft: $hd > 0 ? $hd : null }) as LiveSignals
 );
 
-export const dca = derived([btcPrice, liveSignals], ([$p, $s]) =>
-  $p > 0 ? calcDCA($p, $s) : null
+export const dca = derived([btcPrice, liveSignals, settings], ([$p, $s, $settings]) =>
+  $p > 0 ? calcDCA($p, $s, $settings.dca.lowPrice, $settings.dca.highPrice, $settings.dca.maxDcaAud) : null
 );
 
 export const accentColor = derived(dca, ($d) =>
