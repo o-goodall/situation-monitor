@@ -158,13 +158,13 @@ async function getCPI(): Promise<number | null> {
   }
 }
 
-// S&P 500: primary via Yahoo chart, fallback to v7/finance/quote for current price
+// S&P 500: primary via Yahoo chart, fallback to v7/finance/quote, then stooq.com CSV
 async function getSP500(sinceDate?: Date): Promise<{ current: number; pctChange: number } | null> {
   // Primary: Yahoo Finance ^GSPC chart
   const chart = await getYahooChart('^GSPC', sinceDate);
   if (chart && chart.current > 100) return chart;
 
-  // Fallback: v7 finance/quote for current price + chart for YTD % change
+  // Fallback 1: v7 finance/quote for current price + chart for YTD % change
   const quoteUrls = [
     'https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EGSPC',
     'https://query2.finance.yahoo.com/v7/finance/quote?symbols=%5EGSPC',
@@ -187,7 +187,31 @@ async function getSP500(sinceDate?: Date): Promise<{ current: number; pctChange:
       return { current, pctChange };
     } catch { continue; }
   }
-  return null;
+
+  // Fallback 2: stooq.com CSV — free, no auth required
+  try {
+    const oneYearAgo = new Date();
+    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+    const ref = sinceDate ?? oneYearAgo;
+    const fmt = (d: Date) =>
+      `${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
+    const url = `https://stooq.com/q/d/l/?s=%5Espx&d1=${fmt(ref)}&d2=${fmt(new Date())}&i=d`;
+    const res = await fetch(url, { headers: HEADERS });
+    if (!res.ok) return null;
+    const text = await res.text();
+    // CSV: Date,Open,High,Low,Close,Volume — newest row last
+    const lines = text.trim().split('\n').filter(l => /^\d{4}/.test(l));
+    if (lines.length < 2) return null;
+    const parseClose = (line: string) => {
+      const cols = line.split(',');
+      return cols.length >= 5 ? parseFloat(cols[4]) : NaN;
+    };
+    const current = parseClose(lines[lines.length - 1]);
+    const startPrice = parseClose(lines[0]);
+    if (isNaN(current) || isNaN(startPrice) || current < 100) return null;
+    const pctChange = ((current - startPrice) / startPrice) * 100;
+    return { current, pctChange };
+  } catch { return null; }
 }
 
 export async function GET({ url }: RequestEvent) {
