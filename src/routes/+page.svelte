@@ -9,7 +9,7 @@
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfAnnualizedPct, gfFirstOrderDate, gfOrdersCount,
     markets, newsItems, btcDisplayPrice, btcWsConnected, btcMa200,
-    fearGreed, fearGreedLabel, btcHashrate
+    btcHashrate
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
   import { audUsd } from '$lib/store';
@@ -27,25 +27,6 @@
   let showHoldings = false;
   let holdingsSort: 'value'|'perf'|'alloc' = 'value';
   let priceCurrency: 'usd'|'alt' = 'usd';
-
-  // Sat/fiat converter state
-  let satConvFiat = '';
-  let satConvSat  = '';
-  function onSatConvFiatInput() {
-    const v = parseFloat(satConvFiat);
-    if (!isNaN(v) && v >= 0 && $btcDisplayPrice && $btcDisplayPrice > 0) {
-      satConvSat = Math.round(v / $btcDisplayPrice * 1e8).toLocaleString('en-US');
-    } else { satConvSat = ''; }
-  }
-  function onSatConvSatInput() {
-    const v = parseFloat(satConvSat.replace(/,/g, ''));
-    if (!isNaN(v) && v >= 0 && $btcDisplayPrice && $btcDisplayPrice > 0) {
-      satConvFiat = (v / 1e8 * $btcDisplayPrice).toFixed(2);
-    } else { satConvFiat = ''; }
-  }
-
-  // F&G color helper
-  const fgColor = (v: number) => v <= 25 ? 'var(--up)' : v <= 45 ? '#4ade80' : v <= 55 ? 'var(--orange)' : v <= 75 ? '#f97316' : 'var(--dn)';
 
   const n   = (v:number, dec=0) => v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
   const pct = (v:number|null)   => v===null?'—':(v>=0?'+':'')+v.toFixed(2)+'%';
@@ -184,21 +165,14 @@
       </div>
     </div>
 
-    <!-- Sat / Fiat converter tile (replaces passive sats display) -->
-    <div class="stat-tile sat-conv-tile">
-      <span class="stat-l" style="margin-bottom:6px;">Sat Converter</span>
-      <div class="sat-row">
-        <input class="sat-inp" type="number" inputmode="decimal" bind:value={satConvFiat} on:input={onSatConvFiatInput} placeholder="0.00" min="0" />
-        <span class="sat-unit">{displayCur}</span>
-      </div>
-      <span class="sat-arrow">⇅</span>
-      <div class="sat-row">
-        <input class="sat-inp" type="text" inputmode="numeric" bind:value={satConvSat} on:input={onSatConvSatInput} placeholder="0" />
-        <span class="sat-unit">sats</span>
-      </div>
-      {#if !satConvFiat && !satConvSat && $satsPerAud}
-        <span class="sat-rate">1 {displayCur} = {$satsPerAud.toLocaleString()} sats</span>
+    <!-- Sats per display currency -->
+    <div class="stat-tile">
+      {#if $satsPerAud !== null}
+        <span class="stat-n">{$satsPerAud.toLocaleString()}</span>
+      {:else}
+        <span class="stat-n muted">—</span>
       {/if}
+      <span class="stat-l">Sats per {displayCur}</span>
     </div>
 
     <div class="stat-tile halving-tile">
@@ -219,18 +193,6 @@
       {:else}
         <span class="stat-n muted">—</span>
         <span class="stat-l">200-Week MA</span>
-      {/if}
-    </div>
-    <!-- Fear & Greed Index tile -->
-    <div class="stat-tile">
-      {#if $fearGreed !== null}
-        <span class="stat-n" style="color:{fgColor($fearGreed)};">{$fearGreed}</span>
-        <span class="stat-l" style="margin-bottom:5px;">Fear &amp; Greed</span>
-        <div class="fg-bar"><div class="fg-fill" style="width:{$fearGreed}%;background:{fgColor($fearGreed)};"></div></div>
-        <span class="stat-l" style="color:{fgColor($fearGreed)};margin-top:5px;">{$fearGreedLabel||'—'}</span>
-      {:else}
-        <span class="stat-n muted">—</span>
-        <span class="stat-l">Fear &amp; Greed</span>
       {/if}
     </div>
   </div>
@@ -750,7 +712,7 @@
   }
 
   /* ── STAT STRIP ─────────────────────────────────────────── */
-  .stat-strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .stat-strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 12px; margin-bottom: 20px; }
   .stat-tile {
     padding: 16px 14px; text-align: center;
     background: var(--glass-bg); border: 1px solid var(--glass-bd);
@@ -776,28 +738,6 @@
 
   .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
   .stat-l { font-size:.58rem; color:var(--t2); text-transform:uppercase; letter-spacing:.1em; }
-
-  /* ── SAT / FIAT CONVERTER ────────────────────────────────── */
-  .sat-conv-tile { padding:12px 10px; }
-  .sat-row { display:flex; align-items:center; gap:5px; width:100%; }
-  .sat-inp {
-    flex:1; min-width:0; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.1);
-    border-radius:3px; color:var(--t1); font-size:.68rem; font-weight:600; padding:4px 6px;
-    text-align:right; font-variant-numeric:tabular-nums; outline:none; transition:border-color .2s;
-    -moz-appearance:textfield; appearance:textfield;
-  }
-  .sat-inp::-webkit-outer-spin-button, .sat-inp::-webkit-inner-spin-button { -webkit-appearance:none; }
-  .sat-inp:focus { border-color:rgba(247,147,26,.5); }
-  .sat-unit { font-size:.5rem; color:var(--orange); font-weight:700; text-transform:uppercase; letter-spacing:.1em; white-space:nowrap; }
-  .sat-arrow { font-size:.72rem; color:var(--t3); margin:3px 0; }
-  .sat-rate { font-size:.5rem; color:var(--t3); margin-top:5px; text-align:center; }
-  :global(html.light) .sat-inp { background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.1); }
-  :global(html.light) .sat-inp:focus { border-color:rgba(247,147,26,.4); }
-
-  /* ── FEAR & GREED GAUGE BAR ───────────────────────────────── */
-  .fg-bar { width:100%; height:3px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; }
-  .fg-fill { height:100%; border-radius:2px; transition:width .8s cubic-bezier(.4,0,.2,1); }
-  :global(html.light) .fg-bar { background:rgba(0,0,0,.07); }
 
   /* Halving progress bar */
   .halving-bar { width:100%; height:3px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; margin-top:10px; }
