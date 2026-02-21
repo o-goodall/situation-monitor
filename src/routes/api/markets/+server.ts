@@ -158,6 +158,38 @@ async function getCPI(): Promise<number | null> {
   }
 }
 
+// S&P 500: primary via Yahoo chart, fallback to v7/finance/quote for current price
+async function getSP500(sinceDate?: Date): Promise<{ current: number; pctChange: number } | null> {
+  // Primary: Yahoo Finance ^GSPC chart
+  const chart = await getYahooChart('^GSPC', sinceDate);
+  if (chart && chart.current > 100) return chart;
+
+  // Fallback: v7 finance/quote for current price + chart for YTD % change
+  const quoteUrls = [
+    'https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EGSPC',
+    'https://query2.finance.yahoo.com/v7/finance/quote?symbols=%5EGSPC',
+  ];
+  for (const quoteUrl of quoteUrls) {
+    try {
+      const res = await fetch(quoteUrl, { headers: HEADERS });
+      if (!res.ok) continue;
+      const d = await res.json();
+      const q = d?.quoteResponse?.result?.[0];
+      const current = q?.regularMarketPrice;
+      if (!current || current < 100) continue;
+      // ytdReturn is the preferred metric (true YTD return as a fraction, e.g. 0.05 = 5%).
+      // regularMarketChangePercent is only today's % change — a rough estimate used as a
+      // last resort when ytdReturn is unavailable (e.g. outside US market hours or
+      // if the quote response omits ytdReturn entirely).
+      const pctChange = typeof q?.ytdReturn === 'number'
+        ? q.ytdReturn * 100
+        : (q?.regularMarketChangePercent ?? 0);
+      return { current, pctChange };
+    } catch { continue; }
+  }
+  return null;
+}
+
 export async function GET({ url }: RequestEvent) {
   // Optional ?since=YYYY-MM-DD for DCA-period performance comparison
   const sinceParam = url.searchParams.get('since');
@@ -169,7 +201,7 @@ export async function GET({ url }: RequestEvent) {
 
   const [goldRes, spRes, cpiRes, btcRes] = await Promise.allSettled([
     getGold(sinceDate),
-    getYahooChart('^GSPC', sinceDate),
+    getSP500(sinceDate),
     getCPI(),
     getBtcPerformance(sinceDate),
   ]);

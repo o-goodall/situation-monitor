@@ -105,6 +105,12 @@
   // Mobile feed carousels — duplicate items so the CSS loop is seamless
   $: newsLoop = $newsItems.length ? [...$newsItems, ...$newsItems] : [];
 
+  // Halving countdown dot visualization (max 50 dots, scaled by days remaining)
+  const MAX_HALVING_DOTS = 50;
+  $: halvingDotUnit = $halvingDays > 0 ? Math.max(1, Math.ceil($halvingDays / MAX_HALVING_DOTS)) : 1;
+  $: halvingDotCount = $halvingDays > 0 ? Math.ceil($halvingDays / halvingDotUnit) : 0;
+  $: halvingDots = halvingDotCount > 0 ? Array.from({length: halvingDotCount}) : [];
+
   // Class accent colours for allocation breakdown
   const CLASS_COLOR: Record<string,string> = {
     EQUITY:'#6366f1', CRYPTOCURRENCY:'#f7931a', FIXED_INCOME:'#38bdf8',
@@ -170,7 +176,7 @@
     </div>
 
     <!-- Sats per display currency -->
-    <div class="stat-tile">
+    <div class="stat-tile stat-tile--static">
       {#if $satsPerAud !== null}
         <span class="stat-n">{$satsPerAud.toLocaleString()}</span>
       {:else}
@@ -179,12 +185,25 @@
       <span class="stat-l">Sats per {displayCur}</span>
     </div>
 
-    <div class="stat-tile halving-tile">
-      <span class="stat-n">{$halvingDays>0?$halvingDays.toLocaleString():'—'}</span>
-      <span class="stat-l">Days to Halving</span>
-      {#if $halvingProgress > 0}
-        <div class="halving-bar"><div class="halving-fill" style="width:{$halvingProgress}%;"></div></div>
-        <span class="halving-epoch">{$halvingProgress.toFixed(1)}% through epoch</span>
+    <div class="stat-tile halving-tile stat-tile--static">
+      {#if halvingDots.length > 0}
+        <div class="halving-dots" aria-hidden="true">
+          {#each halvingDots as _}
+            <div class="h-dot"></div>
+          {/each}
+        </div>
+        <span class="stat-n halving-n">{$halvingDays.toLocaleString()}</span>
+        <span class="stat-l">Days to Halving</span>
+        {#if halvingDotUnit > 1}
+          <span class="halving-dot-label">1 dot = {halvingDotUnit} days</span>
+        {/if}
+        {#if $halvingProgress > 0}
+          <div class="halving-bar"><div class="halving-fill" style="width:{$halvingProgress}%;"></div></div>
+          <span class="halving-epoch">{$halvingProgress.toFixed(1)}% through epoch</span>
+        {/if}
+      {:else}
+        <span class="stat-n muted">—</span>
+        <span class="stat-l">Days to Halving</span>
       {/if}
     </div>
   </div>
@@ -679,33 +698,31 @@
 
   {:else}
   <!-- ── CLASSIC: News RSS feeds ── -->
-  <div class="intel-grid">
-    <div class="gc">
-      <div class="gc-head" style="margin-bottom:12px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.length} articles</span></div>
-      {#if $newsItems.length===0}
-        <p class="dim">Fetching RSS feeds…</p>
-      {:else}
-        <div class="feed-carousel">
-          {#each newsLoop as item}
-            <a href={item.link} target="_blank" rel="noopener noreferrer" class="news news-slide">
-              {#if item.image}
-                <div class="news-img" style="background-image:url('{item.image}');">
-                  <div class="news-img-overlay"></div>
-                  <div class="news-img-content">
-                    <p class="news-title">{item.title}</p>
-                    <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
-                  </div>
+  <div class="gc" style="padding:20px 18px;">
+    <div class="gc-head" style="margin-bottom:12px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.length} articles</span></div>
+    {#if $newsItems.length===0}
+      <p class="dim">Fetching RSS feeds…</p>
+    {:else}
+      <div class="feed-carousel">
+        {#each newsLoop as item}
+          <a href={item.link} target="_blank" rel="noopener noreferrer" class="news news-slide">
+            {#if item.image}
+              <div class="news-img" style="background-image:url('{item.image}');">
+                <div class="news-img-overlay"></div>
+                <div class="news-img-content">
+                  <p class="news-title">{item.title}</p>
+                  <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
                 </div>
-              {:else}
-                <p class="news-title">{item.title}</p>
-                {#if item.description}<p class="news-desc">{item.description}</p>{/if}
-                <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
-              {/if}
-            </a>
-          {/each}
-        </div>
-      {/if}
-    </div>
+              </div>
+            {:else}
+              <p class="news-title">{item.title}</p>
+              {#if item.description}<p class="news-desc">{item.description}</p>{/if}
+              <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
+            {/if}
+          </a>
+        {/each}
+      </div>
+    {/if}
   </div>
   {/if}
 
@@ -766,6 +783,22 @@
   .halving-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#f7931a,#00c8ff); box-shadow:0 0 6px rgba(247,147,26,.5); transition:width .8s cubic-bezier(.4,0,.2,1); }
   .halving-epoch { font-size:.52rem; color:var(--t3); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
   :global(html.light) .halving-bar { background:rgba(0,0,0,.07); }
+
+  /* Halving countdown dot grid */
+  .halving-dots { display:flex; flex-wrap:wrap; gap:3px; justify-content:center; margin-bottom:8px; }
+  .h-dot { width:5px; height:5px; border-radius:50%; background:var(--orange); box-shadow:0 0 4px rgba(247,147,26,.4); flex-shrink:0; }
+  :global(html.light) .h-dot { background:#c77a10; box-shadow:0 0 3px rgba(200,120,16,.3); }
+
+  /* Halving number — Orbitron for crisp readability */
+  .halving-n { font-family:'Orbitron','Courier New',Courier,monospace; font-size:1.2rem; font-weight:700; letter-spacing:.02em; }
+
+  /* Halving dot scale label */
+  .halving-dot-label { font-size:.52rem; color:var(--t3); text-transform:uppercase; letter-spacing:.08em; margin-top:3px; }
+
+  /* Static stat tile — no hover lift or underline animation */
+  .stat-tile--static { cursor:default; }
+  .stat-tile--static:hover { transform:none !important; border-color:var(--glass-bd) !important; box-shadow:none !important; }
+  .stat-tile--static:hover::before { width:0 !important; }
 
   /* Currency toggle */
   .curr-toggle { display:flex; gap:2px; background:rgba(255,255,255,.06); border-radius:3px; padding:1px; }
