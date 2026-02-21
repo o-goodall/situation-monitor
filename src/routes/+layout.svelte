@@ -13,7 +13,7 @@
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfAnnualizedPct, gfFirstOrderDate, gfOrdersCount,
-    persistSettings, fxRates, btcWsConnected, btcMa200
+    persistSettings, fxRates, btcWsConnected, btcMa200, btcHashrate
   } from '$lib/store';
 
   let newKeyword = '', newSource = '', newSourceName = '';
@@ -125,6 +125,7 @@
       const d = await fetch('/api/dca').then(r=>r.json());
       $fearGreed = d.fearGreed; $fearGreedLabel = d.fearGreedLabel;
       $difficultyChange = d.difficultyChange; $fundingRate = d.fundingRate; $audUsd = d.audUsd;
+      if (typeof d.hashrate === 'number') $btcHashrate = parseFloat((d.hashrate / 1e18).toFixed(2));
       if (d.fxRates && typeof d.fxRates === 'object') $fxRates = d.fxRates;
       $dcaUpdated = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
     } catch {}
