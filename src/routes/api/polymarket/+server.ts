@@ -1,19 +1,13 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 
-// Confirmed Polymarket tag IDs for geopolitical/political/economic news
-// Source: https://github.com/Polymarket/safe-wallet-integration + docs
-const FEED_TAGS = [
-  { id: 100265, label: 'Geopolitics' },
-  { id: 2,      label: 'Politics'    },
-  { id: 120,    label: 'Economy'     },
-];
+// Polymarket Geopolitics tag is the primary feed (mirrors polymarket.com/markets/geopolitics)
+const GEOPOLITICS_TAG = { id: 100265, label: 'Geopolitics' };
 
-// Exclude tags that pollute the feed with non-news content
-const EXCLUDE_TAGS = [
-  100639, // Sports
-  21,     // Crypto prices
-  596,    // Culture/Entertainment
+// Secondary tags shown alongside geopolitics
+const SECONDARY_TAGS = [
+  { id: 2,   label: 'Politics' },
+  { id: 120, label: 'Economy'  },
 ];
 
 interface Market {
@@ -21,6 +15,7 @@ interface Market {
   question: string;
   topOutcome: string;
   probability: number;
+  outcomes: { name: string; probability: number }[];
   volume: number;
   volume24hr: number;
   endDate: string;
@@ -29,13 +24,12 @@ interface Market {
   pinned: boolean;
 }
 
-function parseOutcomes(event: any): { topOutcome: string; probability: number } {
-  // Try to get probability from the first nested market's outcomePrices
+function parseOutcomes(event: any): { topOutcome: string; probability: number; outcomes: { name: string; probability: number }[] } {
   const firstMarket = event.markets?.[0];
-  if (!firstMarket) return { topOutcome: 'Yes', probability: 50 };
+  if (!firstMarket) return { topOutcome: 'Yes', probability: 50, outcomes: [] };
 
   let prices: number[] = [];
-  let outcomes: string[] = [];
+  let outcomeNames: string[] = [];
 
   try {
     prices = typeof firstMarket.outcomePrices === 'string'
@@ -44,33 +38,40 @@ function parseOutcomes(event: any): { topOutcome: string; probability: number } 
   } catch {}
 
   try {
-    outcomes = typeof firstMarket.outcomes === 'string'
+    outcomeNames = typeof firstMarket.outcomes === 'string'
       ? JSON.parse(firstMarket.outcomes)
       : (firstMarket.outcomes ?? []);
   } catch {}
 
-  if (!prices.length) return { topOutcome: 'Yes', probability: 50 };
+  if (!prices.length) return { topOutcome: 'Yes', probability: 50, outcomes: [] };
 
   const maxIdx = prices.indexOf(Math.max(...prices));
+  const outcomes = prices.map((p, i) => ({
+    name: outcomeNames[i] ?? (i === 0 ? 'Yes' : 'No'),
+    probability: Math.round(p * 100),
+  }));
+
   return {
-    topOutcome: outcomes[maxIdx] ?? 'Yes',
+    topOutcome: outcomeNames[maxIdx] ?? 'Yes',
     probability: Math.round((prices[maxIdx] ?? 0.5) * 100),
+    outcomes,
   };
 }
 
 function eventToMarket(event: any, tagLabel: string, pinned = false): Market | null {
   if (!event?.id || !event?.title) return null;
-  const { topOutcome, probability } = parseOutcomes(event);
+  const { topOutcome, probability, outcomes } = parseOutcomes(event);
   return {
     id: String(event.id),
     question: event.title,
     topOutcome,
     probability,
+    outcomes,
     volume: parseFloat(event.volume ?? 0),
     volume24hr: parseFloat(event.volume24hr ?? 0),
     endDate: event.endDate ?? '',
     tag: tagLabel,
-    url: event.slug ? `https://polymarket.com/event/${event.slug}` : 'https://polymarket.com',
+    url: event.slug ? `https://polymarket.com/event/${event.slug}` : 'https://polymarket.com/markets',
     pinned,
   };
 }
@@ -80,37 +81,38 @@ export async function GET({ url }: RequestEvent) {
     const kwParam = url.searchParams.get('keywords');
     const keywords: string[] = kwParam ? JSON.parse(decodeURIComponent(kwParam)) : [];
 
-    // Primary feed: fetch top events by 24hr volume from each geo/politics/economy tag
-    // The events endpoint returns an array directly (not wrapped)
-    const tagFetches = FEED_TAGS.map(tag =>
+    // Primary: Geopolitics — fetch more results to fill the card grid
+    const geoFetch = fetch(
+      `https://gamma-api.polymarket.com/events?tag_id=${GEOPOLITICS_TAG.id}&closed=false&limit=12&order=volume24hr&ascending=false`,
+      { headers: { 'User-Agent': 'Mozilla/5.0' } }
+    )
+      .then(r => r.ok ? r.json() : [])
+      .then((events: any[]) => ({ events: Array.isArray(events) ? events : [], label: GEOPOLITICS_TAG.label }))
+      .catch(() => ({ events: [], label: GEOPOLITICS_TAG.label }));
+
+    // Secondary: Politics + Economy (fewer results each, fill gaps)
+    const secFetches = SECONDARY_TAGS.map(tag =>
       fetch(
-        `https://gamma-api.polymarket.com/events?tag_id=${tag.id}&closed=false&limit=6&order=volume24hr&ascending=false`,
+        `https://gamma-api.polymarket.com/events?tag_id=${tag.id}&closed=false&limit=4&order=volume24hr&ascending=false`,
         { headers: { 'User-Agent': 'Mozilla/5.0' } }
       )
         .then(r => r.ok ? r.json() : [])
-        .then((events: any[]) => ({
-          events: Array.isArray(events) ? events : [],
-          label: tag.label,
-        }))
+        .then((events: any[]) => ({ events: Array.isArray(events) ? events : [], label: tag.label }))
         .catch(() => ({ events: [], label: tag.label }))
     );
 
-    // Secondary: keyword pinned watchlist (max 4 keywords, 2 results each)
+    // Keyword pinned watchlist (max 4 keywords, 2 results each)
     const kwFetches = keywords.slice(0, 4).map(kw =>
       fetch(
         `https://gamma-api.polymarket.com/events?active=true&closed=false&limit=2&search=${encodeURIComponent(kw)}&order=volume24hr&ascending=false`,
         { headers: { 'User-Agent': 'Mozilla/5.0' } }
       )
         .then(r => r.ok ? r.json() : [])
-        .then((events: any[]) => ({
-          events: Array.isArray(events) ? events : [],
-          label: kw,
-          pinned: true,
-        }))
+        .then((events: any[]) => ({ events: Array.isArray(events) ? events : [], label: kw, pinned: true }))
         .catch(() => ({ events: [], label: kw, pinned: true }))
     );
 
-    const allResults = await Promise.allSettled([...tagFetches, ...kwFetches]);
+    const allResults = await Promise.allSettled([geoFetch, ...secFetches, ...kwFetches]);
 
     const seen = new Set<string>();
     const pinnedMarkets: Market[] = [];
@@ -123,7 +125,6 @@ export async function GET({ url }: RequestEvent) {
       for (const event of events) {
         const id = String(event.id ?? '');
         if (!id || seen.has(id)) continue;
-        // Skip zero-volume junk
         const vol24 = parseFloat(event.volume24hr ?? 0);
         if (!pinned && vol24 < 100) continue;
         seen.add(id);
@@ -136,12 +137,12 @@ export async function GET({ url }: RequestEvent) {
       }
     }
 
-    // Sort organic by 24hr volume descending
+    // Sort by 24hr volume descending
     organicMarkets.sort((a, b) => b.volume24hr - a.volume24hr);
     pinnedMarkets.sort((a, b) => b.volume24hr - a.volume24hr);
 
-    // Pinned first, then organic, cap at 12 total
-    const markets = [...pinnedMarkets, ...organicMarkets].slice(0, 12);
+    // Pinned first, then organic, cap at 16 total for card grid
+    const markets = [...pinnedMarkets, ...organicMarkets].slice(0, 16);
 
     return json({ markets });
   } catch {

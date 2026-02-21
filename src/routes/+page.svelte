@@ -27,6 +27,7 @@
   let showHoldings = false;
   let holdingsSort: 'value'|'perf'|'alloc' = 'value';
   let priceCurrency: 'usd'|'alt' = 'usd';
+  let intelView: 'cutting-edge'|'classic' = 'cutting-edge';
 
   const n   = (v:number, dec=0) => v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
   const pct = (v:number|null)   => v===null?'—':(v>=0?'+':'')+v.toFixed(2)+'%';
@@ -103,7 +104,6 @@
 
   // Mobile feed carousels — duplicate items so the CSS loop is seamless
   $: newsLoop = $newsItems.length ? [...$newsItems, ...$newsItems] : [];
-  $: marketsLoop = $markets.length ? [...$markets.slice(0,8), ...$markets.slice(0,8)] : [];
 
   // Class accent colours for allocation breakdown
   const CLASS_COLOR: Record<string,string> = {
@@ -423,7 +423,7 @@
         <p class="gc-title">Asset Comparison</p>
         <div style="display:flex;align-items:center;gap:8px;">
             <span class="live-dot" class:blink={$btcWsConnected} title="{$btcWsConnected?'BTC price live via WebSocket':'BTC price polling'}"></span>
-            <p class="dim">YTD (USD)</p>
+            <p class="dim" title="Year-to-date performance in USD via Yahoo Finance">YTD (USD)</p>
           </div>
       </div>
       <div class="asset-panels">
@@ -485,7 +485,7 @@
             {/if}
             <div class="gf-perf">
               <div class="gfp"><p class="eyebrow">Today</p><p class="gfp-v" style="color:{sc($gfTodayChangePct)};">{pct($gfTodayChangePct)}</p></div>
-              <div class="gfp"><p class="eyebrow">YTD</p><p class="gfp-v" style="color:{sc($gfNetGainYtdPct)};">{pct($gfNetGainYtdPct)}</p></div>
+              <div class="gfp" title="Portfolio YTD performance from Ghostfolio"><p class="eyebrow">YTD <span style="font-size:.45rem;opacity:.6;">via GF</span></p><p class="gfp-v" style="color:{sc($gfNetGainYtdPct)};">{pct($gfNetGainYtdPct)}</p></div>
               <div class="gfp" title="Total return since portfolio inception (from Ghostfolio data)">
                 <p class="eyebrow">All-time</p><p class="gfp-v" style="color:{sc($gfNetGainPct)};">{pct($gfNetGainPct)}</p>
               </div>
@@ -608,55 +608,84 @@
 <section id="intel" class="section" aria-label="Intel">
   <div class="section-header">
     <h2 class="sect-title">Intel</h2>
+    <!-- Toggle: Cutting Edge (Polymarket) / Classic (News) -->
+    <div class="intel-toggle" role="group" aria-label="Intel view">
+      <button class="intel-btn" class:intel-btn--active={intelView==='cutting-edge'} on:click={()=>intelView='cutting-edge'} aria-pressed={intelView==='cutting-edge'}>
+        ◈ Cutting Edge
+      </button>
+      <button class="intel-btn" class:intel-btn--active={intelView==='classic'} on:click={()=>intelView='classic'} aria-pressed={intelView==='classic'}>
+        ☰ Classic
+      </button>
+    </div>
   </div>
 
-  <div class="intel-grid">
-
-    <!-- PREDICTION MARKETS — PolyMarket-inspired layout -->
-    <div class="gc">
-      <div class="gc-head" style="margin-bottom:12px;">
-        <div><p class="gc-title">Prediction Markets</p><p class="dim" style="margin-top:2px;">What the crowd expects</p></div>
-        <a href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open Polymarket in new tab">Polymarket ↗</a>
+  {#if intelView === 'cutting-edge'}
+  <!-- ── CUTTING EDGE: Polymarket Geopolitics card grid ── -->
+  <div class="gc" style="padding:20px 18px;">
+    <div class="gc-head" style="margin-bottom:16px;">
+      <div>
+        <p class="gc-title">Geopolitics</p>
+        <p class="dim" style="margin-top:3px;">Live prediction markets · what the crowd expects</p>
       </div>
-      {#if $markets.length===0}
-        <p class="dim">Fetching live markets…</p>
-      {:else}
-        <div class="feed-carousel" style="--scroll-dur:{Math.max(20, marketsLoop.length / 2 * 4)}s">
-          {#each marketsLoop as m}
-            <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="mkt mkt-slide">
-              <div class="mkt-row">
-                <div class="mkt-left">
-                  <div class="mkt-tags">
-                    {#if m.pinned}<span class="mkt-tag mkt-pin">★ Watching</span>{:else}<span class="mkt-tag">{m.tag}</span>{/if}
-                  </div>
-                  <p class="mkt-q">{m.question}</p>
-                  <div class="mkt-meta-row">
-                    {#if m.endDate}<span class="dim">Closes {fmtDate(m.endDate)}</span>{/if}
-                    <span class="dim">· {fmtVol(m.volume)} vol</span>
-                  </div>
-                </div>
-                <div class="mkt-right">
-                  <span class="mkt-prob" style="color:{pc(m.probability)};">{m.probability}<span class="mkt-pct">%</span></span>
-                  <span class="mkt-outcome-badge" style="background:{pc(m.probability)}22;color:{pc(m.probability)};border-color:{pc(m.probability)}44;">{m.topOutcome}</span>
-                </div>
-              </div>
-              <div class="mkt-bar">
-                <div class="mkt-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
-                <div class="mkt-fill-rest" style="width:{100-m.probability}%;"></div>
-              </div>
-            </a>
-          {/each}
-        </div>
-      {/if}
+      <a href="https://polymarket.com/markets/geopolitics" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open Polymarket Geopolitics in new tab">polymarket.com ↗</a>
     </div>
+    {#if $markets.length===0}
+      <p class="dim" style="padding:24px 0;">Fetching live markets…</p>
+    {:else}
+      <div class="pm-grid">
+        {#each $markets as m}
+          <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card" aria-label="{m.question}">
+            <!-- Tag row -->
+            <div class="pm-card-tags">
+              {#if m.pinned}
+                <span class="pm-tag pm-pin">★ Watching</span>
+              {:else}
+                <span class="pm-tag">{m.tag}</span>
+              {/if}
+            </div>
+            <!-- Question -->
+            <p class="pm-card-q">{m.question}</p>
+            <!-- Outcomes bar -->
+            <div class="pm-outcomes">
+              {#if m.outcomes && m.outcomes.length >= 2}
+                {#each m.outcomes.slice(0, 2) as outcome}
+                  <div class="pm-outcome" style="--oc:{pc(outcome.probability)};">
+                    <span class="pm-outcome-name">{outcome.name}</span>
+                    <span class="pm-outcome-pct" style="color:{pc(outcome.probability)};">{outcome.probability}<span style="font-size:.65em;opacity:.6;">%</span></span>
+                  </div>
+                {/each}
+              {:else}
+                <div class="pm-outcome" style="--oc:{pc(m.probability)};">
+                  <span class="pm-outcome-name">{m.topOutcome}</span>
+                  <span class="pm-outcome-pct" style="color:{pc(m.probability)};">{m.probability}<span style="font-size:.65em;opacity:.6;">%</span></span>
+                </div>
+              {/if}
+            </div>
+            <!-- Probability bar (leading outcome) -->
+            <div class="pm-bar">
+              <div class="pm-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
+              <div class="pm-fill-rest" style="width:{100-m.probability}%;"></div>
+            </div>
+            <!-- Meta -->
+            <div class="pm-meta">
+              {#if m.endDate}<span class="dim">Ends {fmtDate(m.endDate)}</span>{/if}
+              <span class="dim">{fmtVol(m.volume)} vol</span>
+            </div>
+          </a>
+        {/each}
+      </div>
+    {/if}
+  </div>
 
-    <!-- NEWS -->
+  {:else}
+  <!-- ── CLASSIC: News RSS feeds ── -->
+  <div class="intel-grid">
     <div class="gc">
       <div class="gc-head" style="margin-bottom:12px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.length} articles</span></div>
       {#if $newsItems.length===0}
         <p class="dim">Fetching RSS feeds…</p>
       {:else}
-        <div class="feed-carousel" style="--scroll-dur:{Math.max(24, newsLoop.length / 2 * 3)}s">
+        <div class="feed-carousel">
           {#each newsLoop as item}
             <a href={item.link} target="_blank" rel="noopener noreferrer" class="news news-slide">
               {#if item.image}
@@ -677,8 +706,9 @@
         </div>
       {/if}
     </div>
-
   </div>
+  {/if}
+
 </section>
 
 <style>
@@ -986,12 +1016,56 @@
     .bench-v { font-size:1rem; }
   }
 
+  /* ── INTEL TOGGLE ───────────────────────────────────────── */
+  .intel-toggle { display:flex; gap:2px; background:rgba(255,255,255,.06); border-radius:4px; padding:1px; margin-left:auto; }
+  .intel-btn { padding:5px 14px; font-size:.58rem; font-weight:700; font-family:'Orbitron',monospace; letter-spacing:.08em;
+    background:none; border:none; color:var(--t2); cursor:pointer; border-radius:3px; transition:all .2s; text-transform:uppercase; white-space:nowrap; }
+  .intel-btn--active { background:var(--orange); color:#fff; }
+  :global(html.light) .intel-toggle { background:rgba(0,0,0,.06); }
+
   /* ── INTEL GRID ─────────────────────────────────────────── */
   .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:900px) { .intel-grid{grid-template-columns:1fr;} }
   @media (max-width:700px) {
     .intel-grid .gc { overflow:hidden; padding:12px 10px; }
   }
+
+  /* ── POLYMARKET CARD GRID ────────────────────────────────── */
+  .pm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
+  .pm-card {
+    display:flex; flex-direction:column; gap:8px;
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:8px;
+    padding:16px 14px; text-decoration:none; transition:transform .2s, border-color .2s, box-shadow .2s;
+    position:relative; overflow:hidden;
+  }
+  .pm-card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.1),transparent); }
+  .pm-card:hover { transform:translateY(-3px); border-color:rgba(247,147,26,.2); box-shadow:0 8px 24px rgba(0,0,0,.3); }
+  .pm-card-tags { display:flex; gap:4px; flex-wrap:wrap; }
+  .pm-tag { font-size:.54rem; font-weight:600; text-transform:uppercase; letter-spacing:.07em; padding:2px 7px; border-radius:3px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); color:var(--t2); }
+  .pm-pin { background:rgba(247,147,26,.09); border-color:rgba(247,147,26,.24); color:var(--orange); }
+  .pm-card-q { font-size:.84rem; color:var(--t1); line-height:1.5; font-weight:500; flex:1; }
+  .pm-outcomes { display:flex; gap:8px; }
+  .pm-outcome { display:flex; align-items:center; justify-content:space-between; gap:6px;
+    flex:1; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:5px; padding:8px 10px; }
+  .pm-outcome-name { font-size:.64rem; font-weight:700; color:var(--t2); text-transform:uppercase; letter-spacing:.05em; }
+  .pm-outcome-pct { font-size:1.1rem; font-weight:800; letter-spacing:-.03em; line-height:1; }
+  .pm-bar { height:4px; background:rgba(255,255,255,.05); border-radius:2px; overflow:hidden; display:flex; }
+  .pm-fill { height:100%; border-radius:2px 0 0 2px; transition:width .6s; opacity:.75; }
+  .pm-fill-rest { height:100%; border-radius:0 2px 2px 0; background:rgba(255,255,255,.04); transition:width .6s; }
+  .pm-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  @media (max-width:600px) {
+    .pm-grid { grid-template-columns:1fr; }
+    .pm-card-q { font-size:.78rem; }
+    .pm-outcome-pct { font-size:.95rem; }
+  }
+  :global(html.light) .pm-card { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
+  :global(html.light) .pm-card:hover { border-color:rgba(247,147,26,.2); }
+  :global(html.light) .pm-tag { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); color:rgba(0,0,0,.5); }
+  :global(html.light) .pm-card-q { color:rgba(0,0,0,.75); }
+  :global(html.light) .pm-outcome { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
+  :global(html.light) .pm-bar { background:rgba(0,0,0,.05); }
+  :global(html.light) .pm-fill-rest { background:rgba(0,0,0,.04); }
 
   /* Intel section: no forced full-height — content determines height */
   #intel.section { min-height: auto; padding-bottom: 64px; }

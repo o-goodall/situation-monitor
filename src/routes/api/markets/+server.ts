@@ -21,10 +21,10 @@ async function getYahooChart(
     if (sinceDate) {
       const period1 = Math.floor(sinceDate.getTime() / 1000);
       const period2 = Math.floor(Date.now() / 1000);
-      // Try daily interval first (more data points, more reliable), then weekly as fallback
+      // Prioritize range=ytd (most reliable for current-year queries), then date-range fallbacks
+      queryStrings.push(`range=ytd&interval=1d&includePrePost=false`);
       queryStrings.push(`period1=${period1}&period2=${period2}&interval=1d&includePrePost=false`);
       queryStrings.push(`period1=${period1}&period2=${period2}&interval=1wk&includePrePost=false`);
-      queryStrings.push(`range=ytd&interval=1d&includePrePost=false`);
     } else {
       queryStrings.push('range=1y&interval=1mo&includePrePost=false');
       queryStrings.push('range=1y&interval=1wk&includePrePost=false');
