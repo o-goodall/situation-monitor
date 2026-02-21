@@ -1,4 +1,5 @@
 import { json } from '@sveltejs/kit';
+import type { RequestEvent } from '@sveltejs/kit';
 
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -7,43 +8,27 @@ const HEADERS = {
   'Cache-Control': 'no-cache',
 };
 
-// freegoldapi.com — completely free, no API key, CORS-enabled
-// Returns array of {date, price} objects sorted oldest→newest
-async function getGold(): Promise<{ current: number; yearAgo: number; ytdPct: number } | null> {
-  try {
-    const res = await fetch('https://freegoldapi.com/data/latest.json', { headers: HEADERS });
-    if (!res.ok) return null;
-    const data: { date: string; price: number }[] = await res.json();
-    if (!Array.isArray(data) || data.length < 2) return null;
-
-    const latest = data[data.length - 1];
-    const oneYearAgo = new Date();
-    oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-
-    // Find the record closest to 1 year ago
-    const yearAgoEntry = data.reduce((closest, entry) => {
-      const d = new Date(entry.date).getTime();
-      const target = oneYearAgo.getTime();
-      const prevD = new Date(closest.date).getTime();
-      return Math.abs(d - target) < Math.abs(prevD - target) ? entry : closest;
-    });
-
-    if (!latest.price || !yearAgoEntry.price) return null;
-    const ytdPct = ((latest.price - yearAgoEntry.price) / yearAgoEntry.price) * 100;
-    return { current: latest.price, yearAgo: yearAgoEntry.price, ytdPct };
-  } catch {
-    return null;
-  }
-}
-
-// Yahoo Finance unofficial chart API — works server-side, no key needed
-async function getYahooChart(ticker: string): Promise<{ current: number; yearAgo: number; ytdPct: number } | null> {
+// Yahoo Finance unofficial chart API — works server-side, no key needed.
+// Returns current price, the price at the start of the range, and % change.
+async function getYahooChart(
+  ticker: string,
+  sinceDate?: Date
+): Promise<{ current: number; startPrice: number; pctChange: number } | null> {
   try {
     const encoded = encodeURIComponent(ticker);
-    // Try query1 first, fall back to query2
+    let queryStr: string;
+
+    if (sinceDate) {
+      const period1 = Math.floor(sinceDate.getTime() / 1000);
+      const period2 = Math.floor(Date.now() / 1000);
+      queryStr = `period1=${period1}&period2=${period2}&interval=1wk&includePrePost=false`;
+    } else {
+      queryStr = 'range=1y&interval=1mo&includePrePost=false';
+    }
+
     const urls = [
-      `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?range=1y&interval=1mo&includePrePost=false`,
-      `https://query2.finance.yahoo.com/v8/finance/chart/${encoded}?range=1y&interval=1mo&includePrePost=false`,
+      `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
+      `https://query2.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
     ];
 
     for (const url of urls) {
@@ -55,12 +40,96 @@ async function getYahooChart(ticker: string): Promise<{ current: number; yearAgo
         const valid = closes.filter((v: any) => v !== null && !isNaN(v));
         if (valid.length < 2) continue;
         const current = valid[valid.length - 1];
-        const yearAgo = valid[0];
-        const ytdPct = ((current - yearAgo) / yearAgo) * 100;
-        return { current, yearAgo, ytdPct };
+        const startPrice = valid[0];
+        const pctChange = ((current - startPrice) / startPrice) * 100;
+        return { current, startPrice, pctChange };
       } catch { continue; }
     }
     return null;
+  } catch {
+    return null;
+  }
+}
+
+// Gold in USD: primary source is Yahoo Finance GC=F (gold futures, USD-denominated).
+// Falls back to freegoldapi.com (converted via audUsd rate if needed).
+async function getGold(sinceDate?: Date): Promise<{ current: number; pctChange: number } | null> {
+  // Primary: Yahoo Finance gold futures (GC=F) — quoted in USD per troy oz
+  const yf = await getYahooChart('GC=F', sinceDate);
+  if (yf && yf.current > 100) {
+    return { current: yf.current, pctChange: yf.pctChange };
+  }
+
+  // Fallback: freegoldapi.com (may return AUD; convert if audUsd available)
+  try {
+    const res = await fetch('https://freegoldapi.com/data/latest.json', { headers: HEADERS });
+    if (!res.ok) return null;
+    const data: { date: string; price: number }[] = await res.json();
+    if (!Array.isArray(data) || data.length < 2) return null;
+
+    const latest = data[data.length - 1];
+    const refDate = sinceDate ?? (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d; })();
+    const refEntry = data.reduce((closest, entry) => {
+      const d = new Date(entry.date).getTime();
+      const target = refDate.getTime();
+      const prevD = new Date(closest.date).getTime();
+      return Math.abs(d - target) < Math.abs(prevD - target) ? entry : closest;
+    });
+
+    if (!latest.price || !refEntry.price) return null;
+    const pctChange = ((latest.price - refEntry.price) / refEntry.price) * 100;
+    return { current: latest.price, pctChange };
+  } catch {
+    return null;
+  }
+}
+
+// CoinGecko history: price of Bitcoin on a specific date (DD-MM-YYYY format).
+async function getBtcPriceOnDate(date: Date): Promise<number | null> {
+  try {
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    const formatted = `${dd}-${mm}-${yyyy}`;
+    const res = await fetch(
+      `https://api.coingecko.com/api/v3/coins/bitcoin/history?date=${formatted}&localization=false`,
+      { headers: HEADERS }
+    );
+    if (!res.ok) return null;
+    const d = await res.json();
+    return d?.market_data?.current_price?.usd ?? null;
+  } catch {
+    return null;
+  }
+}
+
+// BTC performance: use CoinGecko history for start price, current from simple/price.
+async function getBtcPerformance(
+  sinceDate?: Date
+): Promise<{ currentPrice: number; pctChange: number } | null> {
+  try {
+    // Current price
+    const curRes = await fetch(
+      'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
+      { headers: HEADERS }
+    );
+    const currentPrice: number = curRes.ok
+      ? ((await curRes.json())?.bitcoin?.usd ?? 0)
+      : 0;
+
+    if (!currentPrice) return null;
+
+    if (!sinceDate) {
+      // Fall back to 1-year Yahoo Finance data
+      const yf = await getYahooChart('BTC-USD');
+      if (!yf) return { currentPrice, pctChange: 0 };
+      return { currentPrice, pctChange: yf.pctChange };
+    }
+
+    const startPrice = await getBtcPriceOnDate(sinceDate);
+    if (!startPrice) return { currentPrice, pctChange: 0 };
+    const pctChange = ((currentPrice - startPrice) / startPrice) * 100;
+    return { currentPrice, pctChange };
   } catch {
     return null;
   }
@@ -84,23 +153,32 @@ async function getCPI(): Promise<number | null> {
   }
 }
 
-export async function GET() {
+export async function GET({ url }: RequestEvent) {
+  // Optional ?since=YYYY-MM-DD for DCA-period performance comparison
+  const sinceParam = url.searchParams.get('since');
+  let sinceDate: Date | undefined;
+  if (sinceParam) {
+    const parsed = new Date(sinceParam);
+    if (!isNaN(parsed.getTime())) sinceDate = parsed;
+  }
+
   const [goldRes, spRes, cpiRes, btcRes] = await Promise.allSettled([
-    getGold(),
-    getYahooChart('^GSPC'),
+    getGold(sinceDate),
+    getYahooChart('^GSPC', sinceDate),
     getCPI(),
-    getYahooChart('BTC-USD'),
+    getBtcPerformance(sinceDate),
   ]);
 
-  const gold    = goldRes.status === 'fulfilled' ? goldRes.value : null;
-  const sp500   = spRes.status === 'fulfilled' ? spRes.value : null;
+  const gold      = goldRes.status === 'fulfilled' ? goldRes.value : null;
+  const sp500     = spRes.status === 'fulfilled' ? spRes.value : null;
   const cpiAnnual = cpiRes.status === 'fulfilled' ? cpiRes.value : null;
-  const btc     = btcRes.status === 'fulfilled' ? btcRes.value : null;
+  const btc       = btcRes.status === 'fulfilled' ? btcRes.value : null;
 
   return json({
-    gold:  gold  ? { priceUsd: gold.current, ytdPct: gold.ytdPct } : null,
-    sp500: sp500 ? { price: sp500.current, ytdPct: sp500.ytdPct } : null,
-    btc:   btc   ? { ytdPct: btc.ytdPct } : null,
+    gold:  gold  ? { priceUsd: gold.current, ytdPct: gold.pctChange } : null,
+    sp500: sp500 ? { price: sp500.current, ytdPct: sp500.pctChange } : null,
+    btc:   btc   ? { ytdPct: btc.pctChange } : null,
     cpiAnnual,
+    sinceDate: sinceDate ? sinceDate.toISOString().split('T')[0] : null,
   });
 }
