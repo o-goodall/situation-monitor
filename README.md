@@ -1,33 +1,23 @@
-# gl4ance
+# Situation Monitor
 
-## Project Description
-Gl4ance is a situation monitor for bitcoiners and finance enthusiasts that pulls bitcoin data from mempool and other sources, effectively replacing the need for endless scrolling through social media and news. The project is currently in early development and has been vibe coded with Claude AI.
+Welcome to Situation Monitor!
+
+This project is designed to help you monitor various situations effectively.
 
 ## Features
-- Real-time Bitcoin data tracking
-- Data sourced from reliable sources such as mempool
-- User-friendly interface designed for quick overview
 
-## Tech Stack
-- **Front-end:** Svelte
-- **Programming Language:** TypeScript
-- **Styling:** CSS
+- User-friendly interface
+- Real-time updates
+- Data visualization
 
-## Installation Instructions
-To install Gl4ance, clone the repository and run the following commands:
+For more information visit our website. Neither gl4nce nor any content provided by users should be misinterpreted. 
 
-```
-git clone https://github.com/o-goodall/situation-monitor.git
-cd situation-monitor
-npm install
-```
+## Installation
 
-## Development Setup
-For development setup, make sure you have Node.js installed. Then, start the development server by running:
+To install, follow these steps...
 
-```
-npm run dev
-```
+## Usage
 
-## Live Demo
-Check out the live demo at [gl4nce.xyz](https://gl4nce.xyz).
+Example usage includes...
+
+Thank you for using Situation Monitor!
