@@ -12,7 +12,7 @@
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
-    persistSettings, fxRates
+    persistSettings, fxRates, btcWsConnected
   } from '$lib/store';
 
   let newKeyword = '', newSource = '', newSourceName = '';
@@ -21,6 +21,73 @@
   let scrolled = false;
   let mobileMenuOpen = false;
 
+  // ── BINANCE WEBSOCKET — real-time BTC price ───────────────────
+  // Uses the free, public, no-auth Binance aggTrade stream.
+  // Each message delivers the latest executed trade price.
+  const PRICE_HISTORY_SIZE = 60;          // rolling sparkline data points
+  const HISTORY_UPDATE_INTERVAL_MS = 10_000; // push to history at most every 10 s
+
+  let priceWs: WebSocket | null = null;
+  let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let wsReconnectDelay = 2000; // ms, doubles on each failure (max 30s)
+  let lastHistoryUpdate = 0;   // timestamp of last price-history push
+
+  function connectPriceWs() {
+    if (typeof WebSocket === 'undefined') return;
+    try {
+      priceWs = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@aggTrade');
+
+      priceWs.onopen = () => {
+        $btcWsConnected = true;
+        wsReconnectDelay = 2000; // reset backoff on success
+      };
+
+      priceWs.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data as string);
+          const price = parseFloat(msg.p);
+          if (isNaN(price) || price <= 0) return;
+
+          const prev = $btcPrice;
+          $btcPrice = price;
+
+          // Flash animation on direction change
+          if (prev > 0 && price !== prev) {
+            $priceFlash = price > prev ? 'up' : 'down';
+            setTimeout(() => { $priceFlash = ''; }, 1200);
+          }
+
+          // Add to rolling history at most once every HISTORY_UPDATE_INTERVAL_MS
+          const now = Date.now();
+          if (now - lastHistoryUpdate >= HISTORY_UPDATE_INTERVAL_MS) {
+            lastHistoryUpdate = now;
+            $priceHistory = [...$priceHistory.slice(-(PRICE_HISTORY_SIZE - 1)), price];
+          }
+        } catch {}
+      };
+
+      priceWs.onerror = () => {
+        $btcWsConnected = false;
+      };
+
+      priceWs.onclose = () => {
+        $btcWsConnected = false;
+        priceWs = null;
+        // Reconnect with exponential backoff (cap at 30 s)
+        wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30_000);
+        wsReconnectTimer = setTimeout(connectPriceWs, wsReconnectDelay);
+      };
+    } catch {
+      $btcWsConnected = false;
+    }
+  }
+
+  function disconnectPriceWs() {
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    if (priceWs) { priceWs.onclose = null; priceWs.close(); priceWs = null; }
+    $btcWsConnected = false;
+  }
+
   function tick() {
     $time = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
   }
@@ -28,8 +95,16 @@
   async function fetchBtc() {
     try {
       const d = await fetch('/api/bitcoin').then(r=>r.json());
-      $prevPrice = $btcPrice;
-      $btcPrice = d.price ?? 0;
+      // If WebSocket is connected, skip overwriting the real-time price
+      if (!$btcWsConnected && d.price) {
+        $prevPrice = $btcPrice;
+        $btcPrice = d.price;
+        if ($prevPrice && $btcPrice !== $prevPrice) {
+          $priceFlash = $btcPrice > $prevPrice ? 'up' : 'down';
+          setTimeout(() => $priceFlash = '', 1200);
+        }
+        if ($btcPrice > 0) $priceHistory = [...$priceHistory.slice(-(PRICE_HISTORY_SIZE - 1)), $btcPrice];
+      }
       $btcBlock = d.blockHeight ?? 0;
       $btcFees = d.fees ?? {low:0,medium:0,high:0};
       if (d.halving) {
@@ -40,14 +115,6 @@
       }
       if (d.latestBlock) $latestBlock = d.latestBlock;
       if (d.mempool) $mempoolStats = d.mempool;
-      if ($prevPrice && $btcPrice !== $prevPrice) {
-        $priceFlash = $btcPrice > $prevPrice ? 'up' : 'down';
-        setTimeout(() => $priceFlash = '', 1200);
-      }
-      // Rolling price history — keep last 60 data points
-      if ($btcPrice > 0) {
-        $priceHistory = [...$priceHistory.slice(-59), $btcPrice];
-      }
     } catch {}
   }
 
@@ -138,6 +205,8 @@
     clockInterval = setInterval(tick, 1000);
     fetchBtc(); fetchDCA(); fetchPoly(); fetchNews(); fetchMarkets();
     if ($settings.ghostfolio?.token) fetchGhostfolio();
+    // Start WebSocket for real-time price; keep 60s poll for block/fee/mempool data
+    connectPriceWs();
     intervals = [
       setInterval(fetchBtc, 60000), setInterval(fetchDCA, 300000),
       setInterval(fetchPoly, 300000), setInterval(fetchNews, 300000),
@@ -336,6 +405,7 @@
   onDestroy(() => {
     clearInterval(clockInterval);
     intervals.forEach(clearInterval);
+    disconnectPriceWs();
     window.removeEventListener('scroll', handleScroll);
   });
 </script>
@@ -373,6 +443,10 @@
   <!-- Desktop right controls -->
   <div class="hdr-right desktop-only">
     <span class="hdr-clock">{$time}</span>
+    <!-- Live price feed status -->
+    <span class="ws-badge" class:ws-badge--live={$btcWsConnected} title="{$btcWsConnected?'Live price feed connected (Binance WebSocket)':'Price polling fallback — attempting live connection…'}">
+      <span class="ws-dot"></span>{$btcWsConnected?'LIVE':'POLL'}
+    </span>
 
     <!-- Dark/Light mode toggle -->
     <button class="mode-toggle btn-ghost" on:click={() => $lightMode = !$lightMode}
@@ -611,6 +685,22 @@
   /* Right controls */
   .hdr-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
   .hdr-clock { font-size:.7rem; font-weight:500; color:rgba(255,255,255,.22); font-variant-numeric:tabular-nums; letter-spacing:.07em; margin-right:4px; }
+  /* Live price feed badge */
+  .ws-badge {
+    display:flex; align-items:center; gap:5px;
+    font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    font-family:'Orbitron',monospace;
+    color:rgba(255,255,255,.22); background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08); border-radius:3px; padding:3px 8px;
+    transition:all .5s;
+  }
+  .ws-badge--live { color:var(--up); border-color:rgba(34,197,94,.25); background:rgba(34,197,94,.06); }
+  .ws-dot {
+    width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0;
+    box-shadow:0 0 0 2px transparent;
+  }
+  .ws-badge--live .ws-dot { animation:wsPulse 2s ease-in-out infinite; box-shadow:0 0 8px var(--up); }
+  @keyframes wsPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
   .mode-toggle { padding:7px 10px; display:flex; align-items:center; justify-content:center; }
   .settings-btn { padding:7px 11px; }
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
@@ -840,6 +930,8 @@
   :global(html.light) .err-msg { background:rgba(220,38,38,.06); border-color:rgba(220,38,38,.2); }
   :global(html.light) .holdings-wrap { border-top-color:rgba(0,0,0,.06); }
   :global(html.light) .live-badge { color:rgba(0,0,0,.45); }
+  :global(html.light) .ws-badge { color:rgba(0,0,0,.3); background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); }
+  :global(html.light) .ws-badge--live { color:var(--up); background:rgba(22,163,74,.06); border-color:rgba(22,163,74,.2); }
   :global(html.light) .section-divider { background:linear-gradient(90deg,transparent,rgba(247,147,26,.3),rgba(0,200,255,.15),transparent); }
   :global(html.light) .sect-title { background:linear-gradient(45deg,#c77a10,#0090cc); -webkit-background-clip:text; background-clip:text; }
 

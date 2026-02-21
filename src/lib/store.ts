@@ -66,6 +66,10 @@ export const gfUpdated        = writable('');
 // Map of currency code → rate from 1 USD (e.g. AUD: 1.58 means 1 USD = 1.58 AUD)
 export const fxRates = writable<Record<string, number>>({});
 
+// ── WEBSOCKET STATUS ──────────────────────────────────────────
+// true when live Binance WebSocket price feed is connected
+export const btcWsConnected = writable(false);
+
 // ── DERIVED ───────────────────────────────────────────────────
 export const liveSignals = derived(
   [fearGreed, difficultyChange, fundingRate, audUsd, halvingDays],
