@@ -22,6 +22,12 @@ export const halvingDays   = writable(0);
 export const halvingDate   = writable('');
 export const halvingProgress = writable(0);
 
+// ── LATEST BLOCK / MEMPOOL ────────────────────────────────────
+export type LatestBlock = { height:number; timestamp:number; size:number; txCount:number; miner:string; weight:number; medianFee:number|null; totalFees:number|null; reward:number|null };
+export const latestBlock = writable<LatestBlock|null>(null);
+export type MempoolStats = { count:number; vsize:number; totalFee:number };
+export const mempoolStats = writable<MempoolStats|null>(null);
+
 // ── DCA SIGNALS ───────────────────────────────────────────────
 export const fearGreed      = writable<number|null>(null);
 export const fearGreedLabel = writable('');

@@ -5,13 +5,14 @@
 
 /* ══ TOKENS ══════════════════════════════════════════════════ */
 :root {
+  /* Lighter than before — moody but readable */
   --bg:        #0e0e0e;
   --bg2:       #141414;
   --orange:    #f7931a;
   --orange-lo: rgba(247,147,26,0.08);
   --orange-md: rgba(247,147,26,0.18);
   --orange-hi: rgba(247,147,26,0.32);
-  --electric:  #00c8ff;
+  --electric:  #00c8ff;          /* Electric Xtra accent */
   --glass-bg:  rgba(255,255,255,0.055);
   --glass-bg2: rgba(255,255,255,0.09);
   --glass-bd:  rgba(255,255,255,0.10);
@@ -25,7 +26,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; scroll-padding-top: 80px; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
 
 body {
   background: var(--bg);
@@ -122,7 +123,19 @@ body::after {
 .btn-ghost:hover { border-color: rgba(247,147,26,0.3); color: var(--orange); background: rgba(247,147,26,0.06); }
 
 /* ══ GLASS CARD ════════════════════════════════════════ */
-/* Glass cards use .gc class defined in page components */
+.card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  border: 1px solid var(--glass-bd);
+  border-radius: 8px; padding: 24px;
+  box-shadow: 0 6px 28px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.06);
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+.card:hover {
+  border-color: rgba(247,147,26,0.16);
+  box-shadow: 0 10px 36px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.08);
+}
 
 /* Section divider — Electric Xtra style with gradient line */
 .section-divider {
@@ -163,5 +176,26 @@ body::after {
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .blink { animation: blink 2s step-end infinite; }
 
-/* ══ RESPONSIVE UTILS ═══════════════════════════════════ */
-@media (max-width:600px) { .sect-title { font-size:.95rem; } }
+@media (max-width:600px) { .card { padding:16px; border-radius:6px; } }
+
+/* ── LIGHT MODE GLOBAL OVERRIDES ══════════════════════════ */
+html.light body::before {
+  background:
+    radial-gradient(circle at 15% 85%, rgba(247,147,26,.08) 0%, transparent 42%),
+    radial-gradient(circle at 85% 10%, rgba(0,180,255,.05) 0%, transparent 42%);
+}
+html.light body::after { background: linear-gradient(transparent 50%, rgba(0,0,0,.006) 50%); }
+html.light .card {
+  background: rgba(255,255,255,.72); border-color: rgba(0,0,0,.1);
+  box-shadow: 0 2px 16px rgba(0,0,0,.06), inset 0 1px 0 rgba(255,255,255,.9);
+}
+html.light .card:hover { border-color: rgba(247,147,26,.2); box-shadow: 0 4px 24px rgba(0,0,0,.1); }
+html.light .section-divider { background: linear-gradient(90deg,transparent,rgba(200,120,16,.3),rgba(0,140,200,.15),transparent); }
+html.light .section-divider::after { box-shadow: 0 0 8px rgba(200,120,16,.4); }
+html.light .sect-title { background: linear-gradient(45deg,#b06800,#0080b8); -webkit-background-clip:text; background-clip:text; }
+html.light .btn-ghost { color:rgba(0,0,0,.5); border-color:rgba(0,0,0,.1); background:rgba(0,0,0,.02); }
+html.light .btn-ghost:hover { color:#c77a10; border-color:rgba(200,120,16,.3); background:rgba(247,147,26,.06); }
+html.light .btn-secondary { border-color:rgba(200,120,16,.5); color:#c77a10; }
+html.light .btn-secondary:hover { background:rgba(247,147,26,.08); color:#111; border-color:#111; }
+html.light ::-webkit-scrollbar-thumb { background:rgba(200,120,16,.3); }
+html.light ::-webkit-scrollbar-thumb:hover { background:rgba(200,120,16,.7); }
