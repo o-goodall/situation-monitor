@@ -7,6 +7,7 @@
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
+    gfDividendTotal, gfDividendYtd, gfCash, gfAnnualizedPct, gfFirstOrderDate, gfOrdersCount,
     markets, newsItems, btcDisplayPrice, btcWsConnected, btcMa200
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
@@ -23,6 +24,7 @@
     : ($audUsd && $priceHistory.length ? $priceHistory.map(p => p * $audUsd!) : []);
 
   let showHoldings = false;
+  let holdingsSort: 'value'|'perf'|'alloc' = 'value';
   let priceCurrency: 'usd'|'alt' = 'usd';
 
   const n   = (v:number, dec=0) => v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
@@ -66,12 +68,64 @@
   // otherwise fall back to DCA start date duration
   $: inflAdj = (()=>{if($gfNetWorth===null||$cpiAnnual===null)return null;const y=Math.max(.1,dcaDays/365.25);return $gfNetWorth/Math.pow(1+$cpiAnnual/100,y);})();
   $: cpiLoss = (()=>{if($cpiAnnual===null)return 0;const y=Math.max(.1,dcaDays/365.25);return(1-1/Math.pow(1+$cpiAnnual/100,y))*100;})();
-  $: portCAGR= (()=>{if($gfNetGainPct===null)return null;const y=Math.max(.1,dcaDays/365.25);return(Math.pow(1+$gfNetGainPct/100,1/y)-1)*100;})();
+  $: portCAGR= (()=>{
+    // Prefer Ghostfolio's own annualised performance if available, otherwise compute
+    if ($gfAnnualizedPct !== null) return $gfAnnualizedPct;
+    if($gfNetGainPct===null)return null;
+    const y=Math.max(.1,dcaDays/365.25);
+    return(Math.pow(1+$gfNetGainPct/100,1/y)-1)*100;
+  })();
+
+  // Asset class allocation derived from holdings
+  const CLASS_LABEL: Record<string,string> = {
+    EQUITY:'Equities', CRYPTOCURRENCY:'Crypto', FIXED_INCOME:'Fixed Income',
+    REAL_ESTATE:'Real Estate', COMMODITY:'Commodities', ETF:'ETFs',
+    CASH:'Cash', LIQUIDITY:'Liquidity', PRECIOUS_METAL:'Precious Metals',
+  };
+  $: assetClasses = (() => {
+    const map: Record<string, number> = {};
+    for (const h of $gfHoldings) {
+      const cls = h.assetClass || 'OTHER';
+      map[cls] = (map[cls] ?? 0) + h.allocationInPercentage;
+    }
+    return Object.entries(map)
+      .map(([cls, pct]) => ({ cls, label: CLASS_LABEL[cls] ?? cls, pct: Math.round(pct * 10) / 10 }))
+      .sort((a, b) => b.pct - a.pct);
+  })();
+
+  // Sorted holdings list
+  $: sortedHoldings = [...$gfHoldings].sort((a, b) => {
+    if (holdingsSort === 'perf') return b.netPerformancePercentWithCurrencyEffect - a.netPerformancePercentWithCurrencyEffect;
+    if (holdingsSort === 'alloc') return b.allocationInPercentage - a.allocationInPercentage;
+    return b.valueInBaseCurrency - a.valueInBaseCurrency;
+  });
+
+  // Class accent colours for allocation breakdown
+  const CLASS_COLOR: Record<string,string> = {
+    EQUITY:'#6366f1', CRYPTOCURRENCY:'#f7931a', FIXED_INCOME:'#38bdf8',
+    REAL_ESTATE:'#10b981', COMMODITY:'#c9a84c', ETF:'#8b5cf6',
+    CASH:'#64748b', LIQUIDITY:'#64748b', PRECIOUS_METAL:'#c9a84c',
+  };
 
   async function refreshGF() {
     const token=$settings.ghostfolio?.token?.trim();if(!token)return;
     $gfLoading=true;$gfError='';
-    try{const d=await fetch(`/api/ghostfolio?token=${encodeURIComponent(token)}`).then(r=>r.json());if(d.error){$gfError=d.error;}else{$gfNetWorth=d.netWorth;$gfTotalInvested=d.totalInvested;$gfNetGainPct=d.netGainPct;$gfNetGainYtdPct=d.netGainYtdPct;$gfTodayChangePct=d.todayChangePct;$gfHoldings=d.holdings??[];$gfUpdated=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});}}
+    try{
+      const d=await fetch(`/api/ghostfolio?token=${encodeURIComponent(token)}`).then(r=>r.json());
+      if(d.error){$gfError=d.error;}
+      else{
+        $gfNetWorth=d.netWorth;$gfTotalInvested=d.totalInvested;
+        $gfNetGainPct=d.netGainPct;$gfNetGainYtdPct=d.netGainYtdPct;
+        $gfTodayChangePct=d.todayChangePct;$gfHoldings=d.holdings??[];
+        $gfDividendTotal=d.dividendTotal??null;
+        $gfDividendYtd=d.dividendYtd??null;
+        $gfCash=d.cash??null;
+        $gfAnnualizedPct=d.annualizedPerformancePct??null;
+        $gfFirstOrderDate=d.firstOrderDate??null;
+        $gfOrdersCount=d.ordersCount??null;
+        $gfUpdated=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
+      }
+    }
     catch{$gfError='Connection failed';}finally{$gfLoading=false;}
   }
 </script>
@@ -416,6 +470,38 @@
               <div class="gfp"><p class="eyebrow">Invested</p><p class="gfp-v">{$gfTotalInvested!==null?'$'+n($gfTotalInvested,0):'—'}</p></div>
             </div>
           </div>
+
+          <!-- EXTRA SUMMARY METRICS (dividends, cash, order history) -->
+          {#if $gfDividendTotal!==null||$gfCash!==null||$gfFirstOrderDate||$gfOrdersCount!==null}
+          <div class="gf-summary">
+            {#if $gfDividendTotal!==null}
+            <div class="gf-sum-item" title="Total dividends received (all-time)">
+              <p class="eyebrow">Dividends <span style="color:var(--up);">all-time</span></p>
+              <p class="gf-sum-v">${n($gfDividendTotal,0)}</p>
+              {#if $gfDividendYtd!==null}<p class="dim" style="font-size:.6rem;margin-top:2px;">YTD: ${n($gfDividendYtd,0)}</p>{/if}
+            </div>
+            {/if}
+            {#if $gfCash!==null&&$gfCash>0}
+            <div class="gf-sum-item" title="Cash / liquidity position">
+              <p class="eyebrow">Cash</p>
+              <p class="gf-sum-v">${n($gfCash,0)}</p>
+            </div>
+            {/if}
+            {#if $gfFirstOrderDate}
+            <div class="gf-sum-item" title="Date of first portfolio transaction">
+              <p class="eyebrow">Investing since</p>
+              <p class="gf-sum-v" style="font-size:.85rem;">{fmtDate($gfFirstOrderDate)}</p>
+            </div>
+            {/if}
+            {#if $gfOrdersCount!==null}
+            <div class="gf-sum-item" title="Total number of portfolio transactions">
+              <p class="eyebrow">Transactions</p>
+              <p class="gf-sum-v">{n($gfOrdersCount)}</p>
+            </div>
+            {/if}
+          </div>
+          {/if}
+
           {#if portCAGR!==null||$cpiAnnual!==null||$goldYtdPct!==null}
           <div class="bench">
             {#if portCAGR!==null}<div class="bench-c"><p class="eyebrow orange">Portfolio CAGR</p><p class="bench-v" style="color:{portCAGR>=0?'var(--up)':'var(--dn)'};">{portCAGR>=0?'+':''}{portCAGR.toFixed(1)}<span style="font-size:.55em;opacity:.5;">%/yr</span></p>{#if $cpiAnnual!==null}<p class="bench-vs" style="color:{portCAGR>$cpiAnnual?'var(--up)':'var(--dn)'};">{portCAGR>$cpiAnnual?'▲':'▼'} {Math.abs(portCAGR-$cpiAnnual).toFixed(1)}% vs CPI</p>{/if}</div>{/if}
@@ -424,19 +510,61 @@
             {#if $sp500YtdPct!==null}<div class="bench-c"><p class="eyebrow">S&amp;P 500</p><p class="bench-v" style="color:{$sp500YtdPct>=0?'var(--t1)':'var(--dn)'};">{$sp500YtdPct>=0?'+':''}{$sp500YtdPct.toFixed(1)}<span style="font-size:.55em;opacity:.5;">%</span></p></div>{/if}
           </div>
           {/if}
+
+          <!-- ASSET CLASS ALLOCATION (from holdings) -->
+          {#if assetClasses.length>0}
+          <div class="alloc-wrap">
+            <p class="eyebrow" style="margin-bottom:10px;">Allocation by Asset Class</p>
+            <!-- Stacked bar -->
+            <div class="alloc-bar">
+              {#each assetClasses as ac}
+                {@const color = CLASS_COLOR[ac.cls] ?? '#64748b'}
+                <div class="alloc-seg" style="width:{ac.pct}%;background:{color};" title="{ac.label}: {ac.pct}%"></div>
+              {/each}
+            </div>
+            <!-- Legend -->
+            <div class="alloc-legend">
+              {#each assetClasses as ac}
+                {@const color = CLASS_COLOR[ac.cls] ?? '#64748b'}
+                <div class="alloc-item">
+                  <span class="alloc-dot" style="background:{color};"></span>
+                  <span class="alloc-name">{ac.label}</span>
+                  <span class="alloc-pct">{ac.pct}%</span>
+                </div>
+              {/each}
+            </div>
+          </div>
+          {/if}
+
           {#if $gfHoldings.length>0}
           <div class="holdings-wrap">
-            <button class="btn-secondary" on:click={()=>showHoldings=!showHoldings} style="font-size:.62rem;padding:7px 16px;">
-              {showHoldings?'▲':'▼'} Holdings ({$gfHoldings.length})
-            </button>
+            <div class="holdings-head">
+              <button class="btn-secondary" on:click={()=>showHoldings=!showHoldings} style="font-size:.62rem;padding:7px 16px;">
+                {showHoldings?'▲':'▼'} Holdings ({$gfHoldings.length})
+              </button>
+              {#if showHoldings}
+              <div class="sort-btns">
+                <button class="sort-btn" class:sort-btn--active={holdingsSort==='value'} on:click={()=>holdingsSort='value'}>Value</button>
+                <button class="sort-btn" class:sort-btn--active={holdingsSort==='perf'} on:click={()=>holdingsSort='perf'}>Return</button>
+                <button class="sort-btn" class:sort-btn--active={holdingsSort==='alloc'} on:click={()=>holdingsSort='alloc'}>Alloc</button>
+              </div>
+              {/if}
+            </div>
             {#if showHoldings}
             <div class="hgrid">
-              {#each $gfHoldings as h}
+              {#each sortedHoldings as h}
                 {@const hp=h.netPerformancePercentWithCurrencyEffect}
+                {@const hcolor = CLASS_COLOR[h.assetClass] ?? 'var(--orange)'}
                 <div class="h-card">
-                  <div class="h-top"><span class="h-sym">{h.symbol}</span><span class="h-pct" style="color:{hp>=0?'var(--up)':'var(--dn)'};">{hp>=0?'+':''}{hp.toFixed(1)}%</span></div>
+                  <div class="h-top">
+                    <div>
+                      <span class="h-sym">{h.symbol}</span>
+                      {#if h.assetClass}<span class="h-cls" style="background:{hcolor}22;color:{hcolor};">{CLASS_LABEL[h.assetClass]??h.assetClass}</span>{/if}
+                    </div>
+                    <span class="h-pct" style="color:{hp>=0?'var(--up)':'var(--dn)'};">{hp>=0?'+':''}{hp.toFixed(1)}%</span>
+                  </div>
                   {#if h.name!==h.symbol}<p class="h-name">{h.name.slice(0,22)}</p>{/if}
-                  <div class="pbar" style="margin:8px 0 6px;"><div class="pfill" style="width:{Math.min(100,h.allocationInPercentage)}%;background:linear-gradient(90deg,rgba(247,147,26,.55),var(--orange));"></div></div>
+                  <div class="pbar" style="margin:8px 0 6px;"><div class="pfill" style="width:{Math.min(100,h.allocationInPercentage)}%;background:linear-gradient(90deg,{hcolor}88,{hcolor});"></div></div>
                   <div class="h-foot"><span>{h.allocationInPercentage.toFixed(1)}%</span><span>${n(h.valueInBaseCurrency,0)}</span></div>
                 </div>
               {/each}
@@ -767,14 +895,39 @@
   .bench-v { font-size:1.15rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
   .bench-vs { font-size:.6rem; }
   .holdings-wrap { border-top:1px solid rgba(255,255,255,.05); padding-top:16px; }
+  .holdings-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+  .sort-btns { display:flex; gap:2px; background:rgba(255,255,255,.05); border-radius:3px; padding:1px; }
+  .sort-btn { padding:3px 10px; font-size:.52rem; font-weight:700; letter-spacing:.08em;
+    background:none; border:none; color:var(--t2); cursor:pointer; border-radius:2px; transition:all .2s; text-transform:uppercase; }
+  .sort-btn--active { background:rgba(247,147,26,.7); color:#fff; }
   .hgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:8px; margin-top:14px; }
   .h-card { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:5px; padding:14px; transition:transform .3s,border-color .3s; }
   .h-card:hover { transform:translateY(-3px); border-color:rgba(247,147,26,.16); }
-  .h-top  { display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3px; }
+  .h-top  { display:flex; justify-content:space-between; align-items:flex-start; gap:6px; margin-bottom:3px; }
   .h-sym  { font-size:.88rem; font-weight:700; color:var(--t1); }
-  .h-pct  { font-size:.68rem; font-weight:600; }
+  .h-cls  { font-size:.48rem; font-weight:600; padding:2px 5px; border-radius:3px; text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; flex-shrink:0; margin-top:2px; display:inline-block; }
+  .h-pct  { font-size:.68rem; font-weight:600; white-space:nowrap; }
   .h-name { font-size:.6rem; color:var(--t2); margin-bottom:0; }
   .h-foot { display:flex; justify-content:space-between; font-size:.62rem; color:var(--t2); }
+
+  /* ── GHOSTFOLIO SUMMARY STRIP ────────────────────────────── */
+  .gf-summary { display:flex; flex-wrap:wrap; gap:12px; margin:0 0 16px; border:1px solid rgba(255,255,255,.06); border-radius:5px; padding:14px 16px; background:rgba(255,255,255,.02); }
+  .gf-sum-item { display:flex; flex-direction:column; gap:5px; flex:1; min-width:80px; }
+  .gf-sum-v { font-size:1rem; font-weight:700; letter-spacing:-.02em; color:var(--t1); line-height:1; }
+  :global(html.light) .gf-summary { border-color:rgba(0,0,0,.08); background:rgba(0,0,0,.02); }
+
+  /* ── ASSET CLASS ALLOCATION ──────────────────────────────── */
+  .alloc-wrap { margin-bottom:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,.05); }
+  .alloc-bar { height:8px; border-radius:4px; overflow:hidden; display:flex; gap:1px; margin-bottom:12px; background:rgba(255,255,255,.03); }
+  .alloc-seg { height:100%; transition:width .5s ease; min-width:2px; }
+  .alloc-legend { display:flex; flex-wrap:wrap; gap:8px 14px; }
+  .alloc-item { display:flex; align-items:center; gap:5px; }
+  .alloc-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+  .alloc-name { font-size:.6rem; color:var(--t2); }
+  .alloc-pct { font-size:.6rem; font-weight:700; color:var(--t1); }
+  :global(html.light) .alloc-wrap { border-top-color:rgba(0,0,0,.06); }
+  :global(html.light) .alloc-bar { background:rgba(0,0,0,.04); }
+  :global(html.light) .sort-btns { background:rgba(0,0,0,.06); }
   @media (max-width:600px) {
     .gf-nw { font-size:1.8rem; }
     .gf-perf { border-left:none; padding-left:0; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; width:100%; }

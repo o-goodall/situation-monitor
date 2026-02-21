@@ -62,6 +62,12 @@ export const gfHoldings       = writable<Holding[]>([]);
 export const gfError          = writable('');
 export const gfLoading        = writable(false);
 export const gfUpdated        = writable('');
+export const gfDividendTotal  = writable<number|null>(null);
+export const gfDividendYtd    = writable<number|null>(null);
+export const gfCash           = writable<number|null>(null);
+export const gfAnnualizedPct  = writable<number|null>(null);
+export const gfFirstOrderDate = writable<string|null>(null);
+export const gfOrdersCount    = writable<number|null>(null);
 
 // ── FX RATES ─────────────────────────────────────────────────
 // Map of currency code → rate from 1 USD (e.g. AUD: 1.58 means 1 USD = 1.58 AUD)
