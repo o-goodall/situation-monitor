@@ -5,14 +5,13 @@
 
 /* ══ TOKENS ══════════════════════════════════════════════════ */
 :root {
-  /* Lighter than before — moody but readable */
   --bg:        #0e0e0e;
   --bg2:       #141414;
   --orange:    #f7931a;
   --orange-lo: rgba(247,147,26,0.08);
   --orange-md: rgba(247,147,26,0.18);
   --orange-hi: rgba(247,147,26,0.32);
-  --electric:  #00c8ff;          /* Electric Xtra accent */
+  --electric:  #00c8ff;
   --glass-bg:  rgba(255,255,255,0.055);
   --glass-bg2: rgba(255,255,255,0.09);
   --glass-bd:  rgba(255,255,255,0.10);
@@ -26,7 +25,7 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: smooth; scroll-padding-top: 80px; }
 
 body {
   background: var(--bg);
@@ -123,19 +122,7 @@ body::after {
 .btn-ghost:hover { border-color: rgba(247,147,26,0.3); color: var(--orange); background: rgba(247,147,26,0.06); }
 
 /* ══ GLASS CARD ════════════════════════════════════════ */
-.card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(24px) saturate(160%);
-  -webkit-backdrop-filter: blur(24px) saturate(160%);
-  border: 1px solid var(--glass-bd);
-  border-radius: 8px; padding: 24px;
-  box-shadow: 0 6px 28px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.06);
-  transition: border-color 0.3s, box-shadow 0.3s;
-}
-.card:hover {
-  border-color: rgba(247,147,26,0.16);
-  box-shadow: 0 10px 36px rgba(0,0,0,0.48), inset 0 1px 0 rgba(255,255,255,0.08);
-}
+/* Glass cards use .gc class defined in page components */
 
 /* Section divider — Electric Xtra style with gradient line */
 .section-divider {
@@ -176,4 +163,5 @@ body::after {
 @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
 .blink { animation: blink 2s step-end infinite; }
 
-@media (max-width:600px) { .card { padding:16px; border-radius:6px; } }
+/* ══ RESPONSIVE UTILS ═══════════════════════════════════ */
+@media (max-width:600px) { .sect-title { font-size:.95rem; } }

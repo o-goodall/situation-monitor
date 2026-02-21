@@ -19,6 +19,9 @@
   let intervals: ReturnType<typeof setInterval>[] = [];
   let scrolled = false;
   let mobileMenuOpen = false;
+  let activeSection = 'signal';
+  let settingsAnimating = false;
+  let menuAnimating = false;
 
   function tick() {
     $time = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
@@ -111,9 +114,25 @@
   }
   function removeSource(i:number) { $settings.news.sources = $settings.news.sources.filter((_,j)=>j!==i); }
 
-  function handleScroll() { scrolled = window.scrollY > 40; }
+  function handleScroll() {
+    scrolled = window.scrollY > 40;
+    // Track active section for nav highlight
+    const sections = ['signal', 'portfolio', 'intel'];
+    for (let i = sections.length - 1; i >= 0; i--) {
+      const el = document.getElementById(sections[i]);
+      if (el && el.getBoundingClientRect().top <= 120) {
+        activeSection = sections[i];
+        break;
+      }
+    }
+  }
   function toggleMobileMenu() { mobileMenuOpen = !mobileMenuOpen; if (mobileMenuOpen) $showSettings = false; }
   function closeMobileMenu() { mobileMenuOpen = false; }
+
+  function handleNavClick(section: string) {
+    activeSection = section;
+    closeMobileMenu();
+  }
 
   // Apply light/dark mode to <html>
   $: if (typeof document !== 'undefined') {
@@ -134,110 +153,236 @@
     ];
     window.addEventListener('scroll', handleScroll, {passive:true});
 
-    // ── CYBER HORNET SWARM ─────────────────────────────────────
-    // Desktop: 80 hornets spread wide. Mobile: 40 hornets tighter.
+    // ── NETWORK DATA PULSE ────────────────────────────────────
+    // Subtle nodes with data transmissions flowing between them.
+    // Small pings and flashing lines representing internet data flow.
     (function() {
       const canvas = document.getElementById('hornet-canvas') as HTMLCanvasElement;
       if (!canvas) return;
       const ctx = canvas.getContext('2d')!;
-      let W: number, H: number, hornets: any[] = [], animId: number;
+      let W: number, H: number, animId: number;
+      let nodes: Node[] = [];
+      let transmissions: Transmission[] = [];
+      let pings: Ping[] = [];
+
       const ORANGE = 'rgba(247,147,26,';
       const ELECTRIC = 'rgba(0,200,255,';
+      const isMobile = () => window.innerWidth < 768;
 
-      function getCount() { return window.innerWidth >= 1024 ? 80 : 40; }
-      // Desktop: wider spread (spawn across full area, faster connection distance)
-      function getConnDist() { return window.innerWidth >= 1024 ? 130 : 90; }
+      function getNodeCount() { return isMobile() ? 18 : 35; }
 
-      function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
+      function resize() {
+        W = canvas.width = window.innerWidth;
+        H = canvas.height = window.innerHeight;
+      }
 
-      class Hornet {
-        x=0; y=0; vx=0; vy=0; size=0; hue='o'; alpha=0; angle=0; spin=0;
-        surgeTimer=0; surging=false; trail:{x:number,y:number}[]=[]; trailLen=0;
-        constructor() { this.reset(); }
-        reset() {
-          this.x = Math.random()*(W||window.innerWidth);
-          this.y = Math.random()*(H||window.innerHeight);
-          // Desktop: slightly more varied velocity so they spread out
-          const spd = window.innerWidth >= 1024 ? 0.65 : 0.55;
-          this.vx = (Math.random()-0.5)*spd;
-          this.vy = (Math.random()-0.5)*spd;
-          this.size = 2.2+Math.random()*2.2;
-          this.hue  = Math.random()<0.72?'o':'e';
-          this.alpha = 0.18+Math.random()*0.45;
-          this.angle = Math.random()*Math.PI*2;
-          this.spin  = (Math.random()-0.5)*0.02;
-          this.surgeTimer = 60+Math.floor(Math.random()*200);
-          this.surging = false;
-          this.trail = [];
-          this.trailLen = 6+Math.floor(Math.random()*10);
+      // Static-ish anchor nodes scattered across the screen
+      class Node {
+        x: number; y: number; baseX: number; baseY: number;
+        radius: number; alpha: number; pulsePhase: number; pulseSpeed: number;
+        hue: string; drift: number;
+        constructor() {
+          this.baseX = this.x = Math.random() * (W || window.innerWidth);
+          this.baseY = this.y = Math.random() * (H || window.innerHeight);
+          this.radius = 1.2 + Math.random() * 1.5;
+          this.alpha = 0.08 + Math.random() * 0.18;
+          this.pulsePhase = Math.random() * Math.PI * 2;
+          this.pulseSpeed = 0.008 + Math.random() * 0.012;
+          this.hue = Math.random() < 0.7 ? 'o' : 'e';
+          this.drift = 0.15 + Math.random() * 0.25;
         }
-        update(all:any[]) {
-          this.trail.push({x:this.x,y:this.y});
-          if (this.trail.length>this.trailLen) this.trail.shift();
-          this.angle += this.spin;
-          this.surgeTimer--;
-          if (this.surgeTimer<=0) {
-            this.surging = !this.surging;
-            this.surgeTimer = this.surging ? 20+Math.floor(Math.random()*40) : 80+Math.floor(Math.random()*180);
-            if (this.surging) {
-              const t = all[Math.floor(Math.random()*all.length)];
-              const dx=t.x-this.x, dy=t.y-this.y, dist=Math.sqrt(dx*dx+dy*dy)||1;
-              const spd = 1.4+Math.random()*1.0;
-              this.vx=(dx/dist)*spd; this.vy=(dy/dist)*spd;
-            } else {
-              const s = window.innerWidth >= 1024 ? 0.65 : 0.55;
-              this.vx=(Math.random()-0.5)*s; this.vy=(Math.random()-0.5)*s;
-            }
-          }
-          this.x+=this.vx; this.y+=this.vy;
-          if (this.x<-20) this.x=W+20; if (this.x>W+20) this.x=-20;
-          if (this.y<-20) this.y=H+20; if (this.y>H+20) this.y=-20;
+        update(t: number) {
+          // Very gentle drift around anchor point
+          this.x = this.baseX + Math.sin(t * this.drift * 0.3 + this.pulsePhase) * 8;
+          this.y = this.baseY + Math.cos(t * this.drift * 0.25 + this.pulsePhase * 1.3) * 6;
+          this.pulsePhase += this.pulseSpeed;
         }
         draw() {
-          const col = this.hue==='o'?ORANGE:ELECTRIC;
-          if (this.trail.length>1) {
-            for (let i=1;i<this.trail.length;i++) {
-              const t=i/this.trail.length, a=t*this.alpha*0.45;
-              ctx.beginPath(); ctx.moveTo(this.trail[i-1].x,this.trail[i-1].y);
-              ctx.lineTo(this.trail[i].x,this.trail[i].y);
-              ctx.strokeStyle=col+a+')'; ctx.lineWidth=this.size*t*0.55; ctx.stroke();
-            }
-          }
-          ctx.save(); ctx.translate(this.x,this.y); ctx.rotate(this.angle);
-          const s=this.size, glow=this.surging?this.alpha*1.6:this.alpha;
-          ctx.shadowBlur=this.surging?10:5; ctx.shadowColor=col+'0.8)';
-          ctx.beginPath(); ctx.moveTo(0,-s*1.6); ctx.lineTo(-s*0.9,s);
-          ctx.lineTo(0,s*0.4); ctx.lineTo(s*0.9,s); ctx.closePath();
-          ctx.fillStyle=col+Math.min(glow,0.9)+')'; ctx.fill();
-          ctx.beginPath(); ctx.moveTo(0,-s*1.4); ctx.lineTo(0,s*0.3);
-          ctx.strokeStyle=(this.hue==='o'?ELECTRIC:ORANGE)+(glow*0.7)+')';
-          ctx.lineWidth=0.7; ctx.shadowBlur=4; ctx.stroke();
-          ctx.restore();
+          const col = this.hue === 'o' ? ORANGE : ELECTRIC;
+          const pulse = 0.5 + 0.5 * Math.sin(this.pulsePhase);
+          const a = this.alpha * (0.6 + pulse * 0.4);
+          // Soft glow
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius * 3, 0, Math.PI * 2);
+          ctx.fillStyle = col + (a * 0.15) + ')';
+          ctx.fill();
+          // Core dot
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.fillStyle = col + a + ')';
+          ctx.fill();
         }
       }
 
-      function init() {
-        hornets=[];
-        for(let i=0;i<getCount();i++) hornets.push(new Hornet());
-      }
-      function loop() {
-        ctx.clearRect(0,0,W,H);
-        const cd = getConnDist();
-        for(let i=0;i<hornets.length;i++) for(let j=i+1;j<hornets.length;j++) {
-          const dx=hornets[i].x-hornets[j].x, dy=hornets[i].y-hornets[j].y;
-          const dist=Math.sqrt(dx*dx+dy*dy);
-          if(dist<cd){
-            const a=(1-dist/cd)*0.07;
-            ctx.beginPath(); ctx.moveTo(hornets[i].x,hornets[i].y);
-            ctx.lineTo(hornets[j].x,hornets[j].y);
-            ctx.strokeStyle=ORANGE+a+')'; ctx.lineWidth=0.5; ctx.stroke();
+      // Data packet traveling between two nodes
+      class Transmission {
+        fromNode: Node; toNode: Node; progress: number;
+        speed: number; alpha: number; hue: string; alive: boolean;
+        constructor(from: Node, to: Node) {
+          this.fromNode = from;
+          this.toNode = to;
+          this.progress = 0;
+          this.speed = 0.004 + Math.random() * 0.008;
+          this.alpha = 0.12 + Math.random() * 0.2;
+          this.hue = Math.random() < 0.65 ? 'o' : 'e';
+          this.alive = true;
+        }
+        update() {
+          this.progress += this.speed;
+          if (this.progress >= 1) {
+            this.alive = false;
+            // Spawn a small ping at the destination
+            pings.push(new Ping(this.toNode.x, this.toNode.y, this.hue));
           }
         }
-        hornets.forEach(h=>{h.update(hornets);h.draw();});
-        animId=requestAnimationFrame(loop);
+        draw() {
+          const col = this.hue === 'o' ? ORANGE : ELECTRIC;
+          const fx = this.fromNode.x, fy = this.fromNode.y;
+          const tx = this.toNode.x, ty = this.toNode.y;
+          const p = this.progress;
+
+          // Faint underlying line between nodes
+          ctx.beginPath();
+          ctx.moveTo(fx, fy); ctx.lineTo(tx, ty);
+          ctx.strokeStyle = col + (this.alpha * 0.08) + ')';
+          ctx.lineWidth = 0.5;
+          ctx.stroke();
+
+          // Traveling data packet (bright dot moving along the line)
+          const px = fx + (tx - fx) * p;
+          const py = fy + (ty - fy) * p;
+
+          // Packet trail (short glowing segment behind the dot)
+          const trailLen = 0.08;
+          const tp = Math.max(0, p - trailLen);
+          const tpx = fx + (tx - fx) * tp;
+          const tpy = fy + (ty - fy) * tp;
+
+          const grad = ctx.createLinearGradient(tpx, tpy, px, py);
+          grad.addColorStop(0, col + '0)');
+          grad.addColorStop(1, col + this.alpha + ')');
+          ctx.beginPath();
+          ctx.moveTo(tpx, tpy); ctx.lineTo(px, py);
+          ctx.strokeStyle = grad;
+          ctx.lineWidth = 1.2;
+          ctx.stroke();
+
+          // Bright dot at head
+          ctx.beginPath();
+          ctx.arc(px, py, 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = col + (this.alpha * 1.4) + ')';
+          ctx.shadowBlur = 6;
+          ctx.shadowColor = col + '0.5)';
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
       }
+
+      // Small expanding ring when a data packet arrives
+      class Ping {
+        x: number; y: number; radius: number; maxRadius: number;
+        alpha: number; hue: string; alive: boolean;
+        constructor(x: number, y: number, hue: string) {
+          this.x = x; this.y = y;
+          this.radius = 2;
+          this.maxRadius = 12 + Math.random() * 10;
+          this.alpha = 0.3 + Math.random() * 0.15;
+          this.hue = hue;
+          this.alive = true;
+        }
+        update() {
+          this.radius += 0.25;
+          this.alpha *= 0.975;
+          if (this.radius >= this.maxRadius || this.alpha < 0.01) this.alive = false;
+        }
+        draw() {
+          const col = this.hue === 'o' ? ORANGE : ELECTRIC;
+          ctx.beginPath();
+          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = col + this.alpha + ')';
+          ctx.lineWidth = 0.8;
+          ctx.stroke();
+        }
+      }
+
+      let frameCount = 0;
+      const spawnInterval = () => isMobile() ? 90 : 50; // frames between new transmissions
+
+      function init() {
+        nodes = [];
+        transmissions = [];
+        pings = [];
+        const count = getNodeCount();
+        for (let i = 0; i < count; i++) nodes.push(new Node());
+      }
+
+      function spawnTransmission() {
+        if (nodes.length < 2) return;
+        const a = nodes[Math.floor(Math.random() * nodes.length)];
+        // Pick a destination — bias toward closer nodes for more natural look
+        let best: Node | null = null;
+        let bestDist = Infinity;
+        for (let tries = 0; tries < 5; tries++) {
+          const b = nodes[Math.floor(Math.random() * nodes.length)];
+          if (b === a) continue;
+          const dx = a.x - b.x, dy = a.y - b.y;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          // Prefer medium-distance connections (not too short, not too far)
+          const ideal = Math.min(W, H) * 0.3;
+          const score = Math.abs(d - ideal);
+          if (score < bestDist) { bestDist = score; best = b; }
+        }
+        if (best) transmissions.push(new Transmission(a, best));
+      }
+
+      function loop() {
+        ctx.clearRect(0, 0, W, H);
+        frameCount++;
+        const t = frameCount * 0.016; // approximate time
+
+        // Draw faint grid lines connecting nearby nodes
+        for (let i = 0; i < nodes.length; i++) {
+          for (let j = i + 1; j < nodes.length; j++) {
+            const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const maxDist = isMobile() ? 180 : 240;
+            if (dist < maxDist) {
+              const a = (1 - dist / maxDist) * 0.03;
+              ctx.beginPath();
+              ctx.moveTo(nodes[i].x, nodes[i].y);
+              ctx.lineTo(nodes[j].x, nodes[j].y);
+              ctx.strokeStyle = ORANGE + a + ')';
+              ctx.lineWidth = 0.3;
+              ctx.stroke();
+            }
+          }
+        }
+
+        // Update & draw nodes
+        nodes.forEach(n => { n.update(t); n.draw(); });
+
+        // Spawn new transmissions periodically
+        if (frameCount % spawnInterval() === 0) spawnTransmission();
+        // Occasional burst — 2 packets at once
+        if (frameCount % (spawnInterval() * 4) === 0) { spawnTransmission(); spawnTransmission(); }
+
+        // Update & draw transmissions
+        transmissions.forEach(tr => { tr.update(); tr.draw(); });
+        transmissions = transmissions.filter(tr => tr.alive);
+
+        // Update & draw pings
+        pings.forEach(p => { p.update(); p.draw(); });
+        pings = pings.filter(p => p.alive);
+
+        animId = requestAnimationFrame(loop);
+      }
+
       resize(); init(); loop();
-      window.addEventListener('resize',()=>{resize();init();},{passive:true});
+      let resizeTimer: ReturnType<typeof setTimeout>;
+      window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(() => { resize(); init(); }, 200);
+      }, { passive: true });
     })();
   });
 
@@ -248,7 +393,7 @@
   });
 </script>
 
-<canvas id="hornet-canvas" aria-hidden="true"></canvas>
+<canvas id="hornet-canvas" aria-hidden="true" style="will-change:transform;"></canvas>
 
 <!-- ══ HEADER ════════════════════════════════════════════════ -->
 <header class="hdr" class:hdr--scrolled={scrolled}>
@@ -270,9 +415,9 @@
 
   <!-- Desktop nav — left-aligned after brand (Electric Xtra style) -->
   <nav class="page-nav desktop-only">
-    <a href="#signal"    class="nav-link">₿ Signal</a>
-    <a href="#portfolio" class="nav-link">↗ Portfolio</a>
-    <a href="#intel"     class="nav-link">◈ Intel</a>
+    <a href="#signal"    class="nav-link" class:nav-link--active={activeSection==='signal'}>₿ Signal</a>
+    <a href="#portfolio" class="nav-link" class:nav-link--active={activeSection==='portfolio'}>↗ Portfolio</a>
+    <a href="#intel"     class="nav-link" class:nav-link--active={activeSection==='intel'}>◈ Intel</a>
   </nav>
 
   <!-- Spacer pushes right controls to far right on desktop -->
@@ -359,9 +504,9 @@
   <div class="mobile-menu-panel">
     <!-- Nav links -->
     <nav class="mobile-nav">
-      <a href="#signal"    class="mobile-nav-link" on:click={closeMobileMenu}>₿ Signal</a>
-      <a href="#portfolio" class="mobile-nav-link" on:click={closeMobileMenu}>↗ Portfolio</a>
-      <a href="#intel"     class="mobile-nav-link" on:click={closeMobileMenu}>◈ Intel</a>
+      <a href="#signal"    class="mobile-nav-link" class:mobile-nav-link--active={activeSection==='signal'} on:click={() => handleNavClick('signal')}>₿ Signal</a>
+      <a href="#portfolio" class="mobile-nav-link" class:mobile-nav-link--active={activeSection==='portfolio'} on:click={() => handleNavClick('portfolio')}>↗ Portfolio</a>
+      <a href="#intel"     class="mobile-nav-link" class:mobile-nav-link--active={activeSection==='intel'} on:click={() => handleNavClick('intel')}>◈ Intel</a>
     </nav>
 
     <div class="mobile-divider"></div>
@@ -405,7 +550,8 @@
 
 <style>
   /* Canvas */
-  #hornet-canvas { position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; }
+  #hornet-canvas { position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; transition:opacity .5s; }
+  :global(html.light) #hornet-canvas { opacity:0.25; }
 
   /* ── HEADER ──────────────────────────────────────────────── */
   .hdr {
@@ -445,6 +591,8 @@
   }
   .nav-link:hover { color:rgba(255,255,255,.9); border-color:rgba(247,147,26,.3); box-shadow:inset 0 0 12px rgba(247,147,26,.08); }
   .nav-link:hover::after { width:100%; }
+  .nav-link--active { color:rgba(255,255,255,.85); border-color:rgba(247,147,26,.18); }
+  .nav-link--active::after { width:100%; }
 
   /* Spacer pushes clock/settings to far right */
   .hdr-spacer { flex:1; }
@@ -512,13 +660,17 @@
   .mobile-menu {
     position:fixed; inset:0; z-index:400;
     background:rgba(0,0,0,.55); backdrop-filter:blur(4px);
+    animation:fadeIn .2s ease;
   }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
   .mobile-menu-panel {
     position:absolute; top:54px; left:0; right:0;
     background:rgba(10,10,10,.97); backdrop-filter:blur(28px);
     border-bottom:1px solid rgba(247,147,26,.2);
     padding:0 0 24px; max-height:calc(100vh - 54px); overflow-y:auto;
+    animation:slideDown .25s ease;
   }
+  @keyframes slideDown { from{opacity:0;transform:translateY(-12px)} to{opacity:1;transform:translateY(0)} }
   .mobile-nav { display:flex; flex-direction:column; padding:8px 0; }
   .mobile-nav-link {
     display:flex; align-items:center; padding:16px 24px;
@@ -529,6 +681,7 @@
     transition:all .2s;
   }
   .mobile-nav-link:hover { color:var(--orange); background:rgba(247,147,26,.06); padding-left:32px; }
+  .mobile-nav-link--active { color:var(--orange); background:rgba(247,147,26,.04); border-left:2px solid var(--orange); }
   .mobile-divider { height:1px; background:linear-gradient(90deg,transparent,rgba(247,147,26,.25),transparent); margin:4px 0; }
   .mobile-theme-toggle {
     display:flex; align-items:center; gap:14px; width:100%;
@@ -547,7 +700,7 @@
   .mobile-settings { padding:0 16px; display:flex; flex-direction:column; gap:18px; }
 
   /* ── SETTINGS DRAWER (desktop) ───────────────────────────── */
-  .drawer { background:rgba(8,8,8,.97); backdrop-filter:blur(24px); border-bottom:1px solid rgba(247,147,26,.15); position:relative; z-index:200; }
+  .drawer { background:rgba(8,8,8,.97); backdrop-filter:blur(24px); border-bottom:1px solid rgba(247,147,26,.15); position:relative; z-index:200; animation:slideDown .25s ease; }
   .drawer-inner { max-width:900px; margin:0 auto; padding:28px 24px; display:flex; flex-direction:column; gap:22px; }
   .dg-hd { font-size:.72rem; font-weight:600; color:rgba(255,255,255,.5); margin-bottom:12px; display:flex; align-items:center; gap:8px; font-family:'Orbitron',monospace; letter-spacing:.06em; text-transform:uppercase; }
   .dhint { font-size:.62rem; color:rgba(255,255,255,.2); font-weight:400; font-family:'Inter',sans-serif; text-transform:none; letter-spacing:0; }
@@ -574,7 +727,7 @@
   .site-footer { border-top:1px solid rgba(247,147,26,.12); padding:18px 32px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:rgba(0,0,0,.5); }
   .footer-brand { font-family:'Orbitron',monospace; font-size:.62rem; font-weight:900; color:rgba(255,255,255,.25); letter-spacing:.1em; }
   .footer-sources { font-size:.56rem; color:rgba(255,255,255,.14); }
-  @media (max-width:600px) { .site-footer { display:none; } }
+  @media (max-width:600px) { .site-footer { padding:14px 16px; justify-content:center; } .footer-sources { display:none; } }
 
   /* ── LIGHT MODE ──────────────────────────────────────────── */
   :global(html.light) { --bg:#f0f0f0; --bg2:#e8e8e8; --glass-bg:rgba(255,255,255,.65); --glass-bg2:rgba(255,255,255,.8); --glass-bd:rgba(0,0,0,.1); --glass-bd2:rgba(0,0,0,.16); --t1:#181818; --t2:#555; --t3:#ccc; }
@@ -586,6 +739,7 @@
   :global(html.light) .hdr-clock { color:rgba(0,0,0,.4); }
   :global(html.light) .nav-link { color:rgba(0,0,0,.55); }
   :global(html.light) .nav-link:hover { color:rgba(0,0,0,.9); border-color:rgba(247,147,26,.4); }
+  :global(html.light) .nav-link--active { color:rgba(0,0,0,.85); border-color:rgba(247,147,26,.3); }
   :global(html.light) .drawer { background:rgba(245,245,245,.98); border-bottom-color:rgba(247,147,26,.2); }
   :global(html.light) .dinp { background:rgba(0,0,0,.04); border-color:rgba(247,94,0,.25); color:#181818; }
   :global(html.light) .dg-hd { color:rgba(0,0,0,.6); }
