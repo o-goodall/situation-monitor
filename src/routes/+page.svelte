@@ -34,6 +34,9 @@
   $: priceZone = $btcPrice<=55000?'LOW':$btcPrice<=75000?'LOW–MID':$btcPrice<=95000?'MID':$btcPrice<=110000?'MID–HIGH':'HIGH';
   $: zoneColor = $btcPrice<=55000?'var(--up)':$btcPrice<=75000?'#4ade80':$btcPrice<=95000?'var(--orange)':$btcPrice<=110000?'#f97316':'var(--dn)';
 
+  // DCA zone background GIF: red=low(cheap/fear), amber=mid, green=high(expensive/greed)
+  $: dcaZoneGif = $btcPrice <= 0 ? '' : $btcPrice <= 78000 ? '/dca-red.gif' : $btcPrice <= 102000 ? '/dca-amber.gif' : '/dca-green.webp';
+
   $: s        = $settings.dca;
   $: dcaDays  = Math.max(0,Math.floor((Date.now()-new Date(s.startDate).getTime())/86400000));
   $: invested = dcaDays*s.dailyAmount;
@@ -110,7 +113,18 @@
     <!-- DCA SIGNAL CARD — simplified -->
     <div class="gc signal-card" style="--ac:{$accentColor};">
       <div class="signal-bar" style="background:linear-gradient(90deg,{$accentColor}33,{$accentColor},{$accentColor}33);"></div>
-      <div class="gc-head">
+
+      <!-- Zone background GIF — behind frosted glass -->
+      {#if dcaZoneGif}
+        {#key dcaZoneGif}
+          <div class="zone-bg">
+            <img src={dcaZoneGif} alt="" class="zone-bg-img" loading="lazy" />
+          </div>
+        {/key}
+      {/if}
+      <div class="zone-glass"></div>
+
+      <div class="gc-head" style="position:relative;z-index:2;">
         <div>
           <p class="eyebrow orange">DCA Signal</p>
           <p class="dim" style="margin-top:3px;">How much to buy this fortnight</p>
@@ -118,7 +132,7 @@
         <span class="ts">{$dcaUpdated||'—'}</span>
       </div>
 
-      <div class="dca-hero">
+      <div class="dca-hero" style="position:relative;z-index:2;">
         {#if !$dca}
           <span class="dca-n muted">—</span>
         {:else if $dca.finalAud===0}
@@ -132,7 +146,7 @@
 
       <!-- Price zone bar -->
       {#if $btcPrice>0}
-      <div class="vband">
+      <div class="vband" style="position:relative;z-index:2;">
         <div class="vband-row">
           <span class="vband-l up">Low Zone</span>
           <span class="vband-l" style="color:var(--orange);">Mid Zone</span>
@@ -160,7 +174,7 @@
 
       <!-- Signal conditions — compact -->
       {#if $dca}
-      <div class="sigs">
+      <div class="sigs" style="position:relative;z-index:2;">
         {#each $dca.signals as sig}
           <div class="sig" class:sig--on={sig.active}>
             <div class="pip-wrap">
@@ -542,8 +556,40 @@
   .pfill { height:100%; border-radius:1px; transition:width .7s cubic-bezier(.4,0,.2,1); }
 
   /* ── SIGNAL CARD ────────────────────────────────────────── */
-  .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.08) 0%,var(--glass-bg) 80px); }
-  .signal-bar  { position:absolute; top:0; left:0; right:0; height:2px; border-radius:6px 6px 0 0; }
+  .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.08) 0%,var(--glass-bg) 80px); position:relative; overflow:hidden; }
+  .signal-bar  { position:absolute; top:0; left:0; right:0; height:2px; border-radius:6px 6px 0 0; z-index:3; }
+
+  /* Zone background GIF layer */
+  .zone-bg {
+    position:absolute; inset:0; z-index:0; overflow:hidden;
+  }
+  .zone-bg-img {
+    width:100%; height:100%; object-fit:cover; object-position:center 30%;
+    opacity:0.18; filter:blur(4px) saturate(120%);
+    animation:zoneFadeIn .8s ease-out;
+  }
+  /* Frosted glass overlay on top of GIF */
+  .zone-glass {
+    position:absolute; inset:0; z-index:1;
+    background:linear-gradient(180deg, rgba(14,14,14,.72) 0%, rgba(14,14,14,.55) 40%, rgba(14,14,14,.7) 100%);
+    backdrop-filter:blur(2px);
+    -webkit-backdrop-filter:blur(2px);
+  }
+  @keyframes zoneFadeIn { from{opacity:0;} to{opacity:1;} }
+
+  /* Light mode: brighter overlay to keep text readable */
+  :global(html.light) .zone-glass {
+    background:linear-gradient(180deg, rgba(255,255,255,.78) 0%, rgba(255,255,255,.6) 40%, rgba(255,255,255,.75) 100%);
+  }
+  :global(html.light) .zone-bg-img { opacity:0.12; filter:blur(5px) saturate(80%); }
+  :global(html.light) .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.04) 0%,rgba(255,255,255,.72) 80px); }
+
+  /* Mobile: slightly more opaque overlay for readability */
+  @media (max-width:700px) {
+    .zone-bg-img { opacity:0.14; filter:blur(5px); }
+    .zone-glass { background:linear-gradient(180deg, rgba(14,14,14,.78) 0%, rgba(14,14,14,.62) 40%, rgba(14,14,14,.76) 100%); }
+    :global(html.light) .zone-glass { background:linear-gradient(180deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.65) 40%, rgba(255,255,255,.8) 100%); }
+  }
   .dca-hero    { text-align:center; padding:18px 0 16px; }
   .dca-n       { display:block; font-size:clamp(3rem,7vw,5rem); font-weight:800; line-height:1; letter-spacing:-.045em; transition:color .5s,text-shadow .5s; }
   .dca-sub     { font-size:.6rem; color:var(--t2); text-transform:uppercase; letter-spacing:.12em; margin-top:8px; }

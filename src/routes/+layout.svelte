@@ -774,7 +774,7 @@
   :global(html.light) .vband-track { background:rgba(0,0,0,.06); }
   :global(html.light) .dca-sub { color:rgba(0,0,0,.3); }
   :global(html.light) .muted { color:rgba(0,0,0,.1); }
-  :global(html.light) .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.06) 0%,rgba(255,255,255,.72) 80px); }
+  :global(html.light) .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.04) 0%,rgba(255,255,255,.72) 80px); }
   :global(html.light) .halving-days { color:#c77a10; }
   :global(html.light) .halving-u { color:rgba(200,120,20,.7); }
   :global(html.light) .btc-pill { background:rgba(247,147,26,.06); border-color:rgba(247,147,26,.15); }
