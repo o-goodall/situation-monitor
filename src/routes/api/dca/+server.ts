@@ -1,5 +1,8 @@
 import { json } from '@sveltejs/kit';
 
+// Common currencies to include in the rates response
+const COMMON_CURRENCIES = ['AUD','EUR','GBP','CAD','JPY','CHF','NZD','SGD','HKD','INR'];
+
 export async function GET() {
   try {
     const [fngRes, diffRes, fundingRes, fxRes] = await Promise.allSettled([
@@ -30,18 +33,23 @@ export async function GET() {
     }
 
     let audUsd: number | null = null;
+    let fxRates: Record<string, number> = {};
     if (fxRes.status === 'fulfilled' && fxRes.value.ok) {
       const d = await fxRes.value.json();
       audUsd = d?.rates?.AUD ?? null;
+      // Include a subset of common currency rates
+      for (const cur of COMMON_CURRENCIES) {
+        if (d?.rates?.[cur] != null) fxRates[cur] = d.rates[cur];
+      }
     }
 
-    return json({ fearGreed, fearGreedLabel, difficultyChange, fundingRate, audUsd, errors: [
+    return json({ fearGreed, fearGreedLabel, difficultyChange, fundingRate, audUsd, fxRates, errors: [
       ...(fngRes.status !== 'fulfilled' || !fngRes.value.ok ? ['Fear & Greed'] : []),
       ...(diffRes.status !== 'fulfilled' || !diffRes.value.ok ? ['Difficulty'] : []),
       ...(fundingRes.status !== 'fulfilled' || !fundingRes.value.ok ? ['Funding Rate'] : []),
       ...(fxRes.status !== 'fulfilled' || !fxRes.value.ok ? ['AUD/USD FX'] : []),
     ] });
   } catch {
-    return json({ fearGreed: null, fearGreedLabel: '', difficultyChange: null, fundingRate: null, audUsd: null, errors: ['Internal error'] });
+    return json({ fearGreed: null, fearGreedLabel: '', difficultyChange: null, fundingRate: null, audUsd: null, fxRates: {}, errors: ['Internal error'] });
   }
 }

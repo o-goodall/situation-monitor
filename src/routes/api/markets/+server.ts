@@ -85,19 +85,22 @@ async function getCPI(): Promise<number | null> {
 }
 
 export async function GET() {
-  const [goldRes, spRes, cpiRes] = await Promise.allSettled([
+  const [goldRes, spRes, cpiRes, btcRes] = await Promise.allSettled([
     getGold(),
     getYahooChart('^GSPC'),
     getCPI(),
+    getYahooChart('BTC-USD'),
   ]);
 
   const gold    = goldRes.status === 'fulfilled' ? goldRes.value : null;
   const sp500   = spRes.status === 'fulfilled' ? spRes.value : null;
   const cpiAnnual = cpiRes.status === 'fulfilled' ? cpiRes.value : null;
+  const btc     = btcRes.status === 'fulfilled' ? btcRes.value : null;
 
   return json({
     gold:  gold  ? { priceUsd: gold.current, ytdPct: gold.ytdPct } : null,
     sp500: sp500 ? { price: sp500.current, ytdPct: sp500.ytdPct } : null,
+    btc:   btc   ? { ytdPct: btc.ytdPct } : null,
     cpiAnnual,
   });
 }

@@ -9,10 +9,10 @@
     latestBlock, mempoolStats,
     fearGreed, fearGreedLabel, difficultyChange, fundingRate, audUsd, dcaUpdated,
     markets, newsItems,
-    goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual,
+    goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
-    persistSettings
+    persistSettings, fxRates, btcWsConnected
   } from '$lib/store';
 
   let newKeyword = '', newSource = '', newSourceName = '';
@@ -21,6 +21,73 @@
   let scrolled = false;
   let mobileMenuOpen = false;
 
+  // ── BINANCE WEBSOCKET — real-time BTC price ───────────────────
+  // Uses the free, public, no-auth Binance aggTrade stream.
+  // Each message delivers the latest executed trade price.
+  const PRICE_HISTORY_SIZE = 60;          // rolling sparkline data points
+  const HISTORY_UPDATE_INTERVAL_MS = 10_000; // push to history at most every 10 s
+
+  let priceWs: WebSocket | null = null;
+  let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  let wsReconnectDelay = 2000; // ms, doubles on each failure (max 30s)
+  let lastHistoryUpdate = 0;   // timestamp of last price-history push
+
+  function connectPriceWs() {
+    if (typeof WebSocket === 'undefined') return;
+    try {
+      priceWs = new WebSocket('wss://stream.binance.com:9443/ws/btcusdt@aggTrade');
+
+      priceWs.onopen = () => {
+        $btcWsConnected = true;
+        wsReconnectDelay = 2000; // reset backoff on success
+      };
+
+      priceWs.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data as string);
+          const price = parseFloat(msg.p);
+          if (isNaN(price) || price <= 0) return;
+
+          const prev = $btcPrice;
+          $btcPrice = price;
+
+          // Flash animation on direction change
+          if (prev > 0 && price !== prev) {
+            $priceFlash = price > prev ? 'up' : 'down';
+            setTimeout(() => { $priceFlash = ''; }, 1200);
+          }
+
+          // Add to rolling history at most once every HISTORY_UPDATE_INTERVAL_MS
+          const now = Date.now();
+          if (now - lastHistoryUpdate >= HISTORY_UPDATE_INTERVAL_MS) {
+            lastHistoryUpdate = now;
+            $priceHistory = [...$priceHistory.slice(-(PRICE_HISTORY_SIZE - 1)), price];
+          }
+        } catch {}
+      };
+
+      priceWs.onerror = () => {
+        $btcWsConnected = false;
+      };
+
+      priceWs.onclose = () => {
+        $btcWsConnected = false;
+        priceWs = null;
+        // Reconnect with exponential backoff (cap at 30 s)
+        wsReconnectDelay = Math.min(wsReconnectDelay * 2, 30_000);
+        wsReconnectTimer = setTimeout(connectPriceWs, wsReconnectDelay);
+      };
+    } catch {
+      $btcWsConnected = false;
+    }
+  }
+
+  function disconnectPriceWs() {
+    if (wsReconnectTimer) { clearTimeout(wsReconnectTimer); wsReconnectTimer = null; }
+    if (priceWs) { priceWs.onclose = null; priceWs.close(); priceWs = null; }
+    $btcWsConnected = false;
+  }
+
   function tick() {
     $time = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
   }
@@ -28,8 +95,16 @@
   async function fetchBtc() {
     try {
       const d = await fetch('/api/bitcoin').then(r=>r.json());
-      $prevPrice = $btcPrice;
-      $btcPrice = d.price ?? 0;
+      // If WebSocket is connected, skip overwriting the real-time price
+      if (!$btcWsConnected && d.price) {
+        $prevPrice = $btcPrice;
+        $btcPrice = d.price;
+        if ($prevPrice && $btcPrice !== $prevPrice) {
+          $priceFlash = $btcPrice > $prevPrice ? 'up' : 'down';
+          setTimeout(() => $priceFlash = '', 1200);
+        }
+        if ($btcPrice > 0) $priceHistory = [...$priceHistory.slice(-(PRICE_HISTORY_SIZE - 1)), $btcPrice];
+      }
       $btcBlock = d.blockHeight ?? 0;
       $btcFees = d.fees ?? {low:0,medium:0,high:0};
       if (d.halving) {
@@ -40,14 +115,6 @@
       }
       if (d.latestBlock) $latestBlock = d.latestBlock;
       if (d.mempool) $mempoolStats = d.mempool;
-      if ($prevPrice && $btcPrice !== $prevPrice) {
-        $priceFlash = $btcPrice > $prevPrice ? 'up' : 'down';
-        setTimeout(() => $priceFlash = '', 1200);
-      }
-      // Rolling price history — keep last 60 data points
-      if ($btcPrice > 0) {
-        $priceHistory = [...$priceHistory.slice(-59), $btcPrice];
-      }
     } catch {}
   }
 
@@ -56,6 +123,7 @@
       const d = await fetch('/api/dca').then(r=>r.json());
       $fearGreed = d.fearGreed; $fearGreedLabel = d.fearGreedLabel;
       $difficultyChange = d.difficultyChange; $fundingRate = d.fundingRate; $audUsd = d.audUsd;
+      if (d.fxRates && typeof d.fxRates === 'object') $fxRates = d.fxRates;
       $dcaUpdated = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
     } catch {}
   }
@@ -81,6 +149,7 @@
       $goldPriceUsd = d.gold?.priceUsd ?? null; $goldYtdPct = d.gold?.ytdPct ?? null;
       $sp500Price = d.sp500?.price ?? null; $sp500YtdPct = d.sp500?.ytdPct ?? null;
       $cpiAnnual = d.cpiAnnual ?? null;
+      $btcYtdPct = d.btc?.ytdPct ?? null;
     } catch {}
   }
 
@@ -136,6 +205,8 @@
     clockInterval = setInterval(tick, 1000);
     fetchBtc(); fetchDCA(); fetchPoly(); fetchNews(); fetchMarkets();
     if ($settings.ghostfolio?.token) fetchGhostfolio();
+    // Start WebSocket for real-time price; keep 60s poll for block/fee/mempool data
+    connectPriceWs();
     intervals = [
       setInterval(fetchBtc, 60000), setInterval(fetchDCA, 300000),
       setInterval(fetchPoly, 300000), setInterval(fetchNews, 300000),
@@ -334,6 +405,7 @@
   onDestroy(() => {
     clearInterval(clockInterval);
     intervals.forEach(clearInterval);
+    disconnectPriceWs();
     window.removeEventListener('scroll', handleScroll);
   });
 </script>
@@ -371,6 +443,10 @@
   <!-- Desktop right controls -->
   <div class="hdr-right desktop-only">
     <span class="hdr-clock">{$time}</span>
+    <!-- Live price feed status -->
+    <span class="ws-badge" class:ws-badge--live={$btcWsConnected} title="{$btcWsConnected?'Live price feed connected (Binance WebSocket)':'Price polling fallback — attempting live connection…'}">
+      <span class="ws-dot"></span>{$btcWsConnected?'LIVE':'POLL'}
+    </span>
 
     <!-- Dark/Light mode toggle -->
     <button class="mode-toggle btn-ghost" on:click={() => $lightMode = !$lightMode}
@@ -423,6 +499,20 @@
         <label class="df"><span class="dlbl">Low Price (USD)</span><input type="number" bind:value={$settings.dca.lowPrice} class="dinp"/></label>
         <label class="df"><span class="dlbl">High Price (USD)</span><input type="number" bind:value={$settings.dca.highPrice} class="dinp"/></label>
         <label class="df"><span class="dlbl">Max DCA (AUD)</span><input type="number" bind:value={$settings.dca.maxDcaAud} class="dinp"/></label>
+      </div>
+    </div>
+    <div class="dg"><p class="dg-hd">Display Currency <span class="dhint">BTC price second currency</span></p>
+      <div class="dfields" style="align-items:flex-end;">
+        <label class="df" style="max-width:120px;">
+          <span class="dlbl">Currency code</span>
+          <input bind:value={$settings.displayCurrency} placeholder="AUD" class="dinp" style="text-transform:uppercase;" maxlength="3"/>
+        </label>
+        <div style="display:flex;flex-wrap:wrap;gap:6px;padding-bottom:2px;">
+          {#each ['AUD','EUR','GBP','CAD','JPY','CHF','NZD','SGD'] as c}
+            <button class="curr-preset" class:curr-preset--active={($settings.displayCurrency||'AUD').toUpperCase()===c}
+              on:click={()=>$settings.displayCurrency=c}>{c}</button>
+          {/each}
+        </div>
       </div>
     </div>
     <div class="dg"><p class="dg-hd">Watchlist <span class="dhint">pinned in markets</span></p>
@@ -595,6 +685,22 @@
   /* Right controls */
   .hdr-right { display:flex; align-items:center; gap:10px; flex-shrink:0; }
   .hdr-clock { font-size:.7rem; font-weight:500; color:rgba(255,255,255,.22); font-variant-numeric:tabular-nums; letter-spacing:.07em; margin-right:4px; }
+  /* Live price feed badge */
+  .ws-badge {
+    display:flex; align-items:center; gap:5px;
+    font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+    font-family:'Orbitron',monospace;
+    color:rgba(255,255,255,.22); background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.08); border-radius:3px; padding:3px 8px;
+    transition:all .5s;
+  }
+  .ws-badge--live { color:var(--up); border-color:rgba(34,197,94,.25); background:rgba(34,197,94,.06); }
+  .ws-dot {
+    width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0;
+    box-shadow:0 0 0 2px transparent;
+  }
+  .ws-badge--live .ws-dot { animation:wsPulse 2s ease-in-out infinite; box-shadow:0 0 8px var(--up); }
+  @keyframes wsPulse { 0%,100%{opacity:1} 50%{opacity:.4} }
   .mode-toggle { padding:7px 10px; display:flex; align-items:center; justify-content:center; }
   .settings-btn { padding:7px 11px; }
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
@@ -690,7 +796,13 @@
   .mobile-settings { padding:0 20px; display:flex; flex-direction:column; gap:18px; }
 
   /* ── SETTINGS DRAWER (desktop) ───────────────────────────── */
-  .drawer { background:rgba(8,8,8,.97); backdrop-filter:blur(24px); border-bottom:1px solid rgba(247,147,26,.15); position:relative; z-index:200; }
+  .drawer {
+    position: fixed; top: 64px; left: 0; right: 0; z-index: 200;
+    overflow-y: auto; max-height: calc(100vh - 64px);
+    background:rgba(8,8,8,.97); backdrop-filter:blur(24px);
+    border-bottom:1px solid rgba(247,147,26,.15);
+  }
+  @media (max-width:768px) { .drawer { top: 54px; max-height: calc(100vh - 54px); } }
   .drawer-inner { max-width:900px; margin:0 auto; padding:28px 24px; display:flex; flex-direction:column; gap:22px; }
   .dg-hd { font-size:.72rem; font-weight:600; color:rgba(255,255,255,.5); margin-bottom:12px; display:flex; align-items:center; gap:8px; font-family:'Orbitron',monospace; letter-spacing:.06em; text-transform:uppercase; }
   .dhint { font-size:.62rem; color:rgba(255,255,255,.2); font-weight:400; font-family:'Inter',sans-serif; text-transform:none; letter-spacing:0; }
@@ -706,6 +818,11 @@
   .dinp-row { display:flex; gap:8px; flex-wrap:wrap; }
   .dinp-row .dinp { min-width:120px; }
   .dsrcs { max-height:68px; overflow-y:auto; margin-bottom:8px; }
+  .curr-preset { padding:4px 10px; font-size:.62rem; font-weight:600; font-family:'Orbitron',monospace; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:3px; color:rgba(255,255,255,.4); cursor:pointer; transition:all .2s; letter-spacing:.04em; }
+  .curr-preset:hover { border-color:rgba(247,147,26,.3); color:var(--orange); }
+  .curr-preset--active { background:rgba(247,147,26,.15); border-color:var(--orange)!important; color:var(--orange)!important; }
+  :global(html.light) .curr-preset { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.5); }
+  :global(html.light) .curr-preset--active { background:rgba(247,147,26,.1); }
   .dsrc { display:flex; justify-content:space-between; align-items:center; padding:3px 0; font-size:.62rem; color:rgba(255,255,255,.25); }
   .dsrc-url { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:300px; }
   .d-save--ok { background:linear-gradient(45deg,#22c55e,#15803d)!important; }
@@ -813,6 +930,8 @@
   :global(html.light) .err-msg { background:rgba(220,38,38,.06); border-color:rgba(220,38,38,.2); }
   :global(html.light) .holdings-wrap { border-top-color:rgba(0,0,0,.06); }
   :global(html.light) .live-badge { color:rgba(0,0,0,.45); }
+  :global(html.light) .ws-badge { color:rgba(0,0,0,.3); background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); }
+  :global(html.light) .ws-badge--live { color:var(--up); background:rgba(22,163,74,.06); border-color:rgba(22,163,74,.2); }
   :global(html.light) .section-divider { background:linear-gradient(90deg,transparent,rgba(247,147,26,.3),rgba(0,200,255,.15),transparent); }
   :global(html.light) .sect-title { background:linear-gradient(45deg,#c77a10,#0090cc); -webkit-background-clip:text; background-clip:text; }
 

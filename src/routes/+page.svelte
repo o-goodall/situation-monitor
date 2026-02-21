@@ -4,26 +4,32 @@
     halvingBlocksLeft, halvingDays, halvingDate, halvingProgress,
     latestBlock, mempoolStats,
     dcaUpdated, dca, accentColor, priceColor, btcAud, satsPerAud,
-    goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual,
+    goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
-    markets, newsItems
+    markets, newsItems, btcDisplayPrice
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
   import { audUsd } from '$lib/store';
 
-  $: audHistory = $audUsd && $priceHistory.length
-    ? $priceHistory.map(p => p * $audUsd!)
-    : [];
+  $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
+
+  $: altHistory = $btcDisplayPrice !== null && $priceHistory.length
+    ? $priceHistory.map(p => {
+        // Re-derive display price for history (approximate using same rate)
+        if ($btcPrice > 0 && $btcDisplayPrice !== null) return p * ($btcDisplayPrice / $btcPrice);
+        return p;
+      })
+    : ($audUsd && $priceHistory.length ? $priceHistory.map(p => p * $audUsd!) : []);
 
   let showHoldings = false;
-  let priceCurrency: 'usd'|'aud' = 'usd';
+  let priceCurrency: 'usd'|'alt' = 'usd';
 
   const n   = (v:number, dec=0) => v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
   const pct = (v:number|null)   => v===null?'—':(v>=0?'+':'')+v.toFixed(2)+'%';
   const sc  = (v:number|null)   => v===null?'var(--t3)':v>=0?'var(--up)':'var(--dn)';
   const fmtVol  = (v:number) => v>=1e6?`$${(v/1e6).toFixed(1)}m`:v>=1e3?`$${(v/1e3).toFixed(0)}k`:`$${v}`;
-  const fmtDate = (d:string) => {try{return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric'});}catch{return '';}};
+  const fmtDate = (d:string) => {try{return new Date(d).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});}catch{return '';}};
   const pc  = (p:number) => p>=70?'var(--up)':p>=40?'var(--orange)':'var(--dn)';
   const ago = (d:string) => {try{const m=Math.floor((Date.now()-new Date(d).getTime())/60000);return m<60?`${m}m`:m<1440?`${Math.floor(m/60)}h`:`${Math.floor(m/1440)}d`;}catch{return '';}};
   const fmtBytes = (b:number) => b>=1e6?`${(b/1e6).toFixed(2)} MB`:b>=1e3?`${(b/1e3).toFixed(0)} KB`:`${b} B`;
@@ -51,7 +57,9 @@
   $: satsHeld = Math.round(s.btcHeld*1e8);
   $: satsLeft = Math.max(0,Math.round((s.goalBtc-s.btcHeld)*1e8));
 
-  $: inflAdj = (()=>{if($gfNetWorth===null||$cpiAnnual===null)return null;const y=dcaDays/365.25;return $gfNetWorth/Math.pow(1+$cpiAnnual/100,y);})();
+  // CPI-adjusted real value: use portfolio duration from Ghostfolio if possible,
+  // otherwise fall back to DCA start date duration
+  $: inflAdj = (()=>{if($gfNetWorth===null||$cpiAnnual===null)return null;const y=Math.max(.1,dcaDays/365.25);return $gfNetWorth/Math.pow(1+$cpiAnnual/100,y);})();
   $: cpiLoss = (()=>{if($cpiAnnual===null)return 0;const y=Math.max(.1,dcaDays/365.25);return(1-1/Math.pow(1+$cpiAnnual/100,y))*100;})();
   $: portCAGR= (()=>{if($gfNetGainPct===null)return null;const y=Math.max(.1,dcaDays/365.25);return(Math.pow(1+$gfNetGainPct/100,1/y)-1)*100;})();
 
@@ -75,32 +83,32 @@
   <!-- KEY METRICS STRIP — combined BTC price + sats + halving -->
   <div class="stat-strip">
 
-    <!-- BTC Price — combined USD/AUD toggle with sparkline -->
+    <!-- BTC Price — combined USD/alt currency toggle with sparkline -->
     <div class="stat-tile stat-tile--chart stat-tile--wide">
       {#if priceCurrency==='usd' && $priceHistory.length >= 2}
         <div class="tile-spark"><Sparkline prices={$priceHistory} height={52} opacity={0.28} /></div>
-      {:else if priceCurrency==='aud' && audHistory.length >= 2}
-        <div class="tile-spark"><Sparkline prices={audHistory} height={52} opacity={0.28} /></div>
+      {:else if priceCurrency==='alt' && altHistory.length >= 2}
+        <div class="tile-spark"><Sparkline prices={altHistory} height={52} opacity={0.28} /></div>
       {/if}
       <span class="stat-n" style="color:{$priceColor};transition:color .5s;">
         {#if priceCurrency==='usd'}
           {$btcPrice>0?'$'+n($btcPrice):'—'}
         {:else}
-          {$btcAud?'A$'+n($btcAud,0):'—'}
+          {$btcDisplayPrice!==null?n($btcDisplayPrice,0):'—'}
         {/if}
       </span>
       <div class="stat-l-row">
         <span class="stat-l">BTC Price</span>
         <div class="curr-toggle">
           <button class="curr-btn" class:curr-btn--active={priceCurrency==='usd'} on:click={()=>priceCurrency='usd'}>USD</button>
-          <button class="curr-btn" class:curr-btn--active={priceCurrency==='aud'} on:click={()=>priceCurrency='aud'}>AUD</button>
+          <button class="curr-btn" class:curr-btn--active={priceCurrency==='alt'} on:click={()=>priceCurrency='alt'}>{displayCur}</button>
         </div>
       </div>
     </div>
 
     <div class="stat-tile">
       <span class="stat-n" style="color:var(--orange);">{$satsPerAud?$satsPerAud.toLocaleString():'—'}</span>
-      <span class="stat-l">Sats per A$1</span>
+      <span class="stat-l">Sats / {displayCur} 1</span>
     </div>
     <div class="stat-tile">
       <span class="stat-n">{$halvingDays>0?$halvingDays.toLocaleString():'—'}</span>
@@ -181,12 +189,17 @@
       {#if $dca}
       <div class="sigs">
         {#each $dca.signals as sig}
-          <div class="sig" class:sig--on={sig.active}>
+          <div class="sig" class:sig--on={sig.active} title={sig.description}>
             <div class="pip-wrap">
               <div class="pip" class:pip--on={sig.active}></div>
               {#if sig.active}<div class="pip-ring"></div>{/if}
             </div>
-            <span class="sig-label">{sig.name}</span>
+            <div class="sig-body">
+              <span class="sig-label">{sig.name}</span>
+              {#if sig.value && sig.value !== 'Inactive'}
+                <span class="sig-val">{sig.value}</span>
+              {/if}
+            </div>
             {#if sig.active}<span class="sig-badge">+{sig.boost}%</span>{/if}
           </div>
         {/each}
@@ -326,15 +339,15 @@
       <div class="gc-head"><p class="gc-title">Asset Comparison</p><p class="dim">1-Year Performance</p></div>
       <div class="asset-panels">
         {#each [
-          {ticker:'BTC', name:'Bitcoin',  icon:'₿', pct:null,        color:'#f7931a', sub:$btcPrice?'$'+n($btcPrice):'—'},
-          {ticker:'XAU', name:'Gold',     icon:'◈', pct:$goldYtdPct, color:'#c9a84c', sub:$goldPriceUsd?'$'+n($goldPriceUsd,0)+'/oz':'—'},
-          {ticker:'SPX', name:'S&P 500',  icon:'↗', pct:$sp500YtdPct,color:'#888',    sub:$sp500Price?n($sp500Price,0):'—'},
-          {ticker:'CPI', name:'Inflation',icon:'↓', pct:$cpiAnnual,  color:'#ef4444', sub:'Annual rate'},
+          {ticker:'BTC', name:'Bitcoin',  icon:'₿', pct:$btcYtdPct,   color:'#f7931a', sub:$btcPrice?'$'+n($btcPrice):'—'},
+          {ticker:'XAU', name:'Gold',     icon:'◈', pct:$goldYtdPct,  color:'#c9a84c', sub:$goldPriceUsd?'$'+n($goldPriceUsd,0)+'/oz':'—'},
+          {ticker:'SPX', name:'S&P 500',  icon:'↗', pct:$sp500YtdPct, color:'#888',    sub:$sp500Price?n($sp500Price,0):'—'},
+          {ticker:'CPI', name:'Inflation',icon:'↓', pct:$cpiAnnual,   color:'#ef4444', sub:'Annual rate'},
         ] as a}
           <div class="ap" style="--pc:{a.color};">
             <div class="ap-top"><span class="ap-icon" style="color:{a.color};">{a.icon}</span><div><p class="ap-ticker" style="color:{a.color};">{a.ticker}</p><p class="ap-name">{a.name}</p></div></div>
             <p class="ap-pct" style="color:{a.pct===null?a.color:a.pct>=0?'var(--up)':'var(--dn)'};">
-              {a.pct!==null?(a.pct>=0?'+':'')+a.pct.toFixed(1)+'%':'live'}
+              {a.pct!==null?(a.pct>=0?'+':'')+a.pct.toFixed(1)+'%':'—'}
             </p>
             <p class="ap-sub">{a.sub}</p>
             <div class="pbar" style="margin-top:8px;">{#if a.pct!==null}<div class="pfill" style="width:{Math.min(100,Math.max(2,(a.pct/150)*100+50))}%;background:{a.pct>=0?'var(--up)':'var(--dn)'};opacity:.55;"></div>{:else}<div class="pfill" style="width:70%;background:{a.color};animation:apPulse 3s ease-in-out infinite;"></div>{/if}</div>
@@ -363,12 +376,24 @@
           <p class="err-msg">{$gfError} — check token in Settings.</p>
         {:else}
           <div class="gf-hero">
-            <div><p class="eyebrow">Net Worth</p><p class="gf-nw">{$gfNetWorth!==null?'$'+n($gfNetWorth,0):'—'}</p><p class="eyebrow" style="margin-top:4px;">{$settings.ghostfolio.currency||'AUD'}</p></div>
-            {#if inflAdj!==null}<div style="opacity:.4;"><p class="eyebrow">Real Value</p><p class="gf-nw">{inflAdj!==null?'$'+n(inflAdj,0):'—'}</p><p class="eyebrow" style="margin-top:4px;">CPI-adjusted</p></div>{/if}
+            <div>
+              <p class="eyebrow">Net Worth</p>
+              <p class="gf-nw">{$gfNetWorth!==null?'$'+n($gfNetWorth,0):'—'}</p>
+              <p class="eyebrow" style="margin-top:4px;">{$settings.ghostfolio.currency||'AUD'}</p>
+            </div>
+            {#if inflAdj!==null}
+            <div class="gf-cpi" title="Estimated purchasing-power value based on CPI since DCA start date. Limited by available CPI data.">
+              <p class="eyebrow">Real Value <span class="gf-est">est.</span></p>
+              <p class="gf-nw">${n(inflAdj,0)}</p>
+              <p class="eyebrow" style="margin-top:4px;">CPI-adjusted</p>
+            </div>
+            {/if}
             <div class="gf-perf">
               <div class="gfp"><p class="eyebrow">Today</p><p class="gfp-v" style="color:{sc($gfTodayChangePct)};">{pct($gfTodayChangePct)}</p></div>
               <div class="gfp"><p class="eyebrow">YTD</p><p class="gfp-v" style="color:{sc($gfNetGainYtdPct)};">{pct($gfNetGainYtdPct)}</p></div>
-              <div class="gfp"><p class="eyebrow">All-time</p><p class="gfp-v" style="color:{sc($gfNetGainPct)};">{pct($gfNetGainPct)}</p></div>
+              <div class="gfp" title="Total return since portfolio inception (from Ghostfolio data)">
+                <p class="eyebrow">All-time</p><p class="gfp-v" style="color:{sc($gfNetGainPct)};">{pct($gfNetGainPct)}</p>
+              </div>
               <div class="gfp"><p class="eyebrow">Invested</p><p class="gfp-v">{$gfTotalInvested!==null?'$'+n($gfTotalInvested,0):'—'}</p></div>
             </div>
           </div>
@@ -420,7 +445,7 @@
 
   <div class="intel-grid">
 
-    <!-- PREDICTION MARKETS — redesigned for clarity -->
+    <!-- PREDICTION MARKETS — PolyMarket-inspired layout -->
     <div class="gc">
       <div class="gc-head" style="margin-bottom:18px;">
         <div><p class="gc-title">Prediction Markets</p><p class="dim" style="margin-top:2px;">What the crowd expects</p></div>
@@ -430,27 +455,28 @@
         <p class="dim">Fetching live markets…</p>
       {:else}
         {#each $markets.slice(0,8) as m}
-          <div class="mkt">
-            <div class="mkt-top">
-              <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="mkt-q">{m.question}</a>
-              <div class="mkt-prob-wrap">
+          <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="mkt">
+            <div class="mkt-row">
+              <div class="mkt-left">
+                <div class="mkt-tags">
+                  {#if m.pinned}<span class="mkt-tag mkt-pin">★ Watching</span>{:else}<span class="mkt-tag">{m.tag}</span>{/if}
+                </div>
+                <p class="mkt-q">{m.question}</p>
+                <div class="mkt-meta-row">
+                  <span class="mkt-outcome" style="color:{pc(m.probability)};font-weight:600;">{m.topOutcome}</span>
+                  {#if m.endDate}<span class="dim">· closes {fmtDate(m.endDate)}</span>{/if}
+                  <span class="dim">· {fmtVol(m.volume)} vol</span>
+                </div>
+              </div>
+              <div class="mkt-right">
                 <span class="mkt-prob" style="color:{pc(m.probability)};">{m.probability}<span class="mkt-pct">%</span></span>
               </div>
             </div>
             <div class="mkt-bar">
               <div class="mkt-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
+              <div class="mkt-fill-rest" style="width:{100-m.probability}%;"></div>
             </div>
-            <div class="mkt-foot">
-              <div class="mkt-meta-row">
-                {#if m.pinned}<span class="mkt-tag mkt-pin">★ Watching</span>{:else}<span class="mkt-tag">{m.tag}</span>{/if}
-                <span class="mkt-outcome" style="color:{pc(m.probability)};">{m.topOutcome}</span>
-              </div>
-              <div class="mkt-meta-row">
-                {#if m.endDate}<span class="dim">{fmtDate(m.endDate)}</span>{/if}
-                <span class="dim">{fmtVol(m.volume)} volume</span>
-              </div>
-            </div>
-          </div>
+          </a>
         {/each}
       {/if}
     </div>
@@ -462,11 +488,21 @@
         <p class="dim">Fetching RSS feeds…</p>
       {:else}
         {#each $newsItems as item}
-          <div class="news">
-            <a href={item.link} target="_blank" rel="noopener noreferrer" class="news-title">{item.title}</a>
-            {#if item.description}<p class="news-desc">{item.description}</p>{/if}
-            <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
-          </div>
+          <a href={item.link} target="_blank" rel="noopener noreferrer" class="news">
+            {#if item.image}
+              <div class="news-img" style="background-image:url('{item.image}');">
+                <div class="news-img-overlay"></div>
+                <div class="news-img-content">
+                  <p class="news-title">{item.title}</p>
+                  <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
+                </div>
+              </div>
+            {:else}
+              <p class="news-title">{item.title}</p>
+              {#if item.description}<p class="news-desc">{item.description}</p>{/if}
+              <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
+            {/if}
+          </a>
         {/each}
       {/if}
     </div>
@@ -633,15 +669,18 @@
 
   /* Signals */
   .sigs  { display:flex; flex-direction:column; gap:9px; padding:14px 0 0; border-top:1px solid rgba(255,255,255,.05); position:relative; z-index:2; }
-  .sig   { display:flex; align-items:center; gap:11px; transition:opacity .2s; }
-  .sig:not(.sig--on) { opacity:.25; }
+  .sig   { display:flex; align-items:center; gap:11px; transition:opacity .2s; cursor:default; }
+  .sig:not(.sig--on) { opacity:.28; }
   .pip-wrap  { position:relative; width:14px; height:14px; flex-shrink:0; }
   .pip       { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); transition:all .25s; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
   .pip--on   { background:var(--orange); border-color:var(--orange); box-shadow:0 0 10px rgba(247,147,26,.6); }
   .pip-ring  { position:absolute; inset:0; border-radius:50%; background:rgba(247,147,26,.14); animation:rp 2s ease-out infinite; }
   @keyframes rp { 0%{transform:scale(1);opacity:.8} 100%{transform:scale(2.6);opacity:0} }
-  .sig-label { font-size:.72rem; color:var(--t1); opacity:.85; flex:1; line-height:1.3; }
-  .sig-badge { font-size:.6rem; color:var(--orange); font-weight:600; background:rgba(247,147,26,.1); border:1px solid rgba(247,147,26,.22); padding:2px 8px; border-radius:3px; white-space:nowrap; }
+  .sig-body  { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .sig-label { font-size:.72rem; color:var(--t1); opacity:.85; line-height:1.3; }
+  .sig-val   { font-size:.58rem; color:var(--orange); opacity:.8; font-variant-numeric:tabular-nums; font-weight:600; }
+  .sig-badge { font-size:.6rem; color:var(--orange); font-weight:600; background:rgba(247,147,26,.1); border:1px solid rgba(247,147,26,.22); padding:2px 8px; border-radius:3px; white-space:nowrap; flex-shrink:0; }
+  :global(html.light) .sig-val { color:#c77a10; }
 
   /* ── LATEST BLOCK / MEMPOOL ──────────────────────────────── */
   .latest-block { margin-bottom:16px; padding-bottom:14px; border-bottom:1px solid rgba(255,255,255,.05); }
@@ -661,7 +700,7 @@
 
   /* Network + Stack shared */
   .met3  { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px; }
-  .met   { display:flex; flex-direction:column; gap:7px; }
+  .met   { display:flex; flex-direction:column; gap:7px; text-align:center; align-items:center; }
   .met-n { font-size:1.4rem; font-weight:700; letter-spacing:-.03em; line-height:1; color:var(--t1); }
   .met-u { font-size:.48em; color:var(--t2); font-weight:400; margin-left:2px; }
   .halving { border-top:1px solid rgba(255,255,255,.06); margin-top:18px; padding-top:16px; }
@@ -694,6 +733,8 @@
 
   .gf-hero { display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap; margin-bottom:18px; }
   .gf-nw   { font-size:2.4rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
+  .gf-cpi  { opacity:.5; cursor:help; }
+  .gf-est  { font-size:.5em; opacity:.6; }
   .gf-perf { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; flex:1; border-left:1px solid rgba(255,255,255,.06); padding-left:20px; min-width:0; }
   .gfp     { display:flex; flex-direction:column; gap:6px; }
   .gfp-v   { font-size:1.2rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
@@ -723,32 +764,61 @@
   .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
   @media (max-width:900px) { .intel-grid{grid-template-columns:1fr;} }
 
-  /* Prediction market — redesigned */
-  .mkt { padding:14px 0; border-bottom:1px solid rgba(255,255,255,.05); }
-  .mkt:last-child { border-bottom:none; padding-bottom:0; }
-  .mkt-top { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:8px; }
-  .mkt-q { font-size:.78rem; color:var(--t1); opacity:.7; line-height:1.5; flex:1; text-decoration:none; transition:opacity .2s; }
-  .mkt-q:hover { opacity:1; }
-  .mkt-prob-wrap { flex-shrink:0; text-align:right; }
-  .mkt-prob { font-size:1.8rem; font-weight:800; line-height:1; letter-spacing:-.03em; }
-  .mkt-pct { font-size:.7rem; font-weight:600; opacity:.5; }
-  .mkt-bar { height:4px; background:rgba(255,255,255,.04); border-radius:2px; overflow:hidden; margin-bottom:8px; }
-  .mkt-fill { height:100%; border-radius:2px; transition:width .7s; opacity:.6; }
-  .mkt-foot { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; }
-  .mkt-meta-row { display:flex; align-items:center; gap:8px; }
+  /* Prediction market — PolyMarket-inspired */
+  .mkt {
+    display:block; padding:12px 0; border-bottom:1px solid rgba(255,255,255,.05);
+    text-decoration:none; transition:background .2s; border-radius:4px; margin:0 -8px; padding:12px 8px;
+  }
+  .mkt:last-child { border-bottom:none; }
+  .mkt:hover { background:rgba(255,255,255,.03); }
+  .mkt-row { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; margin-bottom:8px; }
+  .mkt-left { flex:1; min-width:0; }
+  .mkt-right { flex-shrink:0; text-align:right; }
+  .mkt-tags { margin-bottom:5px; }
+  .mkt-q { font-size:.82rem; color:var(--t1); line-height:1.5; display:block; margin-bottom:4px; font-weight:500; }
+  .mkt-prob { font-size:1.9rem; font-weight:800; line-height:1; letter-spacing:-.04em; }
+  .mkt-pct { font-size:.65rem; font-weight:600; opacity:.55; }
+  .mkt-bar { height:6px; background:rgba(255,255,255,.04); border-radius:3px; overflow:hidden; display:flex; }
+  .mkt-fill { height:100%; border-radius:3px 0 0 3px; transition:width .7s; opacity:.7; }
+  .mkt-fill-rest { height:100%; border-radius:0 3px 3px 0; background:rgba(255,255,255,.04); transition:width .7s; }
+  .mkt-meta-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
   .mkt-tag { font-size:.56rem; font-weight:600; text-transform:uppercase; letter-spacing:.07em; padding:3px 8px; border-radius:3px; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.07); color:var(--t2); }
   .mkt-pin { background:rgba(247,147,26,.09); border-color:rgba(247,147,26,.24); color:var(--orange); }
-  .mkt-outcome { font-size:.62rem; font-weight:500; }
-  @media (max-width:500px) { .mkt-prob { font-size:1.4rem; } .mkt-q { font-size:.72rem; } }
+  .mkt-outcome { font-size:.65rem; font-weight:600; }
+  @media (max-width:500px) { .mkt-prob { font-size:1.5rem; } .mkt-q { font-size:.75rem; } }
 
-  .news { padding:12px 0; border-bottom:1px solid rgba(255,255,255,.05); }
-  .news:last-child { border-bottom:none; }
-  .news-title { display:block; font-size:.78rem; color:var(--t1); opacity:.65; text-decoration:none; line-height:1.52; margin-bottom:5px; transition:opacity .2s; }
-  .news-title:hover { opacity:1; }
-  .news-meta { display:flex; gap:10px; align-items:center; }
+  .news {
+    display:block; padding:0; border-bottom:1px solid rgba(255,255,255,.05); text-decoration:none;
+    overflow:hidden; border-radius:4px; margin-bottom:10px; transition:transform .2s, box-shadow .2s;
+  }
+  .news:last-child { border-bottom:none; margin-bottom:0; }
+  .news:hover { transform:translateY(-2px); box-shadow:0 4px 18px rgba(0,0,0,.25); }
+  /* News item with image */
+  .news-img {
+    position:relative; background-size:cover; background-position:center; border-radius:4px;
+    min-height:110px; display:flex; flex-direction:column; justify-content:flex-end; overflow:hidden;
+  }
+  .news-img-overlay {
+    position:absolute; inset:0; background:linear-gradient(180deg, rgba(0,0,0,.1) 0%, rgba(0,0,0,.75) 70%, rgba(0,0,0,.92) 100%);
+    border-radius:4px;
+  }
+  .news-img-content {
+    position:relative; z-index:1; padding:12px 14px 10px;
+  }
+  .news-img-content .news-title { color:#fff; opacity:.95; margin-bottom:4px; }
+  .news-img-content .news-meta { opacity:.85; }
+  /* News item without image */
+  .news-title { display:block; font-size:.78rem; color:var(--t1); opacity:.65; line-height:1.52; margin-bottom:5px; transition:opacity .2s; padding:10px 0 0; }
+  .news:hover .news-title { opacity:1; }
+  .news-meta { display:flex; gap:10px; align-items:center; padding-bottom:10px; }
   .news-src { font-size:.6rem; color:var(--orange); font-weight:600; }
   .news-desc { font-size:.66rem; color:var(--t2); line-height:1.5; margin-bottom:6px; opacity:.7; }
   :global(html.light) .news-desc { color:rgba(0,0,0,.45); }
+  :global(html.light) .news { border-bottom-color:rgba(0,0,0,.06); }
+  :global(html.light) .news-title { color:rgba(0,0,0,.65); }
+  :global(html.light) .news:hover .news-title { color:#111; }
+  :global(html.light) .news-src { color:#c77a10; }
+  :global(html.light) .news-img-overlay { background:linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.6) 70%, rgba(0,0,0,.82) 100%); }
 
   /* ── LIGHT MODE OVERRIDES (page-level) ────────────────── */
   :global(html.light) .pbar { background:rgba(0,0,0,.06); }
@@ -765,10 +835,12 @@
   :global(html.light) .sigs { border-top-color:rgba(0,0,0,.06); }
   :global(html.light) .pip { background:rgba(0,0,0,.06); border-color:rgba(0,0,0,.12); }
   :global(html.light) .mkt { border-bottom-color:rgba(0,0,0,.06); }
+  :global(html.light) .mkt:hover { background:rgba(0,0,0,.02); }
   :global(html.light) .mkt-bar { background:rgba(0,0,0,.04); }
-  :global(html.light) .mkt-fill { opacity:.5; }
+  :global(html.light) .mkt-fill { opacity:.55; }
+  :global(html.light) .mkt-fill-rest { background:rgba(0,0,0,.04); }
   :global(html.light) .mkt-tag { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); color:rgba(0,0,0,.5); }
-  :global(html.light) .news { border-bottom-color:rgba(0,0,0,.06); }
+  :global(html.light) .mkt-q { color:rgba(0,0,0,.75); }
   :global(html.light) .halving { border-top-color:rgba(0,0,0,.06); }
   :global(html.light) .btc-pill { background:rgba(247,147,26,.04); border-color:rgba(247,147,26,.15); }
   :global(html.light) .ap { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
