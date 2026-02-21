@@ -681,7 +681,7 @@
     font-size:.6rem; font-weight:700; color:rgba(247,147,26,.7);
     text-transform:uppercase; letter-spacing:.15em;
   }
-  .mobile-settings { padding:0 16px; display:flex; flex-direction:column; gap:18px; }
+  .mobile-settings { padding:0 20px; display:flex; flex-direction:column; gap:18px; }
 
   /* ── SETTINGS DRAWER (desktop) ───────────────────────────── */
   .drawer { background:rgba(8,8,8,.97); backdrop-filter:blur(24px); border-bottom:1px solid rgba(247,147,26,.15); position:relative; z-index:200; }
@@ -697,7 +697,8 @@
   .dtag { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(247,147,26,.07); border:1px solid rgba(247,147,26,.2); border-radius:3px; font-size:.68rem; color:rgba(255,255,255,.55); }
   .dtag-x { background:none; border:none; color:rgba(255,255,255,.25); cursor:pointer; font-size:1rem; padding:0; line-height:1; transition:color .15s; }
   .dtag-x:hover { color:var(--dn); }
-  .dinp-row { display:flex; gap:8px; }
+  .dinp-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .dinp-row .dinp { min-width:120px; }
   .dsrcs { max-height:68px; overflow-y:auto; margin-bottom:8px; }
   .dsrc { display:flex; justify-content:space-between; align-items:center; padding:3px 0; font-size:.62rem; color:rgba(255,255,255,.25); }
   .dsrc-url { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:300px; }
@@ -774,7 +775,6 @@
   :global(html.light) .vband-track { background:rgba(0,0,0,.06); }
   :global(html.light) .dca-sub { color:rgba(0,0,0,.3); }
   :global(html.light) .muted { color:rgba(0,0,0,.1); }
-  :global(html.light) .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.04) 0%,rgba(255,255,255,.72) 80px); }
   :global(html.light) .halving-days { color:#c77a10; }
   :global(html.light) .halving-u { color:rgba(200,120,20,.7); }
   :global(html.light) .btc-pill { background:rgba(247,147,26,.06); border-color:rgba(247,147,26,.15); }
