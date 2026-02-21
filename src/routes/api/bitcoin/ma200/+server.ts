@@ -26,8 +26,10 @@ export async function GET() {
     }
 
     // Sample weekly closes: take every 7th data point to approximate weekly closes.
+    // Starting at index 6 (the 7th element) gives us the first complete week's close.
+    const WEEKLY_OFFSET = 6;
     const weekly: number[] = [];
-    for (let i = 6; i < prices.length; i += 7) {
+    for (let i = WEEKLY_OFFSET; i < prices.length; i += 7) {
       weekly.push(prices[i][1]);
     }
 

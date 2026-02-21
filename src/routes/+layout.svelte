@@ -26,6 +26,7 @@
   // Each message delivers the latest executed trade price.
   const PRICE_HISTORY_SIZE = 60;          // rolling sparkline data points
   const HISTORY_UPDATE_INTERVAL_MS = 10_000; // push to history at most every 10 s
+  const DAY_MS = 24 * 60 * 60 * 1000;   // milliseconds in one day
 
   let priceWs: WebSocket | null = null;
   let wsReconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -220,7 +221,7 @@
       setInterval(fetchBtc, 60000), setInterval(fetchDCA, 300000),
       setInterval(fetchPoly, 300000), setInterval(fetchNews, 300000),
       setInterval(fetchMarkets, 60000),
-      setInterval(fetchMa200, 86400000), // refresh MA200 once per day
+      setInterval(fetchMa200, DAY_MS), // refresh MA200 once per day
       setInterval(() => { if ($settings.ghostfolio?.token) fetchGhostfolio(); }, 300000),
     ];
     window.addEventListener('scroll', handleScroll, {passive:true});
