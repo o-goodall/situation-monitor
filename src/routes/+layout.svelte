@@ -556,11 +556,11 @@
   <div class="hdr-right desktop-only">
     <time class="hdr-clock" aria-label="Current time">{$time}</time>
     <!-- Live price feed status -->
-    <span class="ws-badge" class:ws-badge--live={$btcWsConnected}
+    <span class="ws-badge btn-ghost" class:ws-badge--live={$btcWsConnected}
       role="status"
       aria-label="{$btcWsConnected?'Live price feed connected':'Price polling fallback'}"
       title="{$btcWsConnected?'Live price feed connected (Binance WebSocket)':'Price polling fallback — attempting live connection…'}">
-      <span class="ws-dot" aria-hidden="true"></span>{$btcWsConnected?'LIVE':'POLL'}
+      <span class="ws-dot" aria-hidden="true"></span>
     </span>
 
     <!-- Dark/Light mode toggle -->
@@ -595,11 +595,11 @@
   <!-- Mobile right controls — live badge + mode toggle + settings cog (visible on small screens) -->
   <div class="mobile-hdr-right mobile-only">
     <!-- Live price feed status (mobile) -->
-    <span class="ws-badge" class:ws-badge--live={$btcWsConnected}
+    <span class="ws-badge btn-ghost" class:ws-badge--live={$btcWsConnected}
       role="status"
       aria-label="{$btcWsConnected?'Live price feed connected':'Price polling fallback'}"
       title="{$btcWsConnected?'Live price feed connected (Binance WebSocket)':'Price polling fallback — attempting live connection…'}">
-      <span class="ws-dot" aria-hidden="true"></span>{$btcWsConnected?'LIVE':'POLL'}
+      <span class="ws-dot" aria-hidden="true"></span>
     </span>
     <button class="mode-toggle btn-ghost" on:click={toggleLightMode}
       aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
@@ -841,16 +841,14 @@
   .hdr-clock { font-size:.7rem; font-weight:500; color:rgba(255,255,255,.22); font-variant-numeric:tabular-nums; letter-spacing:.07em; margin-right:4px; }
   /* Live price feed badge */
   .ws-badge {
-    display:flex; align-items:center; gap:5px;
-    font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
-    font-family:'Poison',monospace;
-    color:rgba(255,255,255,.22); background:rgba(255,255,255,.04);
-    border:1px solid rgba(255,255,255,.08); border-radius:3px; padding:7px 10px;
+    display:flex; align-items:center; justify-content:center;
+    color:rgba(255,255,255,.22);
+    padding:7px 10px;
     transition:all .5s;
   }
-  .ws-badge--live { color:var(--up); border-color:rgba(34,197,94,.25); background:rgba(34,197,94,.06); }
+  .ws-badge--live { color:var(--up); }
   .ws-dot {
-    width:6px; height:6px; border-radius:50%; background:currentColor; flex-shrink:0;
+    width:8px; height:8px; border-radius:50%; background:currentColor; flex-shrink:0;
     box-shadow:0 0 0 2px transparent;
   }
   .ws-badge--live .ws-dot { animation:wsPulse 2s ease-in-out infinite; box-shadow:0 0 8px var(--up); }
@@ -889,7 +887,7 @@
 
   /* ── WORDMARK ────────────────────────────────────────────── */
   /* Eyelid finishes at begin(0.4s) + dur(2.4s) = 2.8s; text reveal starts at 2.2s for synchronized overlap */
-  .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.92rem; letter-spacing:.12em; line-height:1; pointer-events:none; color:#eaeaea; text-transform:uppercase; overflow:hidden; isolation:isolate; animation:brandReveal 1.0s ease-out 2.2s both; }
+  .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.92rem; letter-spacing:.12em; line-height:1; pointer-events:none; color:#eaeaea; text-transform:uppercase; overflow:visible; z-index:1; animation:brandReveal 1.0s ease-out 2.2s both; }
   @keyframes brandReveal { from{opacity:0} to{opacity:1} }
   /* "4" Bitcoin orange glow — hums continuously */
   @keyframes b4Hum {
@@ -933,6 +931,14 @@
     .eye-wrap { width:100px; height:42px; }
     .mobile-section-nav { display:flex; }
     .mobile-hdr-right { display:flex; }
+    /* Uniform button size for all header controls on mobile */
+    .mobile-hdr-right .btn-ghost,
+    .mobile-hdr-right .ws-badge,
+    .mobile-hdr-right .mode-toggle,
+    .mobile-hdr-right .settings-btn {
+      width:34px; height:34px; padding:0;
+      display:flex; align-items:center; justify-content:center;
+    }
   }
 
   /* ── MOBILE FULL-SCREEN MENU ─────────────────────────────── */
@@ -1133,8 +1139,8 @@
   :global(html.light) .err-msg { background:rgba(220,38,38,.06); border-color:rgba(220,38,38,.2); }
   :global(html.light) .holdings-wrap { border-top-color:rgba(0,0,0,.06); }
   :global(html.light) .live-badge { color:rgba(0,0,0,.45); }
-  :global(html.light) .ws-badge { color:rgba(0,0,0,.3); background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); }
-  :global(html.light) .ws-badge--live { color:var(--up); background:rgba(22,163,74,.06); border-color:rgba(22,163,74,.2); }
+  :global(html.light) .ws-badge { color:rgba(0,0,0,.3); }
+  :global(html.light) .ws-badge--live { color:var(--up); }
   :global(html.light) .section-divider { background:linear-gradient(90deg,transparent,rgba(247,147,26,.3),rgba(0,200,255,.15),transparent); }
   :global(html.light) .sect-title { background:linear-gradient(45deg,#c77a10,#0090cc); -webkit-background-clip:text; background-clip:text; }
 
