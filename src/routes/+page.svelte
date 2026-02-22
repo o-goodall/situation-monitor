@@ -117,7 +117,11 @@
     // Prefer Ghostfolio's own annualised performance if available, otherwise compute
     if ($gfAnnualizedPct !== null) return $gfAnnualizedPct;
     if($gfNetGainPct===null)return null;
-    const y=Math.max(.1,dcaDays/365.25);
+    // Use Ghostfolio's first order date for portfolio duration when available,
+    // otherwise fall back to DCA start date
+    const startMs=$gfFirstOrderDate?new Date($gfFirstOrderDate).getTime():new Date($settings.dca.startDate).getTime();
+    const portfolioDays=Math.max(0,Math.floor((Date.now()-startMs)/86400000));
+    const y=Math.max(.1,portfolioDays/365.25);
     return(Math.pow(1+$gfNetGainPct/100,1/y)-1)*100;
   })();
 
