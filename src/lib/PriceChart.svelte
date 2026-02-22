@@ -61,9 +61,10 @@
       ctx.stroke();
     }
 
-    // Y-axis price labels
+    // Y-axis price labels — scale font down on narrow charts (below MIN_LABEL_WIDTH px)
+    const MIN_LABEL_WIDTH = 200;
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.font = `${9 * Math.min(1, W / 200)}px monospace`;
+    ctx.font = `${9 * Math.min(1, W / MIN_LABEL_WIDTH)}px monospace`;
     ctx.textAlign = 'right';
     const fmtPrice = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : `$${v.toFixed(0)}`;
     ctx.fillText(fmtPrice(maxRaw), PAD_L - 4, PAD_T + 5);

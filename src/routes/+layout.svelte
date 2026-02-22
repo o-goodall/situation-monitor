@@ -761,7 +761,7 @@
   /* Desktop nav — immediately after brand, left-aligned (Electric Xtra style) */
   .page-nav { display:flex; gap:4px; flex-shrink:0; }
   .nav-link {
-    padding:9px 18px; border-radius:3px;
+    padding:10px 18px; border-radius:3px;
     font-family:'Poison',monospace; font-size:.8rem; font-weight:700;
     color:rgba(255,255,255,.78); text-decoration:none;
     text-transform:uppercase; letter-spacing:.08em;
