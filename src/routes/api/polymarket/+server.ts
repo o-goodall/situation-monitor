@@ -4,12 +4,6 @@ import type { RequestEvent } from '@sveltejs/kit';
 // Polymarket Geopolitics tag is the primary feed (mirrors polymarket.com/markets/geopolitics)
 const GEOPOLITICS_TAG = { id: 100265, label: 'Geopolitics' };
 
-// Secondary tags shown alongside geopolitics
-const SECONDARY_TAGS = [
-  { id: 2,   label: 'Politics' },
-  { id: 120, label: 'Economy'  },
-];
-
 interface Market {
   id: string;
   question: string;
@@ -90,17 +84,6 @@ export async function GET({ url }: RequestEvent) {
       .then((events: any[]) => ({ events: Array.isArray(events) ? events : [], label: GEOPOLITICS_TAG.label }))
       .catch(() => ({ events: [], label: GEOPOLITICS_TAG.label }));
 
-    // Secondary: Politics + Economy (fewer results each, fill gaps)
-    const secFetches = SECONDARY_TAGS.map(tag =>
-      fetch(
-        `https://gamma-api.polymarket.com/events?tag_id=${tag.id}&closed=false&limit=4&order=volume24hr&ascending=false`,
-        { headers: { 'User-Agent': 'Mozilla/5.0' } }
-      )
-        .then(r => r.ok ? r.json() : [])
-        .then((events: any[]) => ({ events: Array.isArray(events) ? events : [], label: tag.label }))
-        .catch(() => ({ events: [], label: tag.label }))
-    );
-
     // Keyword pinned watchlist (max 4 keywords, 2 results each)
     const kwFetches = keywords.slice(0, 4).map(kw =>
       fetch(
@@ -112,7 +95,7 @@ export async function GET({ url }: RequestEvent) {
         .catch(() => ({ events: [], label: kw, pinned: true }))
     );
 
-    const allResults = await Promise.allSettled([geoFetch, ...secFetches, ...kwFetches]);
+    const allResults = await Promise.allSettled([geoFetch, ...kwFetches]);
 
     const seen = new Set<string>();
     const pinnedMarkets: Market[] = [];

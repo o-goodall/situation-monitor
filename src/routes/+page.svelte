@@ -12,21 +12,10 @@
     btcHashrate
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
-  import { audUsd } from '$lib/store';
-
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
-
-  $: altHistory = $btcDisplayPrice !== null && $priceHistory.length
-    ? $priceHistory.map(p => {
-        // Re-derive display price for history (approximate using same rate)
-        if ($btcPrice > 0 && $btcDisplayPrice !== null) return p * ($btcDisplayPrice / $btcPrice);
-        return p;
-      })
-    : ($audUsd && $priceHistory.length ? $priceHistory.map(p => p * $audUsd!) : []);
 
   let showHoldings = false;
   let holdingsSort: 'value'|'perf'|'alloc' = 'value';
-  let priceCurrency: 'usd'|'alt' = 'usd';
   let intelView: 'cutting-edge'|'classic' = 'cutting-edge';
 
   const n   = (v:number, dec=0) => v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
@@ -148,23 +137,18 @@
 
     <!-- BTC Price — combined USD/alt currency toggle with sparkline -->
     <div class="stat-tile stat-tile--chart stat-tile--wide">
-      {#if priceCurrency==='usd' && $priceHistory.length >= 2}
+      {#if $priceHistory.length >= 2}
         <div class="tile-spark" aria-hidden="true"><Sparkline prices={$priceHistory} height={52} opacity={0.28} /></div>
-      {:else if priceCurrency==='alt' && altHistory.length >= 2}
-        <div class="tile-spark" aria-hidden="true"><Sparkline prices={altHistory} height={52} opacity={0.28} /></div>
       {/if}
       <span class="stat-n" style="color:{$priceColor};transition:color .5s;" aria-live="polite" aria-atomic="true">
-        {#if priceCurrency==='usd'}
-          {$btcPrice>0?'$'+n($btcPrice):'—'}
-        {:else}
-          {$btcDisplayPrice!==null?n($btcDisplayPrice,0):'—'}
-        {/if}
+        {$btcPrice>0?'$'+n($btcPrice):'—'}
       </span>
       <div class="stat-l-row">
-        <span class="stat-l">BTC Price</span>
-        <div class="curr-toggle" role="group" aria-label="Price currency">
-          <button class="curr-btn" class:curr-btn--active={priceCurrency==='usd'} on:click={()=>priceCurrency='usd'} aria-pressed={priceCurrency==='usd'}>USD</button>
-          <button class="curr-btn" class:curr-btn--active={priceCurrency==='alt'} on:click={()=>priceCurrency='alt'} aria-pressed={priceCurrency==='alt'}>{displayCur}</button>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
+          <span class="stat-l">BTC · USD</span>
+          {#if $btcDisplayPrice !== null && displayCur !== 'USD'}
+            <span class="stat-l" style="color:var(--orange);font-weight:600;">{n($btcDisplayPrice,0)} {displayCur}</span>
+          {/if}
         </div>
       </div>
     </div>
@@ -276,7 +260,6 @@
                 <span class="sig-val">{sig.value}</span>
               {/if}
             </div>
-            {#if sig.active}<span class="sig-badge">+{sig.boost}%</span>{/if}
           </div>
         {/each}
       </div>
@@ -615,18 +598,13 @@
 <section id="intel" class="section" aria-label="Intel">
   <div class="section-header">
     <h2 class="sect-title">Intel</h2>
-    {#if intelView === 'cutting-edge' && $markets.length > 0}
-      <span class="section-count-badge">{$markets.length}</span>
-    {:else if intelView === 'classic' && $newsItems.length > 0}
-      <span class="section-count-badge">{$newsItems.length}</span>
-    {/if}
     <!-- Toggle: Cutting Edge (Polymarket) / Classic (News) -->
     <div class="intel-toggle" role="group" aria-label="Intel view">
       <button class="intel-btn" class:intel-btn--active={intelView==='cutting-edge'} on:click={()=>intelView='cutting-edge'} aria-pressed={intelView==='cutting-edge'}>
-        ◈ Cutting Edge
+        ◈{#if $markets.length > 0} <span class="intel-count">{$markets.length}</span>{/if}
       </button>
       <button class="intel-btn" class:intel-btn--active={intelView==='classic'} on:click={()=>intelView='classic'} aria-pressed={intelView==='classic'}>
-        ☰ Classic
+        ☰{#if $newsItems.length > 0} <span class="intel-count">{$newsItems.slice(0, 5).length}</span>{/if}
       </button>
     </div>
   </div>
@@ -696,12 +674,12 @@
   {:else}
   <!-- ── CLASSIC: News RSS feeds ── -->
   <div class="gc" style="padding:20px 18px;">
-    <div class="gc-head" style="margin-bottom:16px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.length} articles</span></div>
+    <div class="gc-head" style="margin-bottom:16px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.slice(0, 5).length} articles</span></div>
     {#if $newsItems.length===0}
       <p class="dim">Fetching RSS feeds…</p>
     {:else}
       <div class="pm-grid">
-        {#each $newsItems as item}
+        {#each $newsItems.slice(0, 5) as item}
           <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card" aria-label="{item.title}">
             <div class="pm-card-tags">
               <span class="pm-tag pm-news-src">{item.source}</span>
@@ -712,7 +690,7 @@
             {/if}
             <p class="pm-card-q">{item.title}</p>
             {#if item.description}
-              <p class="news-card-desc">{item.description}</p>
+              <p class="news-card-desc">{item.description.length > 100 ? item.description.slice(0, 100) + '…' : item.description}</p>
             {/if}
           </a>
         {/each}
@@ -771,7 +749,7 @@
   .stat-tile--chart .stat-n { margin-top: 8px; margin-bottom: 4px; }
   .stat-tile--chart .stat-l-row { display: flex; justify-content: center; align-items: center; gap: 10px; padding-bottom: 56px; }
 
-  .stat-n { display:block; font-size:1.4rem; font-weight:700; font-family:'Poison',monospace; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
+  .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
   .stat-l { font-size:.58rem; color:var(--t2); text-transform:uppercase; letter-spacing:.1em; }
 
   /* Halving progress bar — electricity surge effect */
@@ -791,20 +769,13 @@
   .halving-epoch { font-size:.52rem; color:var(--t2); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
   :global(html.light) .halving-bar { background:rgba(0,0,0,.07); }
 
-  /* Halving number — Poison for clear readability */
-  .halving-n { font-family:'Poison','Courier New',Courier,monospace; font-size:1.2rem; font-weight:700; letter-spacing:.02em; }
+  /* Halving number — clean, readable */
+  .halving-n { font-size:1.2rem; font-weight:700; letter-spacing:.02em; }
 
   /* Static stat tile — no hover lift or underline animation */
   .stat-tile--static { cursor:default; }
   .stat-tile--static:hover { transform:none !important; border-color:var(--glass-bd) !important; box-shadow:none !important; }
   .stat-tile--static:hover::before { width:0 !important; }
-
-  /* Currency toggle */
-  .curr-toggle { display:flex; gap:2px; background:rgba(255,255,255,.06); border-radius:3px; padding:1px; }
-  .curr-btn { padding:3px 10px; font-size:.52rem; font-weight:700; font-family:'Poison',monospace; letter-spacing:.08em;
-    background:none; border:none; color:var(--t2); cursor:pointer; border-radius:2px; transition:all .2s; text-transform:uppercase; }
-  .curr-btn--active { background:var(--orange); color:#fff; }
-  :global(html.light) .curr-toggle { background:rgba(0,0,0,.06); }
 
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(2,1fr); } .stat-tile--wide { grid-column:span 2; } }
   @media (max-width:500px) {
@@ -818,7 +789,8 @@
   /* ── SIGNAL GRID ────────────────────────────────────────── */
   .signal-grid { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:14px; }
   @media (max-width:1100px) { .signal-grid{grid-template-columns:1fr 1fr;} }
-  @media (max-width:700px)  { .signal-grid{grid-template-columns:1fr; gap:10px;} }
+  @media (max-width:700px)  { .signal-grid{grid-template-columns:1fr 1fr; gap:10px;} }
+  @media (max-width:500px)  { .signal-grid{grid-template-columns:1fr; gap:8px;} }
 
   /* ── GLASS CARD ─────────────────────────────────────────── */
   .gc {
@@ -909,11 +881,11 @@
     :global(html.light) .zone-glass { background:linear-gradient(180deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.65) 40%, rgba(255,255,255,.8) 100%); }
   }
   .dca-hero    { text-align:center; padding:18px 0 16px; position:relative; z-index:2; }
-  .dca-n       { display:block; font-size:clamp(3rem,7vw,5rem); font-weight:800; font-family:'Poison',monospace; line-height:1; letter-spacing:-.045em; transition:color .5s,text-shadow .5s; }
+  .dca-n       { display:block; font-size:clamp(3rem,7vw,5rem); font-weight:800; line-height:1; letter-spacing:-.045em; transition:color .5s,text-shadow .5s; }
   .dca-sub     { font-size:.62rem; color:var(--t2); text-transform:uppercase; letter-spacing:.12em; margin-top:8px; }
   @media (max-width:700px) {
     .dca-hero { padding:10px 0 10px; }
-    .dca-n    { font-size:clamp(2.2rem,10vw,3.5rem); }
+    .dca-n    { font-size:clamp(1.8rem,8vw,2.8rem); }
     .dca-sub  { margin-top:5px; }
   }
 
@@ -971,7 +943,7 @@
   /* Network + Stack shared */
   .met3  { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px; }
   .met   { display:flex; flex-direction:column; gap:7px; text-align:center; align-items:center; }
-  .met-n { font-size:1.4rem; font-weight:700; font-family:'Poison',monospace; letter-spacing:-.03em; line-height:1; color:var(--t1); }
+  .met-n { font-size:1.4rem; font-weight:700; letter-spacing:-.03em; line-height:1; color:var(--t1); }
   .met-u { font-size:.48em; color:var(--t2); font-weight:400; margin-left:2px; }
   .btc-pill  { display:flex; align-items:baseline; padding:12px 14px; background:rgba(247,147,26,.05); border:1px solid rgba(247,147,26,.12); border-radius:8px; margin-bottom:16px; flex-wrap:wrap; gap:4px; }
   .goal-head { display:flex; justify-content:space-between; margin-bottom:7px; }
@@ -1018,14 +990,14 @@
   .ap-icon { font-size:1.2rem; line-height:1; }
   .ap-ticker { font-size:.8rem; font-weight:700; }
   .ap-name { font-size:.58rem; color:var(--t2); margin-top:1px; }
-  .ap-pct { font-size:1.9rem; font-weight:800; font-family:'Poison',monospace; letter-spacing:-.04em; line-height:1; margin-bottom:3px; }
+  .ap-pct { font-size:1.9rem; font-weight:800; letter-spacing:-.04em; line-height:1; margin-bottom:3px; }
   .ap-sub { font-size:.62rem; color:var(--t2); margin-bottom:0; font-variant-numeric:tabular-nums; }
   .ap-live { font-size:.5em; color:var(--up); margin-left:4px; animation:blink 2s ease-in-out infinite; vertical-align:middle; }
   @keyframes apPulse { 0%,100%{opacity:.4} 50%{opacity:.8} }
   @media (max-width:400px) { .asset-panels { grid-template-columns:1fr; } .ap-pct { font-size:1.5rem; } }
 
   .gf-hero { display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap; margin-bottom:18px; }
-  .gf-nw   { font-size:2.4rem; font-weight:700; font-family:'Poison',monospace; letter-spacing:-.045em; line-height:1; color:var(--t1); }
+  .gf-nw   { font-size:2.4rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
   .gf-cpi  { opacity:.5; cursor:help; }
   .gf-est  { font-size:.5em; opacity:.6; }
   .gf-perf { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; flex:1; border-left:1px solid rgba(255,255,255,.06); padding-left:20px; min-width:0; }
@@ -1082,20 +1054,14 @@
 
   /* ── INTEL TOGGLE ───────────────────────────────────────── */
   .intel-toggle { display:flex; gap:2px; background:rgba(255,255,255,.06); border-radius:6px; padding:2px; margin-left:auto; }
-  .intel-btn { padding:5px 14px; font-size:.58rem; font-weight:700; font-family:'Poison',monospace; letter-spacing:.08em;
-    background:none; border:none; color:var(--t2); cursor:pointer; border-radius:4px; transition:all .2s; text-transform:uppercase; white-space:nowrap; }
+  .intel-btn { padding:5px 12px; font-size:.72rem; font-weight:700; font-family:'Poison',monospace; letter-spacing:.04em;
+    background:none; border:none; color:var(--t2); cursor:pointer; border-radius:4px; transition:all .2s; white-space:nowrap;
+    display:flex; align-items:center; gap:5px; }
   .intel-btn--active { background:var(--orange); color:#fff; box-shadow:0 2px 8px rgba(247,147,26,.35); }
+  .intel-count { font-size:.58rem; font-weight:700; background:rgba(255,255,255,.15); border-radius:999px; padding:1px 6px; line-height:1.4; }
+  .intel-btn--active .intel-count { background:rgba(255,255,255,.25); }
   :global(html.light) .intel-toggle { background:rgba(0,0,0,.06); }
-
-  /* Section count badge — pill indicator (e.g. "12 markets") */
-  .section-count-badge {
-    display:inline-flex; align-items:center; justify-content:center;
-    min-width:22px; height:20px; padding:0 7px; border-radius:999px;
-    background:rgba(247,147,26,.12); border:1px solid rgba(247,147,26,.25);
-    color:var(--orange); font-size:.58rem; font-weight:700;
-    font-family:'Poison',monospace; letter-spacing:.04em;
-  }
-  :global(html.light) .section-count-badge { background:rgba(247,147,26,.08); }
+  :global(html.light) .intel-count { background:rgba(0,0,0,.1); }
 
   /* ── INTEL GRID ─────────────────────────────────────────── */
   .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -1127,7 +1093,7 @@
   .pm-outcomes { display:flex; gap:8px; }
   .pm-outcome { display:flex; align-items:center; justify-content:space-between; gap:6px;
     flex:1; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:6px; padding:8px 10px; }
-  .pm-outcome-name { font-size:.64rem; font-weight:700; color:var(--t2); text-transform:uppercase; letter-spacing:.05em; }
+  .pm-outcome-name { font-size:.64rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.05em; }
   .pm-outcome-pct { font-size:1.1rem; font-weight:800; letter-spacing:-.03em; line-height:1; }
   .pm-bar { height:4px; background:rgba(255,255,255,.05); border-radius:2px; overflow:hidden; display:flex; }
   .pm-fill { height:100%; border-radius:2px 0 0 2px; transition:width .6s; opacity:.75; }
