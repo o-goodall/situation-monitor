@@ -43,7 +43,7 @@ function parseOutcomes(event: any): { topOutcome: string; probability: number; o
   const outcomes = prices.map((p, i) => ({
     name: outcomeNames[i] ?? (i === 0 ? 'Yes' : 'No'),
     probability: Math.round(p * 100),
-  }));
+  })).sort((a, b) => b.probability - a.probability);
 
   return {
     topOutcome: outcomeNames[maxIdx] ?? 'Yes',

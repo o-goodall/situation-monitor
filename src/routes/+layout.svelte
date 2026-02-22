@@ -812,12 +812,6 @@
     background:radial-gradient(circle at 38% 35%, rgba(247,147,26,.28) 0%, rgba(247,147,26,.06) 55%, transparent 75%);
     box-shadow:0 0 0 1px rgba(247,147,26,.32),0 0 14px rgba(247,147,26,.35),inset 0 0 8px rgba(247,147,26,.1);
     overflow:hidden;
-    animation:earthSpin 22s linear infinite;
-    transform-style:preserve-3d;
-  }
-  @keyframes earthSpin {
-    from { transform:rotateY(0deg); }
-    to   { transform:rotateY(360deg); }
   }
   .wire { position:absolute; border:1px solid rgba(247,147,26,.2); border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
   .w-eq{width:100%;height:28%} .w-lg1{width:52%;height:100%} .w-lg2{width:22%;height:100%}
