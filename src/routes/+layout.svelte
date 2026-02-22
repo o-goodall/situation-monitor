@@ -536,6 +536,19 @@
     <button class="nav-link" class:nav-link--active={$activeSection==='intel'}     on:click={()=>navigateTo('intel')}>◈ Intel</button>
   </nav>
 
+  <!-- Mobile section icons — in header, visible on small screens -->
+  <nav class="mobile-section-nav mobile-only" aria-label="Section navigation">
+    <button class="mobile-nav-btn" class:mobile-nav-btn--active={$activeSection==='signal'} on:click={()=>navigateTo('signal')} aria-label="Signal section">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><text x="2" y="18" font-size="16" font-family="monospace">₿</text></svg>
+    </button>
+    <button class="mobile-nav-btn" class:mobile-nav-btn--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')} aria-label="Portfolio section">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+    </button>
+    <button class="mobile-nav-btn" class:mobile-nav-btn--active={$activeSection==='intel'} on:click={()=>navigateTo('intel')} aria-label="Intel section">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+  </nav>
+
   <!-- Spacer pushes right controls to far right on desktop -->
   <div class="hdr-spacer" aria-hidden="true"></div>
 
@@ -579,13 +592,34 @@
     </button>
   </div>
 
-  <!-- Mobile burger — only visible on small screens -->
-  <button class="burger mobile-only" on:click={toggleMobileMenu}
-    aria-label="{mobileMenuOpen ? 'Close menu' : 'Open menu'}"
-    aria-expanded={mobileMenuOpen} aria-controls="mobile-menu"
-    class:burger--open={mobileMenuOpen}>
-    <span></span><span></span><span></span>
-  </button>
+  <!-- Mobile right controls — mode toggle + settings cog (visible on small screens) -->
+  <div class="mobile-hdr-right mobile-only">
+    <button class="mode-toggle btn-ghost" on:click={toggleLightMode}
+      aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
+      {#if $lightMode}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      {:else}
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
+          <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
+          <line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+        </svg>
+      {/if}
+    </button>
+    <button class="btn-ghost settings-btn" class:settings-btn--on={mobileMenuOpen}
+      on:click={toggleMobileMenu}
+      aria-label="{mobileMenuOpen ? 'Close menu' : 'Open settings'}"
+      aria-expanded={mobileMenuOpen} aria-controls="mobile-menu">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+      </svg>
+    </button>
+  </div>
 
 </header>
 
@@ -728,26 +762,6 @@
   </div>
 </div>
 {/if}
-
-<!-- ══ MOBILE BOTTOM TABS ═════════════════════════════════════ -->
-<nav class="mobile-tabs mobile-only" aria-label="Section navigation">
-  <button class="tab-btn" class:tab-btn--active={$activeSection==='signal'} on:click={()=>navigateTo('signal')} aria-label="Signal section">
-    <span class="tab-icon" aria-hidden="true">₿</span>
-    <span class="tab-label">Signal</span>
-  </button>
-  <button class="tab-btn" class:tab-btn--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')} aria-label="Portfolio section">
-    <span class="tab-icon" aria-hidden="true">↗</span>
-    <span class="tab-label">Portfolio</span>
-  </button>
-  <button class="tab-btn" class:tab-btn--active={$activeSection==='intel'} on:click={()=>navigateTo('intel')} aria-label="Intel section">
-    <span class="tab-icon" aria-hidden="true">◈</span>
-    <span class="tab-label">Intel</span>
-  </button>
-  <button class="tab-btn" on:click={toggleLightMode} aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
-    <span class="tab-icon" aria-hidden="true">{$lightMode ? '☀' : '☾'}</span>
-    <span class="tab-label">Theme</span>
-  </button>
-</nav>
 
 <!-- ══ PAGE ═══════════════════════════════════════════════════ -->
 <main class="page-wrap" id="main-content" role="main"><slot /></main>
@@ -892,34 +906,41 @@
   }
   .b-4 { color:var(--orange); animation:b4Hum 3s ease-in-out infinite; }
 
-  /* ── BURGER (mobile only) ────────────────────────────────── */
-  .burger {
-    display:none; flex-direction:column; justify-content:center; gap:5px;
-    width:36px; height:36px; padding:6px;
-    background:rgba(247,147,26,.1); border:1px solid rgba(247,147,26,.4);
-    border-radius:3px; cursor:pointer; transition:border-color .2s;
-  }
-  .burger span {
-    display:block; height:2px; width:100%; background:var(--orange);
-    border-radius:1px; transition:all .25s ease; transform-origin:center;
-  }
-  .burger:hover { border-color:rgba(247,147,26,.4); }
-  .burger--open span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
-  .burger--open span:nth-child(2) { opacity:0; transform:scaleX(0); }
-  .burger--open span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
-
   /* ── RESPONSIVE VISIBILITY ───────────────────────────────── */
   .desktop-only { display:flex; }
   .mobile-only  { display:none; }
+
+  /* ── MOBILE HEADER SECTION NAV ───────────────────────────── */
+  .mobile-section-nav { display:none; gap:2px; align-items:center; margin-left:10px; }
+  .mobile-nav-btn {
+    width:34px; height:34px; padding:0; border-radius:3px;
+    background:none; border:1px solid transparent;
+    color:rgba(255,255,255,.5); cursor:pointer;
+    transition:all .2s; display:flex; align-items:center; justify-content:center;
+    position:relative;
+  }
+  .mobile-nav-btn::after {
+    content:''; position:absolute; bottom:0; left:0; width:0; height:2px;
+    background:linear-gradient(90deg,#f7931a,#00c8ff);
+    transition:width .25s ease;
+  }
+  .mobile-nav-btn:hover { color:rgba(255,255,255,.9); border-color:rgba(247,147,26,.3); }
+  .mobile-nav-btn--active { color:var(--orange)!important; border-color:rgba(247,147,26,.3)!important; }
+  .mobile-nav-btn--active::after { width:100%; }
+
+  /* ── MOBILE HEADER RIGHT CONTROLS ───────────────────────── */
+  .mobile-hdr-right { display:none; align-items:center; gap:6px; }
 
   @media (max-width:768px) {
     .hdr { height:54px; padding:0 16px; }
     .hdr--scrolled { height:46px; }
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
-    .brand { margin-right:auto; }
+    .brand { margin-right:0; }
     .brand-name { font-size:.86rem; }
     .eye-wrap { width:90px; height:36px; }
+    .mobile-section-nav { display:flex; }
+    .mobile-hdr-right { display:flex; }
   }
 
   /* ── MOBILE FULL-SCREEN MENU ─────────────────────────────── */
@@ -964,36 +985,11 @@
   }
   .mobile-settings { padding:0 20px; display:flex; flex-direction:column; gap:18px; }
 
-  /* ── MOBILE BOTTOM TABS ──────────────────────────────────── */
-  .mobile-tabs {
-    position:fixed; bottom:0; left:0; right:0; z-index:300;
-    background:rgba(10,10,10,.97); backdrop-filter:blur(20px);
-    -webkit-backdrop-filter:blur(20px);
-    border-top:1px solid rgba(247,147,26,.18);
-    padding:0; height:68px;
-  }
-  .tab-btn {
-    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
-    gap:4px; background:none; border:none; cursor:pointer;
-    color:rgba(255,255,255,.4); transition:color .2s;
-    padding:10px 4px; height:100%; position:relative;
-  }
-  .tab-btn::after {
-    content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
-    width:0; height:2px; background:linear-gradient(90deg,#f7931a,#00c8ff);
-    border-radius:0 0 2px 2px; transition:width .25s ease;
-  }
-  .tab-btn:hover { color:rgba(255,255,255,.75); }
-  .tab-btn--active { color:var(--orange); }
-  .tab-btn--active::after { width:60%; }
-  .tab-icon { font-size:1.25rem; line-height:1; }
-  .tab-label { font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; font-family:'Poison',monospace; }
-  :global(html.light) .mobile-tabs { background:rgba(255,255,255,.97); border-top-color:rgba(0,0,0,.1); }
-  :global(html.light) .tab-btn { color:rgba(0,0,0,.4); }
-  :global(html.light) .tab-btn:hover { color:rgba(0,0,0,.75); }
-  :global(html.light) .tab-btn--active { color:var(--orange); }
+  /* ── PAGE WRAP ───────────────────────────────────────────── */
+  .page-wrap { padding-top:64px; min-height:100vh; }
+  @media (max-width:768px) { .page-wrap { padding-top:54px; } }
 
-  /* ── SETTINGS DRAWER (desktop) ───────────────────────────── */
+  /* ── SETTINGS DRAWER ────────────────────────────────────── */
   .drawer {
     position: fixed; top: 64px; left: 0; right: 0; z-index: 200;
     overflow-y: auto; max-height: calc(100vh - 64px);
@@ -1029,10 +1025,6 @@
   .dsrc { display:flex; justify-content:space-between; align-items:center; padding:3px 0; font-size:.62rem; color:rgba(255,255,255,.25); }
   .dsrc-url { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:300px; }
   .d-save--ok { background:linear-gradient(45deg,#22c55e,#15803d)!important; }
-
-  /* ── PAGE WRAP ───────────────────────────────────────────── */
-  .page-wrap { padding-top:64px; min-height:100vh; }
-  @media (max-width:768px) { .page-wrap { padding-top:54px; padding-bottom:72px; } }
 
   /* ── FEED TOGGLES ──────────────────────────────────────────── */
   .feed-list { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px; }
@@ -1088,10 +1080,11 @@
   :global(html.light) .mobile-nav-link { color:rgba(0,0,0,.75); border-bottom-color:rgba(0,0,0,.06); }
   :global(html.light) .mobile-theme-toggle { color:rgba(0,0,0,.6); }
   :global(html.light) .mobile-section-title { color:rgba(247,147,26,.9); }
+  :global(html.light) .mobile-nav-btn { color:rgba(0,0,0,.45); }
+  :global(html.light) .mobile-nav-btn:hover { color:#111; }
+  :global(html.light) .mobile-nav-btn--active { color:#c77a10!important; border-color:rgba(247,147,26,.4)!important; }
   :global(html.light) .btn-ghost { color:rgba(0,0,0,.5); border-color:rgba(0,0,0,.12); background:rgba(0,0,0,.02); }
   :global(html.light) .btn-ghost:hover { color:var(--orange); border-color:rgba(247,147,26,.3); background:rgba(247,147,26,.06); }
-  :global(html.light) .burger span { background:rgba(0,0,0,.8); }
-  :global(html.light) .burger { background:rgba(0,0,0,.06); border-color:rgba(0,0,0,.15); }
 
   /* Light mode — page-level glass cards and content */
   :global(html.light) .gc { background:rgba(255,255,255,.72); border-color:rgba(0,0,0,.08); box-shadow:0 2px 16px rgba(0,0,0,.06),inset 0 1px 0 rgba(255,255,255,.9); backdrop-filter:blur(16px); }
