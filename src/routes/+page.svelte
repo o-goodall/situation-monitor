@@ -16,34 +16,23 @@
   import PriceChart from '$lib/PriceChart.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
-  let chartRange: '1D' | '7D' | '1M' = '1D';
-  let btcChartData: { t: number; p: number }[] = [];
+  let chartRange: '3M' | '6M' | '1Y' = '6M';
+  let hashrateData: { t: number; p: number }[] = [];
   let chartLoading = false;
 
-  async function fetchBtcChart(r = chartRange) {
+  async function fetchHashrateChart(r = chartRange) {
     chartLoading = true;
     try {
-      const map: Record<string,'1d'|'7d'|'30d'> = { '1D':'1d', '7D':'7d', '1M':'30d' };
-      const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
-      btcChartData = d.prices ?? [];
-    } catch { btcChartData = []; }
+      const map: Record<string,'3m'|'6m'|'1y'> = { '3M':'3m', '6M':'6m', '1Y':'1y' };
+      const d = await fetch(`/api/bitcoin/hashrate?range=${map[r]}`).then(res => res.json());
+      hashrateData = d.hashrates ?? [];
+    } catch { hashrateData = []; }
     finally { chartLoading = false; }
   }
 
-  async function setChartRange(r: '1D' | '7D' | '1M') {
+  async function setChartRange(r: '3M' | '6M' | '1Y') {
     chartRange = r;
-    await fetchBtcChart(r);
-  }
-
-  // Keep last chart price point in sync with live WebSocket price.
-  // Only update when price changes by >0.05% to avoid excessive array copies.
-  let _lastChartPrice = 0;
-  $: if ($btcPrice > 0 && btcChartData.length > 0) {
-    const changePct = _lastChartPrice > 0 ? Math.abs($btcPrice - _lastChartPrice) / _lastChartPrice : 1;
-    if (changePct >= 0.0005) {
-      _lastChartPrice = $btcPrice;
-      btcChartData = [...btcChartData.slice(0, -1), { t: Date.now(), p: $btcPrice }];
-    }
+    await fetchHashrateChart(r);
   }
 
   let showHoldings = false;
@@ -156,7 +145,7 @@
     catch{$gfError='Connection failed';}finally{$gfLoading=false;}
   }
 
-  onMount(() => { fetchBtcChart(); });
+  onMount(() => { fetchHashrateChart(); });
 </script>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -202,14 +191,14 @@
 
     <div class="stat-tile halving-tile stat-tile--static" data-tooltip="Estimated blocks remaining until next Bitcoin halving">
       {#if $halvingDays > 0}
-        <span class="stat-n halving-n">{$halvingDays.toLocaleString()}</span>
+        <div class="price-pair" aria-live="polite" aria-atomic="true">
+          <span class="stat-n halving-n">{$halvingDays.toLocaleString()}</span>
+          {#if $halvingProgress > 0}
+            <span class="price-sep">|</span>
+            <span class="price-alt">{$halvingProgress.toFixed(1)}%</span>
+          {/if}
+        </div>
         <span class="stat-l">Days to Halving</span>
-        {#if $halvingProgress > 0}
-          <div class="halving-bar" aria-label="{$halvingProgress.toFixed(1)}% through epoch" role="progressbar" aria-valuenow={Math.round($halvingProgress)} aria-valuemin={0} aria-valuemax={100}>
-            <div class="halving-fill" style="width:{$halvingProgress}%;"></div>
-          </div>
-          <span class="halving-epoch">{$halvingProgress.toFixed(1)}% through epoch</span>
-        {/if}
       {:else}
         <span class="stat-n muted">—</span>
         <span class="stat-l">Days to Halving</span>
@@ -217,23 +206,23 @@
     </div>
   </div>
 
-  <!-- BTC PRICE CHART CARD -->
+  <!-- BITCOIN HASHRATE CHART CARD -->
   <div class="gc btc-chart-card">
     <div class="chart-header">
-      <p class="gc-title">Bitcoin Price Chart</p>
+      <p class="gc-title">Bitcoin Hashrate</p>
       <div class="chart-range-btns" role="group" aria-label="Chart time range">
-        <button class="crb" class:crb--active={chartRange==='1D'} on:click={() => setChartRange('1D')}>1D</button>
-        <button class="crb" class:crb--active={chartRange==='7D'} on:click={() => setChartRange('7D')}>7D</button>
-        <button class="crb" class:crb--active={chartRange==='1M'} on:click={() => setChartRange('1M')}>1M</button>
+        <button class="crb" class:crb--active={chartRange==='3M'} on:click={() => setChartRange('3M')}>3M</button>
+        <button class="crb" class:crb--active={chartRange==='6M'} on:click={() => setChartRange('6M')}>6M</button>
+        <button class="crb" class:crb--active={chartRange==='1Y'} on:click={() => setChartRange('1Y')}>1Y</button>
       </div>
     </div>
     <div class="chart-container">
       {#if chartLoading}
         <div class="skeleton" style="height:110px;border-radius:6px;"></div>
-      {:else if btcChartData.length >= 2}
-        <PriceChart prices={btcChartData} height={110} range={chartRange === '1D' ? '1d' : chartRange === '7D' ? '7d' : '30d'} />
+      {:else if hashrateData.length >= 2}
+        <PriceChart prices={hashrateData} height={110} range={chartRange === '3M' ? '7d' : chartRange === '6M' ? '30d' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
       {:else}
-        <p class="dim" style="text-align:center;padding:40px 0;">Loading chart data…</p>
+        <p class="dim" style="text-align:center;padding:40px 0;">Loading hashrate data…</p>
       {/if}
     </div>
   </div>
@@ -512,7 +501,8 @@
           <div style="display:flex;align-items:center;gap:10px;">
             {#if $gfLoading}<span class="live-dot blink" aria-label="Loading portfolio data" role="status"></span>{/if}
             {#if $gfUpdated&&!$gfLoading}<span class="dim" aria-label="Last updated at {$gfUpdated}">{$gfUpdated}</span>{/if}
-            <button on:click={refreshGF} class="btn-ghost" aria-label="Refresh portfolio data">↻ Refresh</button>
+            <a href="https://ghostfol.io" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open Ghostfolio">Ghostfolio ↗</a>
+            <button on:click={refreshGF} class="btn-icon" aria-label="Refresh portfolio data" title="Refresh portfolio data">↻</button>
           </div>
         </div>
         {#if $gfError}
@@ -704,9 +694,9 @@
             <!-- Question -->
             <p class="pm-card-q">{m.question}</p>
             <!-- Outcomes bar -->
-            <div class="pm-outcomes">
+            <div class="pm-outcomes" class:pm-outcomes--multi={m.outcomes && m.outcomes.length > 2}>
               {#if m.outcomes && m.outcomes.length >= 2}
-                {#each m.outcomes.slice(0, 2) as outcome}
+                {#each m.outcomes.slice(0, m.outcomes.length > 2 ? 3 : 2) as outcome}
                   <div class="pm-outcome" style="--oc:{pc(outcome.probability)};">
                     <span class="pm-outcome-name">{outcome.name}</span>
                     <span class="pm-outcome-pct" style="color:{pc(outcome.probability)};">{outcome.probability}<span style="font-size:.65em;opacity:.6;">%</span></span>
@@ -839,23 +829,6 @@
   .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
   .stat-l { font-size:.58rem; color:var(--t2); text-transform:uppercase; letter-spacing:.1em; }
 
-  /* Halving progress bar — electricity surge effect */
-  @keyframes electricSurge {
-    0%   { background-position: -200% center; }
-    100% { background-position: 200% center; }
-  }
-  .halving-bar { width:100%; height:8px; background:rgba(255,255,255,.07); border-radius:4px; overflow:hidden; margin-top:10px; }
-  .halving-fill {
-    height:100%; border-radius:4px;
-    background: linear-gradient(90deg, #c05c00 0%, #f7931a 35%, #ffd580 55%, #f7931a 75%, #c05c00 100%);
-    background-size: 300% 100%;
-    box-shadow: 0 0 12px rgba(247,147,26,.7), 0 0 4px rgba(255,180,50,.5);
-    animation: electricSurge 2s linear infinite;
-    transition: width .8s cubic-bezier(.4,0,.2,1);
-  }
-  .halving-epoch { font-size:.52rem; color:var(--t2); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
-  :global(html.light) .halving-bar { background:rgba(0,0,0,.07); }
-
   /* Halving number — clean, readable */
   .halving-n { font-size:1.2rem; font-weight:700; letter-spacing:.02em; }
 
@@ -870,7 +843,6 @@
     .stat-n { font-size:1.05rem; }
     .stat-tile { padding:10px 8px; }
     .stat-tile--chart .stat-l-row { padding-bottom:44px; }
-    .halving-epoch { display:none; }
   }
 
   /* ── BTC PRICE CHART CARD ───────────────────────────────── */
@@ -1137,6 +1109,18 @@
   .gf-sum-v { font-size:1rem; font-weight:700; letter-spacing:-.02em; color:var(--t1); line-height:1; }
   :global(html.light) .gf-summary { border-color:rgba(0,0,0,.08); background:rgba(0,0,0,.02); }
 
+  /* Small icon refresh button */
+  .btn-icon {
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; padding:0; border-radius:50%;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
+    color:rgba(255,255,255,.4); font-size:.72rem; cursor:pointer; transition:all .2s;
+    flex-shrink:0;
+  }
+  .btn-icon:hover { border-color:rgba(247,147,26,.3); color:var(--orange); background:rgba(247,147,26,.06); transform:rotate(45deg); }
+  :global(html.light) .btn-icon { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.12); color:rgba(0,0,0,.5); }
+  :global(html.light) .btn-icon:hover { border-color:rgba(247,147,26,.3); color:#c77a10; background:rgba(247,147,26,.06); }
+
   /* ── ASSET CLASS ALLOCATION ──────────────────────────────── */
   .alloc-wrap { margin-bottom:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,.05); }
   .alloc-bar { height:8px; border-radius:4px; overflow:hidden; display:flex; gap:1px; margin-bottom:12px; background:rgba(255,255,255,.03); }
@@ -1212,6 +1196,8 @@
   .pm-news-src { background:rgba(247,147,26,.09); border-color:rgba(247,147,26,.26); color:var(--orange); }
   .pm-card-q { font-size:.84rem; color:var(--t1); line-height:1.5; font-weight:500; flex:1; }
   .pm-outcomes { display:flex; gap:8px; }
+  .pm-outcomes--multi { flex-wrap:wrap; }
+  .pm-outcomes--multi .pm-outcome { flex:1; min-width:calc(33% - 6px); }
   .pm-outcome { display:flex; align-items:center; justify-content:space-between; gap:6px;
     flex:1; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:6px; padding:8px 10px; }
   .pm-outcome-name { font-size:.64rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.05em; }

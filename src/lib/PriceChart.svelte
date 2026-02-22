@@ -4,6 +4,7 @@
   export let prices: { t: number; p: number }[] = [];
   export let height = 110;
   export let range: string = '1d';
+  export let formatY: ((v: number) => string) | undefined = undefined;
 
   let canvas: HTMLCanvasElement;
 
@@ -66,7 +67,8 @@
     ctx.fillStyle = 'rgba(255,255,255,0.35)';
     ctx.font = `${9 * Math.min(1, W / MIN_LABEL_WIDTH)}px monospace`;
     ctx.textAlign = 'right';
-    const fmtPrice = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : `$${v.toFixed(0)}`;
+    const defaultFormatter = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : `$${v.toFixed(0)}`;
+    const fmtPrice = formatY ?? defaultFormatter;
     ctx.fillText(fmtPrice(maxRaw), PAD_L - 4, PAD_T + 5);
     ctx.fillText(fmtPrice((maxRaw + minRaw) / 2), PAD_L - 4, PAD_T + dH / 2 + 4);
     ctx.fillText(fmtPrice(minRaw), PAD_L - 4, PAD_T + dH + 4);
