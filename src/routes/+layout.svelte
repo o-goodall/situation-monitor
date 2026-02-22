@@ -898,7 +898,7 @@
 
   /* ── WORDMARK ────────────────────────────────────────────── */
   /* Eyelid finishes at begin(0.4s) + dur(2.4s) = 2.8s; text reveal starts at 2.2s for synchronized overlap */
-  .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.92rem; letter-spacing:.12em; line-height:1; pointer-events:none; color:#eaeaea; text-transform:uppercase; overflow:visible; z-index:1; animation:brandReveal 1.0s ease-out 2.2s both; }
+  .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Nyxerin',monospace; font-weight:900; font-size:0.92rem; letter-spacing:.12em; line-height:1; pointer-events:none; color:#eaeaea; text-transform:uppercase; overflow:visible; z-index:1; animation:brandReveal 1.0s ease-out 2.2s both; }
   @keyframes brandReveal { from{opacity:0} to{opacity:1} }
   /* "4" Bitcoin orange glow — hums continuously */
   @keyframes b4Hum {
@@ -1086,7 +1086,7 @@
     background:rgba(0,0,0,.55);
     backdrop-filter:blur(8px);
   }
-  .footer-brand { font-family:'Turbo Driver','Nyxerin',monospace; font-size:.65rem; font-weight:900; color:rgba(255,255,255,.28); letter-spacing:.1em; text-transform:uppercase; }
+  .footer-brand { font-family:'Nyxerin',monospace; font-size:.65rem; font-weight:900; color:rgba(255,255,255,.28); letter-spacing:.1em; text-transform:uppercase; }
   .footer-sources { font-size:.56rem; color:rgba(255,255,255,.18); letter-spacing:.02em; }
   .footer-sources a { color:rgba(255,255,255,.25); text-decoration:none; transition:color .2s; }
   .footer-sources a:hover { color:var(--orange); }
