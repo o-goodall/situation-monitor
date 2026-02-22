@@ -32,11 +32,7 @@
 
   async function setBtcChartRange(r: '1D' | '1W' | '1Y' | '5Y' | 'Max') {
     btcChartRange = r;
-    compGoldData = []; compSP500Data = [];
     await fetchBtcChart(r);
-    if (showGold || showSP500) {
-      await Promise.all([fetchBtcYtdData(), fetchOverlayData()]);
-    }
   }
 
   // Keep last chart price point in sync with live WebSocket price.
@@ -181,84 +177,9 @@
     catch{$gfError='Connection failed';}finally{$gfLoading=false;}
   }
 
-  // Overlay toggles for Portfolio comparison chart
-  let showGold  = false;
-  let showSP500 = false;
-  let compGoldData:  { t: number; p: number }[] = [];
-  let compSP500Data: { t: number; p: number }[] = [];
-  let compLoading = false;
-
-  // Dedicated YTD BTC data for overlay comparison (always Jan 1 → now, daily)
-  let btcYtdData: { t: number; p: number }[] = [];
-
-  async function fetchBtcYtdData() {
-    try {
-      const d = await fetch('/api/bitcoin/history?range=ytd').then(r => r.json());
-      btcYtdData = d.prices ?? [];
-    } catch { btcYtdData = []; }
-  }
-
-  // Clip a dataset to Jan 1 of the current year (inclusive)
-  function clipToYtd(data: { t: number; p: number }[]): { t: number; p: number }[] {
-    const jan1 = new Date(new Date().getFullYear(), 0, 1).getTime();
-    const idx = data.findIndex(d => d.t >= jan1);
-    return idx >= 0 ? data.slice(idx) : data;
-  }
-
-  function normalizeToPercent(data: { t: number; p: number }[]): { t: number; p: number }[] {
-    if (!data.length) return [];
-    const base = data[0].p;
-    if (!base) return data;
-    return data.map(d => ({ t: d.t, p: ((d.p - base) / base) * 100 }));
-  }
-
-  $: inOverlayMode = showGold || showSP500;
-  // In overlay mode, use YTD-clipped BTC data so all series share the same start period
-  $: _btcForComp = inOverlayMode ? clipToYtd(btcYtdData.length > 0 ? btcYtdData : btcChartData) : [];
-  $: chartDisplayData  = inOverlayMode && _btcForComp.length  > 0 ? normalizeToPercent(_btcForComp)  : btcChartData;
-  $: normGold  = inOverlayMode && compGoldData.length  > 0 ? normalizeToPercent(clipToYtd(compGoldData))  : [];
-  $: normSP500 = inOverlayMode && compSP500Data.length > 0 ? normalizeToPercent(clipToYtd(compSP500Data)) : [];
-  $: chartOverlays = [
-    ...(showGold  && normGold.length  >= 2 ? [{ prices: normGold,  color: '#c9a84c' }] : []),
-    ...(showSP500 && normSP500.length >= 2 ? [{ prices: normSP500, color: '#6366f1' }] : []),
-  ];
-
-  async function fetchOverlayData() {
-    const assets = [showGold && 'gold', showSP500 && 'sp500'].filter(Boolean) as string[];
-    if (!assets.length) return;
-    compLoading = true;
-    try {
-      // Always use ytd range so Gold and S&P 500 data starts from Jan 1
-      const d = await fetch(`/api/assets/history?range=ytd&assets=${assets.join(',')}`).then(r => r.json());
-      if (showGold  && d.gold?.length)  compGoldData  = d.gold;
-      if (showSP500 && d.sp500?.length) compSP500Data = d.sp500;
-    } catch {}
-    finally { compLoading = false; }
-  }
-
   function btcApiRange(r = btcChartRange): string {
     const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y', 'Max':'max' };
     return map[r] ?? '1d';
-  }
-
-  async function toggleGold() {
-    showGold = !showGold;
-    if (showGold) {
-      if (!btcYtdData.length) await fetchBtcYtdData();
-      if (!compGoldData.length) await fetchOverlayData();
-    } else {
-      compGoldData = [];
-    }
-  }
-
-  async function toggleSP500() {
-    showSP500 = !showSP500;
-    if (showSP500) {
-      if (!btcYtdData.length) await fetchBtcYtdData();
-      if (!compSP500Data.length) await fetchOverlayData();
-    } else {
-      compSP500Data = [];
-    }
   }
 
   onMount(() => { fetchBtcChart(); fetchHashrateChart(); });
@@ -760,20 +681,11 @@
 
   </div>
 
-  <!-- BITCOIN PRICE COMPARISON CHART — full width below the two tiles -->
+  <!-- BITCOIN PRICE CHART — full width below the two tiles -->
   <div class="gc btc-chart-card" style="margin-top:14px;">
     <div class="chart-header">
-      <p class="gc-title">Bitcoin Price{#if inOverlayMode} — YTD Comparison{/if}</p>
+      <p class="gc-title">Bitcoin Price</p>
       <div class="chart-controls">
-        <!-- Overlay toggles -->
-        <div class="overlay-btns" role="group" aria-label="Overlay assets">
-          <button class="crb" class:crb--active={showGold}  on:click={toggleGold}  aria-pressed={showGold}>
-            <span class="crb-dot" style="background:#c9a84c;"></span>Gold
-          </button>
-          <button class="crb" class:crb--active={showSP500} on:click={toggleSP500} aria-pressed={showSP500}>
-            <span class="crb-dot" style="background:#6366f1;"></span>S&amp;P
-          </button>
-        </div>
         <!-- Range buttons -->
         <div class="chart-range-btns" role="group" aria-label="Chart time range">
           <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
@@ -785,26 +697,14 @@
       </div>
     </div>
 
-    <!-- Legend (only when overlays are active) -->
-    {#if inOverlayMode}
-    <div class="comp-legend" aria-label="Chart legend">
-      <span class="comp-item"><span class="comp-dot" style="background:#f7931a;"></span>BTC</span>
-      {#if showGold} <span class="comp-item"><span class="comp-dot" style="background:#c9a84c;"></span>Gold</span>{/if}
-      {#if showSP500}<span class="comp-item"><span class="comp-dot" style="background:#6366f1;"></span>S&amp;P 500</span>{/if}
-      <span class="comp-note">YTD % performance (USD)</span>
-    </div>
-    {/if}
-
     <div class="chart-container">
-      {#if btcChartLoading || compLoading}
+      {#if btcChartLoading}
         <div class="skeleton" style="height:160px;border-radius:6px;"></div>
-      {:else if chartDisplayData.length >= 2}
+      {:else if btcChartData.length >= 2}
         <PriceChart
-          prices={chartDisplayData}
+          prices={btcChartData}
           height={160}
           range={btcChartRange === '1D' ? '1d' : btcChartRange === '5Y' ? '5y' : btcChartRange === 'Max' ? 'max' : '1y'}
-          formatY={inOverlayMode ? (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : undefined}
-          overlays={chartOverlays}
         />
       {:else}
         <p class="dim" style="text-align:center;padding:60px 0;">Loading chart data…</p>
