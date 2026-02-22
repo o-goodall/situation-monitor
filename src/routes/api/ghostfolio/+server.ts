@@ -48,8 +48,8 @@ export async function GET({ url }) {
     totalInvested = p?.totalInvestment ?? null;
     netGain = p?.netPerformanceWithCurrencyEffect ?? p?.netPerformance ?? null;
     netGainPct = p?.netPerformancePercentageWithCurrencyEffect ?? p?.netPerformancePercentage ?? null;
-    // Convert 0-1 fraction to percentage if needed
-    if (netGainPct !== null && Math.abs(netGainPct) < 1 && netGainPct !== 0) {
+    // Ghostfolio always returns percentages as decimals (e.g. 2.532 = 253.2%)
+    if (netGainPct !== null) {
       netGainPct = netGainPct * 100;
     }
   }
@@ -58,7 +58,7 @@ export async function GET({ url }) {
     const d = await perfYtdRes.value.json();
     const p = d?.performance ?? d;
     netGainYtdPct = p?.netPerformancePercentageWithCurrencyEffect ?? p?.netPerformancePercentage ?? null;
-    if (netGainYtdPct !== null && Math.abs(netGainYtdPct) < 1 && netGainYtdPct !== 0) {
+    if (netGainYtdPct !== null) {
       netGainYtdPct = netGainYtdPct * 100;
     }
   }
@@ -67,7 +67,7 @@ export async function GET({ url }) {
     const d = await perf1dRes.value.json();
     const p = d?.performance ?? d;
     todayChangePct = p?.netPerformancePercentageWithCurrencyEffect ?? p?.netPerformancePercentage ?? null;
-    if (todayChangePct !== null && Math.abs(todayChangePct) < 1 && todayChangePct !== 0) {
+    if (todayChangePct !== null) {
       todayChangePct = todayChangePct * 100;
     }
   }
@@ -112,9 +112,8 @@ export async function GET({ url }) {
     firstOrderDate = d?.firstOrderDate ?? null;
     ordersCount   = d?.ordersCount ?? null;
     annualizedPerformancePct = d?.annualizedPerformancePercent ?? null;
-    // Ghostfolio may return this as a decimal fraction (e.g. 0.12 = 12%) or already
-    // as a percentage (e.g. 12). Normalise: if |value| < 1 and non-zero, it's a fraction.
-    if (annualizedPerformancePct !== null && Math.abs(annualizedPerformancePct) < 1 && annualizedPerformancePct !== 0) {
+    // Ghostfolio always returns percentages as decimals (e.g. 0.12 = 12%)
+    if (annualizedPerformancePct !== null) {
       annualizedPerformancePct = annualizedPerformancePct * 100;
     }
   }
