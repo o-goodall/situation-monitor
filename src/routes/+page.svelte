@@ -1273,8 +1273,8 @@
   :global(html.light) .toggle-icon--active { color:#c77a10; }
 
   /* ── INTEL VIEW TRANSITION ─────────────────────────────── */
-  .intel-view-wrap { position:relative; transition:filter .4s ease; }
-  .intel-view-wrap--transitioning { filter:blur(6px) brightness(.92); pointer-events:none; }
+  .intel-view-wrap { position:relative; transition:opacity .35s ease; }
+  .intel-view-wrap--transitioning { opacity:0; pointer-events:none; }
   .intel-foil-sweep {
     position:absolute; inset:0; z-index:10; pointer-events:none; opacity:0;
     background:linear-gradient(105deg,transparent 30%,rgba(247,147,26,.18) 45%,rgba(255,224,160,.22) 50%,rgba(247,147,26,.18) 55%,transparent 70%);
@@ -1290,7 +1290,7 @@
     100% { background-position:200% center; opacity:0; }
   }
   @media (prefers-reduced-motion:reduce) {
-    .intel-view-wrap--transitioning { filter:none; }
+    .intel-view-wrap--transitioning { opacity:1; }
     .intel-foil-sweep--active { animation:none; opacity:0; }
   }
 
@@ -1299,6 +1299,10 @@
 
   /* ── INTEL CARD – CONSISTENT SIZING FOR BOTH VIEWS ─────── */
   .pm-card--intel { min-height:130px; }
+  @media (max-width:600px) {
+    .pm-card--intel { min-height:90px; }
+    .intel-gc { min-height:unset; }
+  }
 
   /* ── TOPIC ICON BACKGROUND (frosted) ───────────────────── */
   .pm-card-topic-icon {
@@ -1390,22 +1394,15 @@
   .pm-prob-tag { font-weight:700; }
   .pm-card-q { font-size:.84rem; color:var(--t1); line-height:1.5; font-weight:500; flex:1; }
   @media (max-width:600px) {
-    /* Both pm-grid types use a horizontal swipe carousel on mobile */
+    /* Both pm-grid types use a vertical scroll on mobile */
     .pm-grid {
-      display:flex; flex-direction:row;
-      overflow-x:auto; overflow-y:hidden;
-      scroll-snap-type:x mandatory;
-      gap:12px;
-      padding-bottom:8px;
-      -webkit-overflow-scrolling:touch;
-      scrollbar-width:none;
+      display:flex; flex-direction:column;
+      overflow-x:hidden;
+      gap:10px;
     }
-    .pm-grid::-webkit-scrollbar { display:none; }
     .pm-grid .pm-card {
-      scroll-snap-align:start;
-      flex-shrink:0;
-      width:82vw;
-      min-height:160px;
+      width:100%;
+      min-height:auto;
       display:flex !important;
     }
     .pm-card-q { font-size:.82rem; }

@@ -539,7 +539,7 @@
   <!-- Mobile section icons — in header, visible on small screens -->
   <nav class="mobile-section-nav mobile-only" aria-label="Section navigation">
     <button class="mobile-nav-btn" class:mobile-nav-btn--active={$activeSection==='signal'} on:click={()=>navigateTo('signal')} aria-label="Signal section">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><text x="2" y="18" font-size="16" font-family="monospace">₿</text></svg>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M15.31 8h-6.62A1.5 1.5 0 0 0 7.5 10.5V11a2 2 0 0 0 2 2h5a2 2 0 0 1 2 2v.5a1.5 1.5 0 0 1-1.5 1.5H8.69"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
     </button>
     <button class="mobile-nav-btn" class:mobile-nav-btn--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')} aria-label="Portfolio section">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
@@ -592,8 +592,15 @@
     </button>
   </div>
 
-  <!-- Mobile right controls — mode toggle + settings cog (visible on small screens) -->
+  <!-- Mobile right controls — live badge + mode toggle + settings cog (visible on small screens) -->
   <div class="mobile-hdr-right mobile-only">
+    <!-- Live price feed status (mobile) -->
+    <span class="ws-badge" class:ws-badge--live={$btcWsConnected}
+      role="status"
+      aria-label="{$btcWsConnected?'Live price feed connected':'Price polling fallback'}"
+      title="{$btcWsConnected?'Live price feed connected (Binance WebSocket)':'Price polling fallback — attempting live connection…'}">
+      <span class="ws-dot" aria-hidden="true"></span>{$btcWsConnected?'LIVE':'POLL'}
+    </span>
     <button class="mode-toggle btn-ghost" on:click={toggleLightMode}
       aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
       {#if $lightMode}
@@ -838,7 +845,7 @@
     font-size:.52rem; font-weight:700; letter-spacing:.1em; text-transform:uppercase;
     font-family:'Poison',monospace;
     color:rgba(255,255,255,.22); background:rgba(255,255,255,.04);
-    border:1px solid rgba(255,255,255,.08); border-radius:3px; padding:3px 8px;
+    border:1px solid rgba(255,255,255,.08); border-radius:3px; padding:7px 10px;
     transition:all .5s;
   }
   .ws-badge--live { color:var(--up); border-color:rgba(34,197,94,.25); background:rgba(34,197,94,.06); }
