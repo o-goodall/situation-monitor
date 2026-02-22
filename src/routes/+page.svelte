@@ -688,8 +688,6 @@
         <div class="pm-grid">
           {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
             <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{m.question}">
-              <!-- Topic icon background -->
-              <span class="pm-card-topic-icon" aria-hidden="true">{detectTopic(m.question)}</span>
               <div class="pm-card-frosted-overlay"></div>
               <!-- Tag row -->
               <div class="pm-card-tags" style="position:relative;z-index:1;">
@@ -747,8 +745,6 @@
         <div class="pm-grid news-pm-grid">
           {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
             <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{item.title}">
-              <!-- Topic icon background -->
-              <span class="pm-card-topic-icon" aria-hidden="true">{detectTopic(item.title)}</span>
               <div class="pm-card-frosted-overlay"></div>
               <div class="pm-card-tags" style="position:relative;z-index:1;">
                 <span class="pm-tag pm-news-src">{item.source}</span>
@@ -787,6 +783,9 @@
       margin-bottom:16px;
     }
     .section-divider { margin-top:24px; }
+    #signal    { order:1; }
+    #intel     { order:2; }
+    #portfolio { order:3; }
   }
   @media (max-width:600px) {
     .section-header { margin-bottom:14px; }
