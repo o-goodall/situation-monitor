@@ -581,7 +581,7 @@
         <text aria-hidden="true" class="eye-binary" x="30" y="13.5" text-anchor="middle" font-size="2.2" fill="rgba(247,147,26,0.7)" font-family="monospace">01</text>
       </svg>
       <span class="brand-name">
-        <span class="b-gl">gl</span><span class="b-4">4</span><span class="b-nce">nce</span>
+        <span class="b-gl">gl</span><svg class="b-4" viewBox="0 0 10 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M5,1 L1,13 M5,1 L9,13 M2.4,8.5 L7.6,8.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><span class="b-nce">nce</span>
       </span>
     </div>
   </a>
@@ -957,15 +957,15 @@
   }
 
   /* ── WORDMARK ────────────────────────────────────────────── */
-  /* flex sides keep the "4" centred exactly over the pupil at 50% of wrapper width */
-  .brand-name { position:absolute; inset:0; display:flex; align-items:center; font-family:'Nyxerin',monospace; font-weight:900; font-size:1.0rem; letter-spacing:.08em; line-height:1; pointer-events:none; }
+  /* padding:0 10% aligns text with the eye outline corners (x=6 & x=54 in a 60-unit viewBox) */
+  .brand-name { position:absolute; inset:0; display:flex; align-items:center; font-family:'Nyxerin',monospace; font-weight:900; font-size:1.0rem; letter-spacing:.08em; line-height:1; pointer-events:none; padding:0 10%; }
   .b-gl, .b-nce { color:rgba(234,234,234,.92); flex:1; display:flex; }
-  .b-gl  { justify-content:flex-end; padding-right:1px; }
-  .b-nce { justify-content:flex-start; padding-left:1px; }
-  .b-4 { color:var(--orange); font-size:1.15em; text-shadow:0 0 14px rgba(247,147,26,.8),0 0 28px rgba(247,147,26,.4); animation:fourGlow 3s ease-in-out infinite; display:inline-block; }
+  .b-gl  { justify-content:flex-start; }
+  .b-nce { justify-content:flex-end; }
+  .b-4 { color:var(--orange); height:1.15em; width:0.83em; flex-shrink:0; filter:drop-shadow(0 0 5px rgba(247,147,26,.8)) drop-shadow(0 0 12px rgba(247,147,26,.4)); animation:fourGlow 3s ease-in-out infinite; }
   @keyframes fourGlow {
-    0%,100% { text-shadow:0 0 12px rgba(247,147,26,.85),0 0 26px rgba(247,147,26,.45); }
-    50%     { text-shadow:0 0 22px rgba(247,147,26,1),0 0 48px rgba(247,147,26,.55),0 0 80px rgba(247,147,26,.18); }
+    0%,100% { filter:drop-shadow(0 0 4px rgba(247,147,26,.85)) drop-shadow(0 0 10px rgba(247,147,26,.45)); }
+    50%     { filter:drop-shadow(0 0 8px rgba(247,147,26,1)) drop-shadow(0 0 18px rgba(247,147,26,.55)) drop-shadow(0 0 30px rgba(247,147,26,.18)); }
   }
 
   /* ── BURGER (mobile only) ────────────────────────────────── */
