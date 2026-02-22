@@ -546,9 +546,7 @@
           <line x1="36.5" y1="15.3" x2="37.6" y2="16.4" stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
           <line x1="22" y1="12"    x2="23.8" y2="12"   stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
           <line x1="36.2" y1="12"  x2="38" y2="12"    stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
-          <!-- Pupil -->
-          <circle cx="30" cy="12" r="3"   fill="#010101"/>
-          <circle cx="30" cy="12" r="1.8" fill="#000"/>
+          <!-- Pupil is represented by the orange "4" in the wordmark overlay -->
         </g>
         <!-- Scanlines clipped to eye shape -->
         <g clip-path="url(#eyeClip)" class="eye-scanlines">
@@ -577,8 +575,6 @@
         <!-- Cornea highlight -->
         <ellipse cx="26.5" cy="9.5"  rx="1.6" ry="0.9" fill="rgba(255,255,255,0.55)" class="eye-highlight"/>
         <ellipse cx="28.8" cy="10.6" rx="0.6" ry="0.4" fill="rgba(255,255,255,0.25)" class="eye-highlight"/>
-        <!-- Binary flicker text inside pupil -->
-        <text aria-hidden="true" class="eye-binary" x="30" y="13.5" text-anchor="middle" font-size="2.2" fill="rgba(247,147,26,0.7)" font-family="monospace">01</text>
       </svg>
       <span class="brand-name">
         <span class="b-gl">gl</span><svg class="b-4" viewBox="0 0 10 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M5,1 L1,13 M5,1 L9,13 M2.4,8.5 L7.6,8.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><span class="b-nce">nce</span>
@@ -939,17 +935,8 @@
   }
   .eye-highlight { animation:highlightPulse 3s ease-in-out infinite; }
 
-  /* Binary flicker — occasional, very faint */
-  @keyframes binaryFlicker {
-    0%,82%,100% { opacity:0; }
-    83%,85%,87% { opacity:0.7; }
-    84%,86%     { opacity:0; }
-  }
-  .eye-binary { animation:binaryFlicker 9s ease-in-out infinite; }
-
   @media (prefers-reduced-motion:reduce) {
-    .eye-iris,.eye-scanlines,.eye-shimmer,.eye-highlight,.eye-binary,.eye-outer-glow,.eye-outline { animation:none; }
-    .eye-binary { opacity:0; }
+    .eye-iris,.eye-scanlines,.eye-shimmer,.eye-highlight,.eye-outer-glow,.eye-outline { animation:none; }
   }
 
   @media (max-width:768px) {
