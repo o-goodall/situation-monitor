@@ -57,6 +57,12 @@
     const toX = (i: number, len: number) => PAD_L + (i / (len - 1)) * dW;
     const toY = (p: number) => PAD_T + (1 - (p - min) / rng) * dH;
 
+    // Time-based X mapping used for overlays so timestamps align with BTC series
+    const tMin = prices[0].t;
+    const tMax = prices[prices.length - 1].t;
+    const tRng = tMax - tMin || 1;
+    const toXt = (t: number) => PAD_L + Math.max(0, Math.min(1, (t - tMin) / tRng)) * dW;
+
     // Subtle horizontal grid lines
     ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
@@ -130,13 +136,15 @@
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Overlay series lines (no fill)
+    // Overlay series lines (no fill) — use time-based X so timestamps align with BTC
     for (const overlay of overlays) {
       if (overlay.prices.length < 2) continue;
       ctx.beginPath();
-      overlay.prices.forEach(({ p }, i) => {
-        const x = toX(i, overlay.prices.length), y = toY(p);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      let moved = false;
+      overlay.prices.forEach(({ t, p }) => {
+        const x = toXt(t), y = toY(p);
+        if (!moved) { ctx.moveTo(x, y); moved = true; }
+        else ctx.lineTo(x, y);
       });
       ctx.strokeStyle = overlay.color;
       ctx.lineWidth = 1.5;
@@ -148,7 +156,7 @@
       ctx.shadowBlur = 0;
       // Dot at end of overlay line
       const last = overlay.prices[overlay.prices.length - 1];
-      const ox = toX(overlay.prices.length - 1, overlay.prices.length);
+      const ox = toXt(last.t);
       const oy = toY(last.p);
       ctx.beginPath();
       ctx.arc(ox, oy, 3, 0, Math.PI * 2);
