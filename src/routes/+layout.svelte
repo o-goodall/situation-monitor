@@ -486,8 +486,9 @@
       <div class="globe">
         <div class="wire w-eq"></div><div class="wire w-lg1"></div>
         <div class="wire w-lg2"></div><div class="wire w-lt1"></div><div class="wire w-lt2"></div>
-        <div class="ping ping-1"></div><div class="ping ping-2"></div>
-        <div class="ping ping-3"></div><div class="ping ping-4"></div><div class="ping ping-5"></div>
+        <div class="gnode gnode-a"></div>
+        <div class="gnode gnode-b"></div>
+        <div class="gconn"></div>
       </div>
     </div>
     <span class="brand-name" aria-hidden="true">
@@ -760,9 +761,9 @@
   /* Desktop nav — immediately after brand, left-aligned (Electric Xtra style) */
   .page-nav { display:flex; gap:4px; flex-shrink:0; }
   .nav-link {
-    padding:8px 16px; border-radius:3px;
-    font-family:'Poison',monospace; font-size:.65rem; font-weight:700;
-    color:rgba(255,255,255,.5); text-decoration:none;
+    padding:10px 18px; border-radius:3px;
+    font-family:'Poison',monospace; font-size:.8rem; font-weight:700;
+    color:rgba(255,255,255,.78); text-decoration:none;
     text-transform:uppercase; letter-spacing:.08em;
     position:relative; border:1px solid transparent;
     transition:all .25s ease; white-space:nowrap;
@@ -811,13 +812,67 @@
     background:radial-gradient(circle at 38% 35%, rgba(247,147,26,.28) 0%, rgba(247,147,26,.06) 55%, transparent 75%);
     box-shadow:0 0 0 1px rgba(247,147,26,.32),0 0 14px rgba(247,147,26,.35),inset 0 0 8px rgba(247,147,26,.1);
     overflow:hidden;
+    animation:earthSpin 22s linear infinite;
+    transform-style:preserve-3d;
+  }
+  @keyframes earthSpin {
+    from { transform:rotateY(0deg); }
+    to   { transform:rotateY(360deg); }
   }
   .wire { position:absolute; border:1px solid rgba(247,147,26,.2); border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
   .w-eq{width:100%;height:28%} .w-lg1{width:52%;height:100%} .w-lg2{width:22%;height:100%}
   .w-lt1{width:80%;height:20%;top:28%} .w-lt2{width:80%;height:20%;top:70%}
-  .ping { position:absolute; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent 8%,rgba(247,147,26,.9) 35%,rgba(255,200,80,1) 50%,rgba(247,147,26,.9) 65%,transparent 92%); border-radius:1px; top:-2px; animation:pingDrop 2.5s linear infinite; opacity:0; box-shadow:0 0 4px rgba(247,147,26,.6); }
-  .ping-1{animation-delay:0s}.ping-2{animation-delay:.5s}.ping-3{animation-delay:1s}.ping-4{animation-delay:1.5s}.ping-5{animation-delay:2s}
-  @keyframes pingDrop{0%{top:-2px;opacity:0}4%{top:2%;opacity:1}24%{top:98%;opacity:.9}28%{top:102%;opacity:0}100%{top:102%;opacity:0}}
+
+  /* Ping node dots — animate between 4 globe locations */
+  .gnode {
+    position:absolute; width:3px; height:3px; border-radius:50%;
+    background:rgba(247,147,26,.95); box-shadow:0 0 4px rgba(247,147,26,.8);
+    opacity:0; pointer-events:none;
+  }
+  /* Location sequence: A(65%,22%) → B(28%,65%) → C(72%,48%) → D(40%,20%) → repeat */
+  .gnode-a { animation:gnodeA 12s ease-in-out infinite; }
+  .gnode-b { animation:gnodeB 12s ease-in-out infinite; }
+  @keyframes gnodeA {
+    0%,3%    { left:65%; top:22%; opacity:0; transform:scale(0); }
+    6%,30%   { left:65%; top:22%; opacity:1; transform:scale(1); }
+    33%,35%  { left:65%; top:22%; opacity:0; transform:scale(0); }
+    36%,60%  { left:72%; top:48%; opacity:0; transform:scale(0); }
+    63%,87%  { left:72%; top:48%; opacity:1; transform:scale(1); }
+    90%,100% { left:72%; top:48%; opacity:0; transform:scale(0); }
+  }
+  @keyframes gnodeB {
+    0%,33%   { left:28%; top:65%; opacity:0; transform:scale(0); }
+    36%,60%  { left:28%; top:65%; opacity:1; transform:scale(1); }
+    63%,65%  { left:28%; top:65%; opacity:0; transform:scale(0); }
+    66%,90%  { left:40%; top:20%; opacity:0; transform:scale(0); }
+    93%,100% { left:40%; top:20%; opacity:1; transform:scale(1); }
+  }
+
+  /* Connection line between active pair of nodes */
+  /* Segment A→B: top-right to bottom-left — angle≈128°, width≈57% of globe */
+  /* Segment C→D: middle-right to top-center — angle≈-52°, width≈38% of globe */
+  .gconn {
+    position:absolute; height:1px;
+    background:linear-gradient(90deg, rgba(247,147,26,.1), rgba(247,147,26,.7), rgba(247,147,26,.1));
+    opacity:0; pointer-events:none;
+    transform-origin:left center;
+    animation:gconnAnim 12s ease-in-out infinite;
+  }
+  @keyframes gconnAnim {
+    /* A→B connection */
+    0%,9%    { opacity:0; left:65%; top:22%; width:0; transform:rotate(128deg) scaleX(0); }
+    12%,28%  { opacity:1; left:65%; top:22%; width:57%; transform:rotate(128deg) scaleX(1); }
+    31%,35%  { opacity:0; left:65%; top:22%; width:57%; transform:rotate(128deg) scaleX(1); }
+    /* C→D connection */
+    36%,45%  { opacity:0; left:72%; top:48%; width:0; transform:rotate(-52deg) scaleX(0); }
+    48%,64%  { opacity:1; left:72%; top:48%; width:38%; transform:rotate(-52deg) scaleX(1); }
+    67%,100% { opacity:0; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .globe { animation:none; }
+    .gnode-a,.gnode-b,.gconn { animation:none; opacity:0; }
+  }
 
   /* ── WORDMARK ────────────────────────────────────────────── */
   .brand-name { font-family:'Nyxerin',monospace; font-weight:900; font-size:1rem; letter-spacing:.06em; line-height:1; }
