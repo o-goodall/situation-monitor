@@ -498,14 +498,62 @@
 
   <!-- Brand — always left -->
   <a href="/" class="brand" aria-label="gl4nce home">
-    <div class="globe-wrap" aria-hidden="true">
-      <div class="globe">
-        <div class="wire w-eq"></div><div class="wire w-lg1"></div>
-        <div class="wire w-lg2"></div><div class="wire w-lt1"></div><div class="wire w-lt2"></div>
-        <div class="gnode gnode-a"></div>
-        <div class="gnode gnode-b"></div>
-        <div class="gconn"></div>
-      </div>
+    <div class="eye-wrap" aria-hidden="true">
+      <svg class="eye-svg" viewBox="0 0 40 24" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <radialGradient id="irisGrad" cx="45%" cy="40%" r="55%">
+            <stop offset="0%" stop-color="#2a1200"/>
+            <stop offset="50%" stop-color="#130800"/>
+            <stop offset="100%" stop-color="#050200"/>
+          </radialGradient>
+          <radialGradient id="irisRingGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="60%" stop-color="transparent"/>
+            <stop offset="100%" stop-color="rgba(247,147,26,0.18)"/>
+          </radialGradient>
+          <clipPath id="eyeClip">
+            <path d="M20,3.5 C12,3.5 4,12 4,12 C4,12 12,20.5 20,20.5 C28,20.5 36,12 36,12 C36,12 28,3.5 20,3.5 Z"/>
+          </clipPath>
+          <linearGradient id="shimmerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stop-color="rgba(255,255,255,0)" />
+            <stop offset="40%" stop-color="rgba(255,230,180,0.35)" />
+            <stop offset="60%" stop-color="rgba(247,147,26,0.45)" />
+            <stop offset="100%" stop-color="rgba(255,255,255,0)" />
+          </linearGradient>
+        </defs>
+        <!-- Eye background -->
+        <path d="M20,3.5 C12,3.5 4,12 4,12 C4,12 12,20.5 20,20.5 C28,20.5 36,12 36,12 C36,12 28,3.5 20,3.5 Z" fill="#030201"/>
+        <!-- Iris group — subtle drift animation -->
+        <g class="eye-iris">
+          <circle cx="20" cy="12" r="8" fill="url(#irisGrad)"/>
+          <circle cx="20" cy="12" r="8" fill="url(#irisRingGrad)"/>
+          <circle cx="20" cy="12" r="6.5" fill="none" stroke="rgba(247,147,26,0.18)" stroke-width="0.5"/>
+          <circle cx="20" cy="12" r="5" fill="none" stroke="rgba(247,147,26,0.1)" stroke-width="0.4"/>
+          <!-- Pupil -->
+          <circle cx="20" cy="12" r="3.2" fill="#020101"/>
+          <!-- Pupil inner depth -->
+          <circle cx="20" cy="12" r="2" fill="#010101"/>
+        </g>
+        <!-- Scanlines clipped to eye shape -->
+        <g clip-path="url(#eyeClip)" class="eye-scanlines">
+          <rect x="4" y="9" width="32" height="0.5" fill="rgba(247,147,26,0.06)"/>
+          <rect x="4" y="11" width="32" height="0.5" fill="rgba(247,147,26,0.04)"/>
+          <rect x="4" y="13" width="32" height="0.5" fill="rgba(247,147,26,0.06)"/>
+          <rect x="4" y="15" width="32" height="0.5" fill="rgba(247,147,26,0.04)"/>
+        </g>
+        <!-- Foil shimmer sweep clipped to eye -->
+        <g clip-path="url(#eyeClip)">
+          <rect class="eye-shimmer" x="-38" y="3.5" width="22" height="17" fill="url(#shimmerGrad)"/>
+        </g>
+        <!-- Outer eye outline -->
+        <path d="M20,3.5 C12,3.5 4,12 4,12 C4,12 12,20.5 20,20.5 C28,20.5 36,12 36,12 C36,12 28,3.5 20,3.5 Z" fill="none" stroke="#f7931a" stroke-width="1" opacity="0.7"/>
+        <!-- Corner accent dots -->
+        <circle cx="4" cy="12" r="1" fill="rgba(247,147,26,0.5)"/>
+        <circle cx="36" cy="12" r="1" fill="rgba(247,147,26,0.5)"/>
+        <!-- Cornea highlight -->
+        <ellipse cx="16.5" cy="9.5" rx="1.4" ry="0.8" fill="rgba(255,255,255,0.5)" class="eye-highlight"/>
+        <!-- Binary flicker text inside pupil -->
+        <text aria-hidden="true" class="eye-binary" x="20" y="13.5" text-anchor="middle" font-size="2.2" fill="rgba(247,147,26,0.7)" font-family="monospace">01</text>
+      </svg>
     </div>
     <span class="brand-name" aria-hidden="true">
       <span class="b-gl">gl</span><span class="b-4">4</span><span class="b-nce">nce</span><span class="b-dot">.</span>
@@ -821,67 +869,57 @@
   .settings-btn { padding:7px 11px; }
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
 
-  /* ── GLOBE ───────────────────────────────────────────────── */
-  .globe-wrap { width:30px; height:30px; position:relative; flex-shrink:0; }
-  .globe {
-    width:100%; height:100%; position:relative; border-radius:50%;
-    background:radial-gradient(circle at 38% 35%, rgba(247,147,26,.28) 0%, rgba(247,147,26,.06) 55%, transparent 75%);
-    box-shadow:0 0 0 1px rgba(247,147,26,.32),0 0 14px rgba(247,147,26,.35),inset 0 0 8px rgba(247,147,26,.1);
-    overflow:hidden;
-  }
-  .wire { position:absolute; border:1px solid rgba(247,147,26,.2); border-radius:50%; top:50%; left:50%; transform:translate(-50%,-50%); pointer-events:none; }
-  .w-eq{width:100%;height:28%} .w-lg1{width:52%;height:100%} .w-lg2{width:22%;height:100%}
-  .w-lt1{width:80%;height:20%;top:28%} .w-lt2{width:80%;height:20%;top:70%}
+  /* ── CYBERPUNK EYE ───────────────────────────────────────── */
+  .eye-wrap { width:38px; height:24px; position:relative; flex-shrink:0; overflow:visible; }
+  .eye-svg { width:100%; height:100%; overflow:visible; }
 
-  /* Ping node dots — animate between 4 globe locations */
-  .gnode {
-    position:absolute; width:3px; height:3px; border-radius:50%;
-    background:rgba(247,147,26,.95); box-shadow:0 0 4px rgba(247,147,26,.8);
-    opacity:0; pointer-events:none;
+  /* Iris drift — slow, subtle */
+  @keyframes irisDrift {
+    0%,100% { transform:translate(0,0); }
+    20%     { transform:translate(0.4px,-0.3px); }
+    45%     { transform:translate(-0.3px,0.4px); }
+    70%     { transform:translate(0.35px,0.25px); }
   }
-  /* Location sequence: A(65%,22%) → B(28%,65%) → C(72%,48%) → D(40%,20%) → repeat */
-  .gnode-a { animation:gnodeA 12s ease-in-out infinite; }
-  .gnode-b { animation:gnodeB 12s ease-in-out infinite; }
-  @keyframes gnodeA {
-    0%,3%    { left:65%; top:22%; opacity:0; transform:scale(0); }
-    6%,30%   { left:65%; top:22%; opacity:1; transform:scale(1); }
-    33%,35%  { left:65%; top:22%; opacity:0; transform:scale(0); }
-    36%,60%  { left:72%; top:48%; opacity:0; transform:scale(0); }
-    63%,87%  { left:72%; top:48%; opacity:1; transform:scale(1); }
-    90%,100% { left:72%; top:48%; opacity:0; transform:scale(0); }
-  }
-  @keyframes gnodeB {
-    0%,33%   { left:28%; top:65%; opacity:0; transform:scale(0); }
-    36%,60%  { left:28%; top:65%; opacity:1; transform:scale(1); }
-    63%,65%  { left:28%; top:65%; opacity:0; transform:scale(0); }
-    66%,90%  { left:40%; top:20%; opacity:0; transform:scale(0); }
-    93%,100% { left:40%; top:20%; opacity:1; transform:scale(1); }
-  }
+  .eye-iris { animation:irisDrift 8s ease-in-out infinite; transform-origin:20px 12px; }
 
-  /* Connection line between active pair of nodes */
-  /* Segment A→B: top-right to bottom-left — angle≈128°, width≈57% of globe */
-  /* Segment C→D: middle-right to top-center — angle≈-52°, width≈38% of globe */
-  .gconn {
-    position:absolute; height:1px;
-    background:linear-gradient(90deg, rgba(247,147,26,.1), rgba(247,147,26,.7), rgba(247,147,26,.1));
-    opacity:0; pointer-events:none;
-    transform-origin:left center;
-    animation:gconnAnim 12s ease-in-out infinite;
+  /* Scanline slow drift */
+  @keyframes scanDrift {
+    0%,100% { transform:translateY(0); opacity:1; }
+    50%     { transform:translateY(0.8px); opacity:0.7; }
   }
-  @keyframes gconnAnim {
-    /* A→B connection */
-    0%,9%    { opacity:0; left:65%; top:22%; width:0; transform:rotate(128deg) scaleX(0); }
-    12%,28%  { opacity:1; left:65%; top:22%; width:57%; transform:rotate(128deg) scaleX(1); }
-    31%,35%  { opacity:0; left:65%; top:22%; width:57%; transform:rotate(128deg) scaleX(1); }
-    /* C→D connection */
-    36%,45%  { opacity:0; left:72%; top:48%; width:0; transform:rotate(-52deg) scaleX(0); }
-    48%,64%  { opacity:1; left:72%; top:48%; width:38%; transform:rotate(-52deg) scaleX(1); }
-    67%,100% { opacity:0; }
+  .eye-scanlines { animation:scanDrift 4s ease-in-out infinite; }
+
+  /* Foil shimmer — single sweep every ~13s, quick pass */
+  @keyframes eyeShimmer {
+    0%,88%  { transform:translateX(0);    opacity:0; }
+    89%     { opacity:0.8; }
+    94%     { transform:translateX(78px); opacity:0.6; }
+    95%,100%{ transform:translateX(78px); opacity:0; }
+  }
+  .eye-shimmer { animation:eyeShimmer 13s ease-in-out infinite; }
+
+  /* Cornea highlight gentle pulse */
+  @keyframes highlightPulse {
+    0%,100% { opacity:0.5; }
+    50%     { opacity:0.75; }
+  }
+  .eye-highlight { animation:highlightPulse 3s ease-in-out infinite; }
+
+  /* Binary flicker — occasional, very faint */
+  @keyframes binaryFlicker {
+    0%,82%,100% { opacity:0; }
+    83%,85%,87% { opacity:0.7; }
+    84%,86%     { opacity:0; }
+  }
+  .eye-binary { animation:binaryFlicker 9s ease-in-out infinite; }
+
+  @media (prefers-reduced-motion:reduce) {
+    .eye-iris,.eye-scanlines,.eye-shimmer,.eye-highlight,.eye-binary { animation:none; }
+    .eye-binary { opacity:0; }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .globe { animation:none; }
-    .gnode-a,.gnode-b,.gconn { animation:none; opacity:0; }
+  @media (max-width:768px) {
+    .eye-wrap { width:32px; height:20px; }
   }
 
   /* ── WORDMARK ────────────────────────────────────────────── */
@@ -918,7 +956,7 @@
     .mobile-only  { display:flex !important; }
     .brand { margin-right:auto; }
     .brand-name { font-size:.88rem; }
-    .globe-wrap { width:26px; height:26px; }
+    .eye-wrap { width:28px; height:18px; }
   }
 
   /* ── MOBILE FULL-SCREEN MENU ─────────────────────────────── */

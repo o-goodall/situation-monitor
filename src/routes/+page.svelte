@@ -107,37 +107,10 @@
   $: freqDesc  = ({daily:'daily buy',weekly:'weekly buy',fortnightly:'fortnightly buy',monthly:'monthly buy'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'fortnightly buy';
   $: freqHint  = ({daily:'How much to buy today',weekly:'How much to buy this week',fortnightly:'How much to buy this fortnight',monthly:'How much to buy this month'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'How much to buy this fortnight';
 
-  // CPI-adjusted real value: use portfolio duration from Ghostfolio if possible,
-  // otherwise fall back to DCA start date duration
-  $: inflAdj = (()=>{if($gfNetWorth===null||$cpiAnnual===null)return null;const y=Math.max(.1,dcaDays/365.25);return $gfNetWorth/Math.pow(1+$cpiAnnual/100,y);})();
   $: cpiLoss = (()=>{if($cpiAnnual===null)return 0;const y=Math.max(.1,dcaDays/365.25);return(1-1/Math.pow(1+$cpiAnnual/100,y))*100;})();
-
-  // Asset class allocation derived from holdings
-  const CLASS_LABEL: Record<string,string> = {
-    EQUITY:'Equities', CRYPTOCURRENCY:'Crypto', FIXED_INCOME:'Fixed Income',
-    REAL_ESTATE:'Real Estate', COMMODITY:'Commodities', ETF:'ETFs',
-    CASH:'Cash', LIQUIDITY:'Liquidity', PRECIOUS_METAL:'Precious Metals',
-  };
-  $: assetClasses = (() => {
-    const map: Record<string, number> = {};
-    for (const h of $gfHoldings) {
-      const cls = h.assetClass || 'OTHER';
-      map[cls] = (map[cls] ?? 0) + h.allocationInPercentage;
-    }
-    return Object.entries(map)
-      .map(([cls, pct]) => ({ cls, label: CLASS_LABEL[cls] ?? cls, pct: Math.round(pct * 10) / 10 }))
-      .sort((a, b) => b.pct - a.pct);
-  })();
 
   // Mobile feed carousels — duplicate items so the CSS loop is seamless
   $: newsLoop = $newsItems.length ? [...$newsItems, ...$newsItems] : [];
-
-  // Class accent colours for allocation breakdown
-  const CLASS_COLOR: Record<string,string> = {
-    EQUITY:'#6366f1', CRYPTOCURRENCY:'#f7931a', FIXED_INCOME:'#38bdf8',
-    REAL_ESTATE:'#10b981', COMMODITY:'#c9a84c', ETF:'#8b5cf6',
-    CASH:'#64748b', LIQUIDITY:'#64748b', PRECIOUS_METAL:'#c9a84c',
-  };
 
   async function refreshGF() {
     const token=$settings.ghostfolio?.token?.trim();if(!token)return;
@@ -236,9 +209,9 @@
     <!-- DCA SIGNAL CARD — simplified -->
     <div class="gc signal-card"
       class:signal-zone--red={dcaZoneGif.includes('red')}
+      class:signal-zone--amber={dcaZoneGif.includes('amber')}
       class:signal-zone--green={dcaZoneGif.includes('green')}
       style="--ac:{$accentColor};">
-      <div class="signal-bar" style="background:linear-gradient(90deg,{$accentColor}33,{$accentColor},{$accentColor}33);"></div>
 
       <!-- Zone background GIF — behind frosted glass -->
       {#if dcaZoneGif}
@@ -250,7 +223,7 @@
       {/if}
       <!-- Full-tile zone colour tint -->
       {#if dcaZoneGif}
-        <div class="zone-tint" class:zone-tint--red={dcaZoneGif.includes('red')} class:zone-tint--green={dcaZoneGif.includes('green')}></div>
+        <div class="zone-tint" class:zone-tint--red={dcaZoneGif.includes('red')} class:zone-tint--amber={dcaZoneGif.includes('amber')} class:zone-tint--green={dcaZoneGif.includes('green')}></div>
       {/if}
       <div class="zone-glass"></div>
 
@@ -542,13 +515,6 @@
               <p class="gf-nw">{$gfNetWorth!==null?'$'+n($gfNetWorth,0):'—'}</p>
               <p class="eyebrow" style="margin-top:4px;">{$settings.ghostfolio.currency||'AUD'}</p>
             </div>
-            {#if inflAdj!==null}
-            <div class="gf-cpi" title="Estimated purchasing-power value based on CPI since DCA start date. Limited by available CPI data.">
-              <p class="eyebrow">Real Value <span class="gf-est">est.</span></p>
-              <p class="gf-nw">${n(inflAdj,0)}</p>
-              <p class="eyebrow" style="margin-top:4px;">CPI-adjusted</p>
-            </div>
-            {/if}
             <div class="gf-perf">
               <div class="gfp"><p class="eyebrow">Today</p><p class="gfp-v" style="color:{sc($gfTodayChangePct)};">{pct($gfTodayChangePct)}</p></div>
               <div class="gfp" title="Portfolio YTD performance from Ghostfolio"><p class="eyebrow">YTD <span style="font-size:.45rem;opacity:.6;">via GF</span></p><p class="gfp-v" style="color:{sc($gfNetGainYtdPct)};">{pct($gfNetGainYtdPct)}</p></div>
@@ -587,31 +553,6 @@
               <p class="gf-sum-v">{n($gfOrdersCount)}</p>
             </div>
             {/if}
-          </div>
-          {/if}
-
-          <!-- ASSET CLASS ALLOCATION (from holdings) -->
-          {#if assetClasses.length>0}
-          <div class="alloc-wrap">
-            <p class="eyebrow" style="margin-bottom:10px;">Allocation by Asset Class</p>
-            <!-- Stacked bar -->
-            <div class="alloc-bar">
-              {#each assetClasses as ac}
-                {@const color = CLASS_COLOR[ac.cls] ?? '#64748b'}
-                <div class="alloc-seg" style="width:{ac.pct}%;background:{color};" title="{ac.label}: {ac.pct}%"></div>
-              {/each}
-            </div>
-            <!-- Legend -->
-            <div class="alloc-legend">
-              {#each assetClasses as ac}
-                {@const color = CLASS_COLOR[ac.cls] ?? '#64748b'}
-                <div class="alloc-item">
-                  <span class="alloc-dot" style="background:{color};"></span>
-                  <span class="alloc-name">{ac.label}</span>
-                  <span class="alloc-pct">{ac.pct}%</span>
-                </div>
-              {/each}
-            </div>
           </div>
           {/if}
 
@@ -963,12 +904,12 @@
   .pfill { height:100%; border-radius:1px; transition:width .7s cubic-bezier(.4,0,.2,1); }
 
   /* ── SIGNAL CARD ────────────────────────────────────────── */
-  .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.08) 0%,var(--glass-bg) 80px); position:relative; overflow:hidden; }
-  /* Zone-specific top gradient + border tint */
-  .signal-zone--red   { background:linear-gradient(180deg,rgba(239,68,68,.09) 0%,var(--glass-bg) 80px) !important; border-color:rgba(239,68,68,.22) !important; }
-  .signal-zone--green { background:linear-gradient(180deg,rgba(34,197,94,.09) 0%,var(--glass-bg) 80px) !important; border-color:rgba(34,197,94,.22) !important; }
+  .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.08) 0%,var(--glass-bg) 80px); position:relative; overflow:hidden; border-color:rgba(247,147,26,.22) !important; box-shadow:0 6px 28px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px rgba(247,147,26,.1),0 0 20px rgba(247,147,26,.04); }
+  /* Zone-specific edge tint — full border glow */
+  .signal-zone--red   { background:linear-gradient(180deg,rgba(239,68,68,.09) 0%,var(--glass-bg) 80px) !important; border-color:rgba(239,68,68,.3) !important; box-shadow:0 6px 28px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px rgba(239,68,68,.2),0 0 20px rgba(239,68,68,.06) !important; }
+  .signal-zone--amber { border-color:rgba(251,146,60,.3) !important; box-shadow:0 6px 28px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px rgba(251,146,60,.2),0 0 20px rgba(251,146,60,.06) !important; }
+  .signal-zone--green { background:linear-gradient(180deg,rgba(34,197,94,.09) 0%,var(--glass-bg) 80px) !important; border-color:rgba(34,197,94,.3) !important; box-shadow:0 6px 28px rgba(0,0,0,.38),inset 0 1px 0 rgba(255,255,255,.06),0 0 0 1px rgba(34,197,94,.2),0 0 20px rgba(34,197,94,.06) !important; }
   .signal-card .gc-head { position:relative; z-index:2; }
-  .signal-bar  { position:absolute; top:0; left:0; right:0; height:2px; border-radius:6px 6px 0 0; z-index:3; }
 
   /* Full-tile zone colour tint (absolute overlay, behind glass) */
   .zone-tint {
@@ -977,6 +918,7 @@
     transition:background .7s ease;
   }
   .zone-tint--red   { background:linear-gradient(180deg,rgba(239,68,68,.06) 0%,rgba(239,68,68,.015) 100%); }
+  .zone-tint--amber { background:linear-gradient(180deg,rgba(251,146,60,.06) 0%,rgba(251,146,60,.015) 100%); }
   .zone-tint--green { background:linear-gradient(180deg,rgba(34,197,94,.06) 0%,rgba(34,197,94,.015) 100%); }
 
   /* Zone background GIF layer */
@@ -1100,6 +1042,7 @@
   :global(html.light) .formula-steps ul { border-left-color:rgba(0,0,0,.1); }
   :global(html.light) .formula-steps > li::before { background:rgba(199,122,16,.15); color:#c77a10; }
   :global(html.light) .signal-zone--red   { background:linear-gradient(180deg,rgba(239,68,68,.06) 0%,rgba(255,255,255,.72) 80px) !important; }
+  :global(html.light) .signal-zone--amber { border-color:rgba(251,146,60,.3) !important; }
   :global(html.light) .signal-zone--green { background:linear-gradient(180deg,rgba(34,197,94,.06) 0%,rgba(255,255,255,.72) 80px) !important; }
 
   /* Zone bar — redesigned with visual zones */
@@ -1211,8 +1154,6 @@
 
   .gf-hero { display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap; margin-bottom:18px; }
   .gf-nw   { font-size:3.6rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
-  .gf-cpi  { opacity:.5; cursor:help; }
-  .gf-est  { font-size:.5em; opacity:.6; }
   .gf-perf { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; flex:1; border-left:1px solid rgba(255,255,255,.06); padding-left:20px; min-width:0; }
   .gfp     { display:flex; flex-direction:column; gap:6px; }
   .gfp-v   { font-size:1.2rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
@@ -1237,17 +1178,6 @@
   :global(html.light) .btn-icon { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.12); color:rgba(0,0,0,.5); }
   :global(html.light) .btn-icon:hover { border-color:rgba(247,147,26,.3); color:#c77a10; background:rgba(247,147,26,.06); }
 
-  /* ── ASSET CLASS ALLOCATION ──────────────────────────────── */
-  .alloc-wrap { margin-bottom:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,.05); }
-  .alloc-bar { height:8px; border-radius:4px; overflow:hidden; display:flex; gap:1px; margin-bottom:12px; background:rgba(255,255,255,.03); }
-  .alloc-seg { height:100%; transition:width .5s ease; min-width:2px; }
-  .alloc-legend { display:flex; flex-wrap:wrap; gap:8px 14px; }
-  .alloc-item { display:flex; align-items:center; gap:5px; }
-  .alloc-dot { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
-  .alloc-name { font-size:.6rem; color:var(--t2); }
-  .alloc-pct { font-size:.6rem; font-weight:700; color:var(--t1); }
-  :global(html.light) .alloc-wrap { border-top-color:rgba(0,0,0,.06); }
-  :global(html.light) .alloc-bar { background:rgba(0,0,0,.04); }
   @media (max-width:600px) {
     .gf-nw { font-size:2.4rem; }
     .gf-perf { border-left:none; padding-left:0; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; width:100%; }
