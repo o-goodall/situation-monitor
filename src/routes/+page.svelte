@@ -86,21 +86,23 @@
   let mktCarouselPage = 0;
   let newsCarouselPage = 0;
 
-  function getCarouselCardWidth(track: HTMLElement): number {
+  function getCarouselCardSize(track: HTMLElement): number {
     const first = track.firstElementChild as HTMLElement | null;
-    return first ? first.getBoundingClientRect().width + CAROUSEL_GAP_PX : track.clientWidth;
+    if (!first) return track.clientHeight;
+    // Carousel is vertical on mobile (overflow-y); height-based measurement is used.
+    return first.getBoundingClientRect().height + CAROUSEL_GAP_PX;
   }
   function carouselGo(track: HTMLElement | null, page: number) {
     if (!track) return;
-    track.scrollTo({ left: page * getCarouselCardWidth(track), behavior: 'smooth' });
+    track.scrollTo({ top: page * getCarouselCardSize(track), behavior: 'smooth' });
   }
   function onMktScroll() {
     if (!mktCarouselTrack) return;
-    mktCarouselPage = Math.round(mktCarouselTrack.scrollLeft / getCarouselCardWidth(mktCarouselTrack));
+    mktCarouselPage = Math.round(mktCarouselTrack.scrollTop / getCarouselCardSize(mktCarouselTrack));
   }
   function onNewsScroll() {
     if (!newsCarouselTrack) return;
-    newsCarouselPage = Math.round(newsCarouselTrack.scrollLeft / getCarouselCardWidth(newsCarouselTrack));
+    newsCarouselPage = Math.round(newsCarouselTrack.scrollTop / getCarouselCardSize(newsCarouselTrack));
   }
 
   /** Detect topic keyword for frosted background tint */
@@ -1121,10 +1123,12 @@
   }
   @media (prefers-reduced-motion:reduce) { .dca-face { animation:none; } }
   /* On mobile, lock the flip-scene to a minimum height equal to the front face
-     so flipping to the back doesn't collapse the tile */
+     so flipping to the back doesn't collapse the tile.
+     280px: enough to show header + hero amount + brief loading state.
+     200px: minimum for the formula back-face list items. */
   @media (max-width:700px) {
-    .signal-card { min-height:360px; }
-    .dca-flip-scene { min-height:280px; }
+    .signal-card { min-height:280px; }
+    .dca-flip-scene { min-height:200px; }
   }
 
   /* Small "?" info button — bottom-right corner of the DCA front face */
@@ -1282,7 +1286,12 @@
   .ap-sub { font-size:.62rem; color:var(--t2); margin-bottom:0; font-variant-numeric:tabular-nums; }
   .ap-live { font-size:.5em; color:var(--up); margin-left:4px; animation:blink 2s ease-in-out infinite; vertical-align:middle; }
   @keyframes apPulse { 0%,100%{opacity:.4} 50%{opacity:.8} }
-  @media (max-width:400px) { .asset-panels { grid-template-columns:1fr; } .ap-pct { font-size:1.5rem; } }
+  @media (max-width:500px) {
+    .ap { padding:12px 10px; }
+    .ap-top { margin-bottom:8px; }
+    .ap-pct { font-size:1.6rem; }
+  }
+  @media (max-width:350px) { .asset-panels { grid-template-columns:1fr; } .ap-pct { font-size:1.5rem; } }
 
   .gf-hero { display:flex; flex-direction:column; gap:16px; margin-bottom:18px; }
   .gf-nw   { font-size:4.2rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
@@ -1486,26 +1495,29 @@
   .carousel-nav { display:none; }
 
   @media (max-width:700px) {
-    /* Remove the old max-height overflow constraint — carousel replaces it */
+    /* Remove the old max-height overflow constraint — vertical carousel replaces it */
     .intel-gc { max-height:unset; overflow-y:visible; }
 
-    /* Horizontal scroll carousel track */
+    /* Vertical scroll carousel track.
+       max-height: ~2.5 cards visible at once, prompting the user to scroll for more. */
     .pm-carousel {
       display:flex !important;
-      flex-direction:row !important;
-      overflow-x:scroll;
-      scroll-snap-type:x mandatory;
+      flex-direction:column !important;
+      overflow-y:auto;
+      overflow-x:hidden;
+      max-height:480px;
+      scroll-snap-type:y mandatory;
       -webkit-overflow-scrolling:touch;
       scrollbar-width:none;
-      gap:12px;
+      gap:10px;
       padding-bottom:4px;
     }
     .pm-carousel::-webkit-scrollbar { display:none; }
 
-    /* Each card fills ~88% width so the next card peeks */
+    /* Each card fills full width */
     .pm-carousel .pm-card {
-      flex:0 0 88% !important;
-      width:88% !important;
+      flex:none !important;
+      width:100% !important;
       scroll-snap-align:start;
       min-height:auto;
     }
@@ -1513,34 +1525,8 @@
     /* Hide items beyond MOBILE_CAROUSEL_LIMIT (6) on mobile — update if MOBILE_CAROUSEL_LIMIT changes */
     .pm-carousel .pm-card:nth-child(n+7) { display:none !important; }
 
-    /* Show carousel navigation on mobile */
-    .carousel-nav {
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      gap:14px;
-      margin-top:14px;
-    }
-    .carousel-btn {
-      background:rgba(255,255,255,.06);
-      border:1px solid rgba(255,255,255,.1);
-      border-radius:50%;
-      width:34px; height:34px;
-      color:var(--t1);
-      font-size:1.3rem; line-height:1;
-      cursor:pointer;
-      display:flex; align-items:center; justify-content:center;
-      transition:background .2s;
-    }
-    .carousel-btn:hover { background:rgba(255,255,255,.14); }
-    .carousel-dots { display:flex; gap:7px; align-items:center; }
-    .carousel-dot {
-      width:7px; height:7px; border-radius:50%;
-      background:rgba(255,255,255,.2);
-      border:none; padding:0; cursor:pointer;
-      transition:background .25s, transform .25s;
-    }
-    .carousel-dot--active { background:var(--orange); transform:scale(1.4); }
+    /* Vertical scroll is intuitive — hide prev/next nav, keep dots as scroll indicator */
+    .carousel-nav { display:none; }
   }
   :global(html.light) .carousel-btn { background:rgba(0,0,0,.05); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.7); }
   :global(html.light) .carousel-btn:hover { background:rgba(0,0,0,.1); }
