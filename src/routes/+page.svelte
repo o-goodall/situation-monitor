@@ -465,7 +465,7 @@
     </div>
 
     <!-- BITCOIN HASHRATE — replaces My Stack -->
-    <div class="gc">
+    <div class="gc gc--hashrate">
       <div class="chart-header" style="margin-bottom:12px;">
         <p class="gc-title">Bitcoin Hashrate</p>
         <div class="chart-range-btns" role="group" aria-label="Hashrate chart range">
@@ -476,9 +476,9 @@
       </div>
       <div class="chart-container">
         {#if hashrateLoading}
-          <div class="skeleton" style="height:160px;border-radius:6px;"></div>
+          <div class="skeleton" style="height:100%;min-height:160px;border-radius:6px;"></div>
         {:else if hashrateData.length >= 2}
-          <PriceChart prices={hashrateData} height={160} range={hashrateChartRange === 'All' ? 'max' : hashrateChartRange === '2Y' ? '5y' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
+          <PriceChart prices={hashrateData} fillParent={true} range={hashrateChartRange === 'All' ? 'max' : hashrateChartRange === '2Y' ? '5y' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
         {:else}
           <p class="dim" style="text-align:center;padding:40px 0;">Loading hashrate data…</p>
         {/if}
@@ -998,6 +998,11 @@
   .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; }
   .gc-title { font-family:'Poison',monospace; font-size:.72rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.08em; }
   @media (max-width:600px) { .gc { padding:14px 12px; } }
+
+  /* Hashrate tile — flex column so the chart fills remaining tile height */
+  .gc--hashrate { display:flex; flex-direction:column; }
+  .gc--hashrate .chart-container { flex:1; min-height:160px; }
+  .gc--hashrate .hash-row { margin-top:auto; padding-top:10px; }
 
   /* ── ATOMS ──────────────────────────────────────────────── */
   .eyebrow { font-size:.58rem; font-weight:500; text-transform:uppercase; letter-spacing:.12em; color:var(--t2); }
