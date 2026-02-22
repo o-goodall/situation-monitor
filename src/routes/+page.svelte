@@ -17,6 +17,7 @@
   let showHoldings = false;
   let holdingsSort: 'value'|'perf'|'alloc' = 'value';
   let intelView: 'cutting-edge'|'classic' = 'cutting-edge';
+  const INTEL_TILE_LIMIT = 12; // 3 columns × 4 rows
 
   const n   = (v:number, dec=0) => v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
   const pct = (v:number|null)   => v===null?'—':(v>=0?'+':'')+v.toFixed(2)+'%';
@@ -135,32 +136,40 @@
   <!-- KEY METRICS STRIP — combined BTC price + sats + halving -->
   <div class="stat-strip">
 
-    <!-- BTC Price — combined USD/alt currency toggle with sparkline -->
+    <!-- BTC Price — USD and user currency side by side -->
     <div class="stat-tile stat-tile--chart stat-tile--wide">
       {#if $priceHistory.length >= 2}
         <div class="tile-spark" aria-hidden="true"><Sparkline prices={$priceHistory} height={52} opacity={0.28} /></div>
       {/if}
-      <span class="stat-n" style="color:{$priceColor};transition:color .5s;" aria-live="polite" aria-atomic="true">
-        {$btcPrice>0?'$'+n($btcPrice):'—'}
-      </span>
+      <div class="price-pair" aria-live="polite" aria-atomic="true">
+        <span class="price-usd" style="color:{$priceColor};transition:color .5s;">{$btcPrice>0?'$'+n($btcPrice):'—'}</span>
+        {#if $btcDisplayPrice !== null && displayCur !== 'USD'}
+          <span class="price-sep">|</span>
+          <span class="price-alt">${n($btcDisplayPrice,0)}</span>
+        {/if}
+      </div>
       <div class="stat-l-row">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">
-          <span class="stat-l">BTC · USD</span>
+        <span class="stat-l">
+          <span class="price-label-usd">USD</span>
           {#if $btcDisplayPrice !== null && displayCur !== 'USD'}
-            <span class="stat-l" style="color:var(--orange);font-weight:600;">{n($btcDisplayPrice,0)} {displayCur}</span>
+            <span class="price-label-sep"> | </span><span class="price-label-cur">{displayCur}</span>
           {/if}
-        </div>
+        </span>
       </div>
     </div>
 
-    <!-- Sats per display currency -->
+    <!-- Sats per display currency — $1 | SATS format -->
     <div class="stat-tile stat-tile--static" data-tooltip="Satoshis you get for 1 {displayCur}">
-      {#if $satsPerAud !== null}
-        <span class="stat-n">{$satsPerAud.toLocaleString()}</span>
-      {:else}
-        <span class="stat-n muted">—</span>
-      {/if}
-      <span class="stat-l">Sats per {displayCur}</span>
+      <div class="sats-display">
+        <span class="sats-cur">$1</span>
+        <span class="sats-sep">|</span>
+        {#if $satsPerAud !== null}
+          <span class="sats-n">{$satsPerAud.toLocaleString()}</span>
+        {:else}
+          <span class="sats-n muted">—</span>
+        {/if}
+      </div>
+      <span class="stat-l"><span class="price-label-cur">{displayCur}</span> · <span style="color:var(--orange);">SATS</span></span>
     </div>
 
     <div class="stat-tile halving-tile stat-tile--static" data-tooltip="Estimated blocks remaining until next Bitcoin halving">
@@ -598,14 +607,20 @@
 <section id="intel" class="section" aria-label="Intel">
   <div class="section-header">
     <h2 class="sect-title">Intel</h2>
-    <!-- Toggle: Cutting Edge (Polymarket) / Classic (News) -->
-    <div class="intel-toggle" role="group" aria-label="Intel view">
-      <button class="intel-btn" class:intel-btn--active={intelView==='cutting-edge'} on:click={()=>intelView='cutting-edge'} aria-pressed={intelView==='cutting-edge'}>
-        ◈{#if $markets.length > 0} <span class="intel-count">{$markets.length}</span>{/if}
+    <!-- Toggle: Cutting Edge / Classic — Apple-style -->
+    <div class="intel-toggle-wrap" role="group" aria-label="Intel view">
+      <span class="toggle-icon" class:toggle-icon--active={intelView==='cutting-edge'} title="Cutting Edge — prediction markets">◈</span>
+      <button
+        class="apple-toggle"
+        class:apple-toggle--classic={intelView==='classic'}
+        on:click={() => intelView = intelView === 'cutting-edge' ? 'classic' : 'cutting-edge'}
+        role="switch"
+        aria-checked={intelView === 'cutting-edge'}
+        aria-label="Switch intel view. Currently {intelView === 'cutting-edge' ? 'Cutting Edge' : 'Classic'}"
+      >
+        <span class="apple-knob"></span>
       </button>
-      <button class="intel-btn" class:intel-btn--active={intelView==='classic'} on:click={()=>intelView='classic'} aria-pressed={intelView==='classic'}>
-        ☰{#if $newsItems.length > 0} <span class="intel-count">{$newsItems.slice(0, 5).length}</span>{/if}
-      </button>
+      <span class="toggle-icon" class:toggle-icon--active={intelView==='classic'} title="Classic — news feed">☰</span>
     </div>
   </div>
 
@@ -627,7 +642,7 @@
       </div>
     {:else}
       <div class="pm-grid">
-        {#each $markets as m}
+        {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
           <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card" aria-label="{m.question}">
             <!-- Tag row -->
             <div class="pm-card-tags">
@@ -674,12 +689,12 @@
   {:else}
   <!-- ── CLASSIC: News RSS feeds ── -->
   <div class="gc" style="padding:20px 18px;">
-    <div class="gc-head" style="margin-bottom:16px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.slice(0, 5).length} articles</span></div>
+    <div class="gc-head" style="margin-bottom:16px;"><p class="gc-title">News Feed</p><span class="dim">{Math.min($newsItems.length, INTEL_TILE_LIMIT)} articles</span></div>
     {#if $newsItems.length===0}
       <p class="dim">Fetching RSS feeds…</p>
     {:else}
       <div class="pm-grid">
-        {#each $newsItems.slice(0, 5) as item}
+        {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
           <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card" aria-label="{item.title}">
             <div class="pm-card-tags">
               <span class="pm-tag pm-news-src">{item.source}</span>
@@ -717,14 +732,17 @@
     width:60px; height:3px; background:linear-gradient(90deg,#f7931a,#00c8ff);
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
-  @media (max-width:600px) {
-    .section { padding:20px 12px 0; min-height: calc(100vh - 60px); }
+  @media (max-width:700px) {
+    .section { padding:20px 12px 0; min-height: auto; }
     .section-header { margin-bottom:12px; }
     .section-divider { margin-top:24px; }
   }
+  @media (max-width:600px) {
+    .section-header { margin-bottom:10px; }
+  }
 
   /* ── STAT STRIP ─────────────────────────────────────────── */
-  .stat-strip { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .stat-strip { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
   .stat-tile {
     padding: 16px 14px; text-align: center;
     background: var(--glass-bg); border: 1px solid var(--glass-bd);
@@ -745,9 +763,33 @@
   .stat-tile--chart { padding-bottom: 0; }
   .stat-tile--chart::before { display:none; }
   .tile-spark { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; opacity: 0.7; pointer-events: none; }
-  .stat-tile--chart .stat-n, .stat-tile--chart .stat-l, .stat-tile--chart .stat-l-row { position: relative; z-index: 1; }
-  .stat-tile--chart .stat-n { margin-top: 8px; margin-bottom: 4px; }
+  .stat-tile--chart .price-pair, .stat-tile--chart .stat-l, .stat-tile--chart .stat-l-row { position: relative; z-index: 1; }
   .stat-tile--chart .stat-l-row { display: flex; justify-content: center; align-items: center; gap: 10px; padding-bottom: 56px; }
+
+  /* BTC price pair — USD | Currency side by side */
+  .price-pair { display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:4px; position:relative; z-index:1; margin-top:8px; }
+  .price-usd { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; }
+  .price-sep { font-size:.9rem; color:var(--t3); font-weight:400; }
+  .price-alt { font-size:1.1rem; font-weight:700; letter-spacing:-.02em; color:var(--orange); line-height:1.1; }
+  .price-label-usd { color:var(--up); font-weight:700; }
+  .price-label-sep { color:var(--t3); }
+  .price-label-cur { color:var(--orange); font-weight:700; }
+  @media (max-width:500px) {
+    .price-usd { font-size:1.05rem; }
+    .price-alt { font-size:.9rem; }
+    .price-sep { font-size:.75rem; }
+  }
+
+  /* Sats per currency — $1 | SATS format */
+  .sats-display { display:flex; align-items:baseline; gap:6px; justify-content:center; margin-bottom:4px; }
+  .sats-cur { font-size:1.1rem; font-weight:700; color:var(--up); letter-spacing:-.02em; }
+  .sats-sep { font-size:.9rem; color:var(--t3); font-weight:400; }
+  .sats-n { font-size:1.2rem; font-weight:700; color:var(--orange); letter-spacing:-.025em; line-height:1.1; }
+  @media (max-width:500px) {
+    .sats-cur { font-size:.9rem; }
+    .sats-n { font-size:1rem; }
+    .sats-sep { font-size:.75rem; }
+  }
 
   .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
   .stat-l { font-size:.58rem; color:var(--t2); text-transform:uppercase; letter-spacing:.1em; }
@@ -777,9 +819,9 @@
   .stat-tile--static:hover { transform:none !important; border-color:var(--glass-bd) !important; box-shadow:none !important; }
   .stat-tile--static:hover::before { width:0 !important; }
 
-  @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(2,1fr); } .stat-tile--wide { grid-column:span 2; } }
+  @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(3,1fr); } }
   @media (max-width:500px) {
-    .stat-strip{ grid-template-columns:repeat(2,1fr); gap:6px; }
+    .stat-strip{ grid-template-columns:repeat(3,1fr); gap:6px; }
     .stat-n { font-size:1.05rem; }
     .stat-tile { padding:10px 8px; }
     .stat-tile--chart .stat-l-row { padding-bottom:44px; }
@@ -787,7 +829,7 @@
   }
 
   /* ── SIGNAL GRID ────────────────────────────────────────── */
-  .signal-grid { display:grid; grid-template-columns:1.1fr 1fr 1fr; gap:14px; }
+  .signal-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
   @media (max-width:1100px) { .signal-grid{grid-template-columns:1fr 1fr;} }
   @media (max-width:700px)  { .signal-grid{grid-template-columns:1fr 1fr; gap:10px;} }
   @media (max-width:500px)  { .signal-grid{grid-template-columns:1fr; gap:8px;} }
@@ -1052,16 +1094,29 @@
     .bench-v { font-size:1rem; }
   }
 
-  /* ── INTEL TOGGLE ───────────────────────────────────────── */
-  .intel-toggle { display:flex; gap:2px; background:rgba(255,255,255,.06); border-radius:6px; padding:2px; margin-left:auto; }
-  .intel-btn { padding:5px 12px; font-size:.72rem; font-weight:700; font-family:'Poison',monospace; letter-spacing:.04em;
-    background:none; border:none; color:var(--t2); cursor:pointer; border-radius:4px; transition:all .2s; white-space:nowrap;
-    display:flex; align-items:center; gap:5px; }
-  .intel-btn--active { background:var(--orange); color:#fff; box-shadow:0 2px 8px rgba(247,147,26,.35); }
-  .intel-count { font-size:.58rem; font-weight:700; background:rgba(255,255,255,.15); border-radius:999px; padding:1px 6px; line-height:1.4; }
-  .intel-btn--active .intel-count { background:rgba(255,255,255,.25); }
-  :global(html.light) .intel-toggle { background:rgba(0,0,0,.06); }
-  :global(html.light) .intel-count { background:rgba(0,0,0,.1); }
+  /* ── INTEL TOGGLE — Apple-style ────────────────────────── */
+  .intel-toggle-wrap { display:flex; align-items:center; gap:8px; margin-left:auto; }
+  .toggle-icon { font-size:.9rem; color:var(--t3); transition:color .3s; line-height:1; cursor:default; }
+  .toggle-icon--active { color:var(--orange); }
+  .apple-toggle {
+    position:relative; width:44px; height:26px;
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.15);
+    border-radius:13px; cursor:pointer;
+    transition:background .3s, border-color .3s;
+    padding:0; flex-shrink:0;
+  }
+  .apple-toggle--classic { background:var(--orange); border-color:var(--orange); }
+  .apple-knob {
+    position:absolute; top:3px; left:3px;
+    width:18px; height:18px; border-radius:50%;
+    background:#fff; box-shadow:0 1px 4px rgba(0,0,0,.35);
+    transition:transform .3s cubic-bezier(.4,0,.2,1);
+  }
+  .apple-toggle--classic .apple-knob { transform:translateX(18px); }
+  :global(html.light) .apple-toggle { background:rgba(0,0,0,.15); border-color:rgba(0,0,0,.2); }
+  :global(html.light) .apple-toggle--classic { background:var(--orange); border-color:var(--orange); }
+  :global(html.light) .toggle-icon { color:rgba(0,0,0,.3); }
+  :global(html.light) .toggle-icon--active { color:#c77a10; }
 
   /* ── INTEL GRID ─────────────────────────────────────────── */
   .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
@@ -1071,11 +1126,14 @@
   }
 
   /* ── MARKETS LOADING SKELETON ────────────────────────────── */
-  .markets-loading { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; padding:4px 0; }
+  .markets-loading { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; padding:4px 0; }
+  @media (max-width:900px) { .markets-loading { grid-template-columns:repeat(2,1fr); } }
   @media (max-width:600px) { .markets-loading { grid-template-columns:1fr; } }
 
-  /* ── POLYMARKET CARD GRID ────────────────────────────────── */
-  .pm-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:12px; }
+  /* ── POLYMARKET CARD GRID — max 3 columns (3x4 = 12 tiles) ── */
+  .pm-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+  @media (max-width:900px) { .pm-grid { grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:600px) { .pm-grid { grid-template-columns:1fr; } }
   .pm-card {
     display:flex; flex-direction:column; gap:8px;
     background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:10px;
