@@ -331,7 +331,6 @@
             </div>
             {/if}
 
-            <button class="dca-info-btn" on:click={() => dcaFlipped = true} aria-label="Show DCA formula">?</button>
           </div>
 
         {:else}
@@ -357,6 +356,9 @@
           </div>
         {/if}
       </div>
+      {#if !dcaFlipped}
+        <button class="dca-info-btn" on:click={() => dcaFlipped = true} aria-label="Show DCA formula">?</button>
+      {/if}
     </div>
 
     <!-- BITCOIN NETWORK — expanded with mempool data -->
@@ -1038,10 +1040,16 @@
     to   { opacity:1; transform:rotateY(0deg)  scale(1);   }
   }
   @media (prefers-reduced-motion:reduce) { .dca-face { animation:none; } }
+  /* On mobile, lock the flip-scene to a minimum height equal to the front face
+     so flipping to the back doesn't collapse the tile */
+  @media (max-width:700px) {
+    .signal-card { min-height:360px; }
+    .dca-flip-scene { min-height:280px; }
+  }
 
   /* Small "?" info button — bottom-right corner of the DCA front face */
   .dca-info-btn {
-    position:absolute; bottom:14px; right:14px; z-index:3;
+    position:absolute; bottom:8px; right:8px; z-index:3;
     width:22px; height:22px; padding:0; border-radius:50%;
     background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
     color:rgba(255,255,255,.38); font-size:.62rem; font-weight:700;
