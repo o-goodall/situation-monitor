@@ -77,6 +77,31 @@
     }, BLUR_DURATION_MS);
   }
   const INTEL_TILE_LIMIT = 12; // 3 columns × 4 rows
+  const MOBILE_CAROUSEL_LIMIT = 6; // max items shown per view on mobile carousel
+  const CAROUSEL_GAP_PX = 12; // gap between carousel cards (matches CSS gap:12px)
+  const CAROUSEL_AUTO_ADVANCE_MS = 4000; // auto-advance interval for mobile carousel
+
+  let mktCarouselTrack: HTMLElement | null = null;
+  let newsCarouselTrack: HTMLElement | null = null;
+  let mktCarouselPage = 0;
+  let newsCarouselPage = 0;
+
+  function getCarouselCardWidth(track: HTMLElement): number {
+    const first = track.firstElementChild as HTMLElement | null;
+    return first ? first.getBoundingClientRect().width + CAROUSEL_GAP_PX : track.clientWidth;
+  }
+  function carouselGo(track: HTMLElement | null, page: number) {
+    if (!track) return;
+    track.scrollTo({ left: page * getCarouselCardWidth(track), behavior: 'smooth' });
+  }
+  function onMktScroll() {
+    if (!mktCarouselTrack) return;
+    mktCarouselPage = Math.round(mktCarouselTrack.scrollLeft / getCarouselCardWidth(mktCarouselTrack));
+  }
+  function onNewsScroll() {
+    if (!newsCarouselTrack) return;
+    newsCarouselPage = Math.round(newsCarouselTrack.scrollLeft / getCarouselCardWidth(newsCarouselTrack));
+  }
 
   /** Detect topic keyword for frosted background tint */
   const TOPIC_MAP: [RegExp, string][] = [
@@ -172,7 +197,33 @@
 
   const fmtPct = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
 
-  onMount(() => { fetchBtcChart(); fetchHashrateChart(); });
+  onMount(() => {
+    fetchBtcChart();
+    fetchHashrateChart();
+
+    // Auto-advance the Intel carousel on mobile
+    const mq = window.matchMedia('(max-width:700px)');
+    let autoTimer: ReturnType<typeof setInterval> | null = null;
+
+    function carouselTick() {
+      if (!mq.matches) return;
+      if (intelView === 'cutting-edge' && mktCarouselTrack) {
+        const n = Math.min(mktCarouselTrack.children.length, MOBILE_CAROUSEL_LIMIT);
+        if (n > 1) { mktCarouselPage = (mktCarouselPage + 1) % n; carouselGo(mktCarouselTrack, mktCarouselPage); }
+      } else if (intelView === 'classic' && newsCarouselTrack) {
+        const n = Math.min(newsCarouselTrack.children.length, MOBILE_CAROUSEL_LIMIT);
+        if (n > 1) { newsCarouselPage = (newsCarouselPage + 1) % n; carouselGo(newsCarouselTrack, newsCarouselPage); }
+      }
+    }
+    function startAutoAdvance() {
+      if (autoTimer) clearInterval(autoTimer);
+      if (mq.matches) autoTimer = setInterval(carouselTick, CAROUSEL_AUTO_ADVANCE_MS);
+    }
+    startAutoAdvance();
+    mq.addEventListener('change', startAutoAdvance);
+
+    return () => { if (autoTimer) clearInterval(autoTimer); mq.removeEventListener('change', startAutoAdvance); };
+  });
 </script>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -685,52 +736,64 @@
           <div class="skeleton" style="height:90px;border-radius:10px;"></div>
         </div>
       {:else}
-        <div class="pm-grid">
-          {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
-            <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{m.question}">
-              <div class="pm-card-frosted-overlay"></div>
-              <!-- Tag row -->
-              <div class="pm-card-tags" style="position:relative;z-index:1;">
-                {#if m.pinned}
-                  <span class="pm-tag pm-pin">★ Watching</span>
-                {:else}
-                  <span class="pm-tag">{m.tag}</span>
+        <div class="carousel-wrap">
+          <div class="pm-grid pm-carousel" bind:this={mktCarouselTrack} on:scroll={onMktScroll}>
+            {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
+              <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{m.question}">
+                <div class="pm-card-frosted-overlay"></div>
+                <!-- Tag row -->
+                <div class="pm-card-tags" style="position:relative;z-index:1;">
+                  {#if m.pinned}
+                    <span class="pm-tag pm-pin">★ Watching</span>
+                  {:else}
+                    <span class="pm-tag">{m.tag}</span>
+                  {/if}
+                  <span class="pm-tag pm-prob-tag" style="color:{pc(m.probability)};" aria-label="{m.topOutcome} probability {m.probability} percent">{m.topOutcome} {m.probability}%</span>
+                </div>
+                <!-- Question -->
+                <p class="pm-card-q" style="position:relative;z-index:1;">{m.question}</p>
+                <!-- Top outcomes list for multi-outcome markets (e.g. FIFA, elections) -->
+                {#if m.outcomes.length > 2}
+                  <ul class="pm-outcomes" style="position:relative;z-index:1;" aria-label="Top contenders">
+                    {#each m.outcomes.slice(0, 4) as o}
+                      <li class="pm-outcome-row">
+                        <span class="pm-outcome-name">{o.name}</span>
+                        <span class="pm-outcome-pct" style="color:{pc(o.probability)};">{o.probability}%</span>
+                      </li>
+                    {/each}
+                  </ul>
                 {/if}
-                <span class="pm-tag pm-prob-tag" style="color:{pc(m.probability)};" aria-label="{m.topOutcome} probability {m.probability} percent">{m.topOutcome} {m.probability}%</span>
-              </div>
-              <!-- Question -->
-              <p class="pm-card-q" style="position:relative;z-index:1;">{m.question}</p>
-              <!-- Top outcomes list for multi-outcome markets (e.g. FIFA, elections) -->
-              {#if m.outcomes.length > 2}
-                <ul class="pm-outcomes" style="position:relative;z-index:1;" aria-label="Top contenders">
-                  {#each m.outcomes.slice(0, 4) as o}
-                    <li class="pm-outcome-row">
-                      <span class="pm-outcome-name">{o.name}</span>
-                      <span class="pm-outcome-pct" style="color:{pc(o.probability)};">{o.probability}%</span>
-                    </li>
-                  {/each}
-                </ul>
-              {/if}
-              <!-- Enhanced data row -->
-              <div class="pm-card-data" style="position:relative;z-index:1;">
-                <span class="pm-data-vol" title="Total volume">{fmtVol(m.volume)}</span>
-                {#if m.volume24hr > 0}
-                  <span class="pm-data-vol24" title="24h volume">24h {fmtVol(m.volume24hr)}</span>
-                {/if}
-                {#if m.probability >= 70}
-                  <span class="pm-data-trend pm-data-trend--high" title="High probability">▲ Likely</span>
-                {:else if m.probability <= 30}
-                  <span class="pm-data-trend pm-data-trend--low" title="Low probability">▼ Unlikely</span>
-                {:else}
-                  <span class="pm-data-trend pm-data-trend--mid" title="Contested">◆ Contested</span>
-                {/if}
-              </div>
-              <!-- Probability bar -->
-              <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
-                <div class="pm-prob-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
-              </div>
-            </a>
-          {/each}
+                <!-- Enhanced data row -->
+                <div class="pm-card-data" style="position:relative;z-index:1;">
+                  <span class="pm-data-vol" title="Total volume">{fmtVol(m.volume)}</span>
+                  {#if m.volume24hr > 0}
+                    <span class="pm-data-vol24" title="24h volume">24h {fmtVol(m.volume24hr)}</span>
+                  {/if}
+                  {#if m.probability >= 70}
+                    <span class="pm-data-trend pm-data-trend--high" title="High probability">▲ Likely</span>
+                  {:else if m.probability <= 30}
+                    <span class="pm-data-trend pm-data-trend--low" title="Low probability">▼ Unlikely</span>
+                  {:else}
+                    <span class="pm-data-trend pm-data-trend--mid" title="Contested">◆ Contested</span>
+                  {/if}
+                </div>
+                <!-- Probability bar -->
+                <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
+                  <div class="pm-prob-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
+                </div>
+              </a>
+            {/each}
+          </div>
+          <!-- Mobile carousel navigation -->
+          <div class="carousel-nav" aria-label="Carousel navigation">
+            <button class="carousel-btn" on:click={() => { mktCarouselPage = Math.max(0, mktCarouselPage - 1); carouselGo(mktCarouselTrack, mktCarouselPage); }} aria-label="Previous market">‹</button>
+            <div class="carousel-dots" aria-hidden="true">
+              {#each $markets.slice(0, MOBILE_CAROUSEL_LIMIT) as _, i}
+                <button class="carousel-dot" class:carousel-dot--active={i === mktCarouselPage} on:click={() => { mktCarouselPage = i; carouselGo(mktCarouselTrack, mktCarouselPage); }} aria-label="Market {i + 1} of {Math.min($markets.length, MOBILE_CAROUSEL_LIMIT)}"></button>
+              {/each}
+            </div>
+            <button class="carousel-btn" on:click={() => { mktCarouselPage = Math.min(Math.min($markets.length, MOBILE_CAROUSEL_LIMIT) - 1, mktCarouselPage + 1); carouselGo(mktCarouselTrack, mktCarouselPage); }} aria-label="Next market">›</button>
+          </div>
         </div>
       {/if}
     </div>
@@ -742,17 +805,29 @@
       {#if $newsItems.length===0}
         <p class="dim">Fetching RSS feeds…</p>
       {:else}
-        <div class="pm-grid news-pm-grid">
-          {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
-            <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{item.title}">
-              <div class="pm-card-frosted-overlay"></div>
-              <div class="pm-card-tags" style="position:relative;z-index:1;">
-                <span class="pm-tag pm-news-src">{item.source}</span>
-                <span class="pm-tag">{ago(item.pubDate)} ago</span>
-              </div>
-              <p class="pm-card-q" style="position:relative;z-index:1;">{item.title}</p>
-            </a>
-          {/each}
+        <div class="carousel-wrap">
+          <div class="pm-grid news-pm-grid pm-carousel" bind:this={newsCarouselTrack} on:scroll={onNewsScroll}>
+            {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
+              <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{item.title}">
+                <div class="pm-card-frosted-overlay"></div>
+                <div class="pm-card-tags" style="position:relative;z-index:1;">
+                  <span class="pm-tag pm-news-src">{item.source}</span>
+                  <span class="pm-tag">{ago(item.pubDate)} ago</span>
+                </div>
+                <p class="pm-card-q" style="position:relative;z-index:1;">{item.title}</p>
+              </a>
+            {/each}
+          </div>
+          <!-- Mobile carousel navigation -->
+          <div class="carousel-nav" aria-label="Carousel navigation">
+            <button class="carousel-btn" on:click={() => { newsCarouselPage = Math.max(0, newsCarouselPage - 1); carouselGo(newsCarouselTrack, newsCarouselPage); }} aria-label="Previous story">‹</button>
+            <div class="carousel-dots" aria-hidden="true">
+              {#each $newsItems.slice(0, MOBILE_CAROUSEL_LIMIT) as _, i}
+                <button class="carousel-dot" class:carousel-dot--active={i === newsCarouselPage} on:click={() => { newsCarouselPage = i; carouselGo(newsCarouselTrack, newsCarouselPage); }} aria-label="Story {i + 1} of {Math.min($newsItems.length, MOBILE_CAROUSEL_LIMIT)}"></button>
+              {/each}
+            </div>
+            <button class="carousel-btn" on:click={() => { newsCarouselPage = Math.min(Math.min($newsItems.length, MOBILE_CAROUSEL_LIMIT) - 1, newsCarouselPage + 1); carouselGo(newsCarouselTrack, newsCarouselPage); }} aria-label="Next story">›</button>
+          </div>
         </div>
       {/if}
     </div>
@@ -1406,14 +1481,72 @@
     }
     .pm-card-q { font-size:.82rem; }
   }
+  /* ── INTEL CAROUSEL (mobile) ──────────────────────────────── */
+  /* Desktop: carousel-nav hidden, pm-carousel behaves as normal pm-grid */
+  .carousel-wrap { position:relative; }
+  .carousel-nav { display:none; }
+
   @media (max-width:700px) {
-    /* Intel section content area is scrollable on mobile */
-    .intel-gc {
-      max-height:65vh;
-      overflow-y:auto;
+    /* Remove the old max-height overflow constraint — carousel replaces it */
+    .intel-gc { max-height:unset; overflow-y:visible; }
+
+    /* Horizontal scroll carousel track */
+    .pm-carousel {
+      display:flex !important;
+      flex-direction:row !important;
+      overflow-x:scroll;
+      scroll-snap-type:x mandatory;
       -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
+      gap:12px;
+      padding-bottom:4px;
     }
+    .pm-carousel::-webkit-scrollbar { display:none; }
+
+    /* Each card fills ~88% width so the next card peeks */
+    .pm-carousel .pm-card {
+      flex:0 0 88% !important;
+      width:88% !important;
+      scroll-snap-align:start;
+      min-height:auto;
+    }
+
+    /* Hide items beyond MOBILE_CAROUSEL_LIMIT (6) on mobile — update if MOBILE_CAROUSEL_LIMIT changes */
+    .pm-carousel .pm-card:nth-child(n+7) { display:none !important; }
+
+    /* Show carousel navigation on mobile */
+    .carousel-nav {
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      gap:14px;
+      margin-top:14px;
+    }
+    .carousel-btn {
+      background:rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:50%;
+      width:34px; height:34px;
+      color:var(--t1);
+      font-size:1.3rem; line-height:1;
+      cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:background .2s;
+    }
+    .carousel-btn:hover { background:rgba(255,255,255,.14); }
+    .carousel-dots { display:flex; gap:7px; align-items:center; }
+    .carousel-dot {
+      width:7px; height:7px; border-radius:50%;
+      background:rgba(255,255,255,.2);
+      border:none; padding:0; cursor:pointer;
+      transition:background .25s, transform .25s;
+    }
+    .carousel-dot--active { background:var(--orange); transform:scale(1.4); }
   }
+  :global(html.light) .carousel-btn { background:rgba(0,0,0,.05); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.7); }
+  :global(html.light) .carousel-btn:hover { background:rgba(0,0,0,.1); }
+  :global(html.light) .carousel-dot { background:rgba(0,0,0,.18); }
+  :global(html.light) .carousel-dot--active { background:#c77a10; }
   :global(html.light) .pm-card { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
   :global(html.light) .pm-card:hover { border-color:rgba(247,147,26,.2); }
   :global(html.light) .pm-tag { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); color:rgba(0,0,0,.5); }
