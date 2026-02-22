@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import {
     settings, btcPrice, priceFlash, priceHistory, btcBlock, btcFees,
     halvingBlocksLeft, halvingDays, halvingDate, halvingProgress,
@@ -12,7 +13,32 @@
     btcHashrate
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
+  import PriceChart from '$lib/PriceChart.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
+
+  let chartRange: '1D' | '7D' | '1M' = '1D';
+  let btcChartData: { t: number; p: number }[] = [];
+  let chartLoading = false;
+
+  async function fetchBtcChart(r = chartRange) {
+    chartLoading = true;
+    try {
+      const map: Record<string,'1d'|'7d'|'30d'> = { '1D':'1d', '7D':'7d', '1M':'30d' };
+      const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
+      btcChartData = d.prices ?? [];
+    } catch { btcChartData = []; }
+    finally { chartLoading = false; }
+  }
+
+  async function setChartRange(r: '1D' | '7D' | '1M') {
+    chartRange = r;
+    await fetchBtcChart(r);
+  }
+
+  // Keep last chart price point in sync with live WebSocket price
+  $: if ($btcPrice > 0 && btcChartData.length > 0) {
+    btcChartData = [...btcChartData.slice(0, -1), { t: Date.now(), p: $btcPrice }];
+  }
 
   let showHoldings = false;
   let holdingsSort: 'value'|'perf'|'alloc' = 'value';
@@ -123,6 +149,8 @@
     }
     catch{$gfError='Connection failed';}finally{$gfLoading=false;}
   }
+
+  onMount(() => { fetchBtcChart(); });
 </script>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -145,7 +173,7 @@
         <span class="price-usd" style="color:{$priceColor};transition:color .5s;">{$btcPrice>0?'$'+n($btcPrice):'—'}</span>
         {#if $btcDisplayPrice !== null && displayCur !== 'USD'}
           <span class="price-sep">|</span>
-          <span class="price-alt">${n($btcDisplayPrice,0)}</span>
+          <span class="price-alt" style="color:{$priceColor};transition:color .5s;">${n($btcDisplayPrice,0)}</span>
         {/if}
       </div>
       <div class="stat-l-row">
@@ -161,15 +189,9 @@
     <!-- Sats per display currency — $1 | SATS format -->
     <div class="stat-tile stat-tile--static" data-tooltip="Satoshis you get for 1 {displayCur}">
       <div class="sats-display">
-        <span class="sats-cur">$1</span>
-        <span class="sats-sep">|</span>
-        {#if $satsPerAud !== null}
-          <span class="sats-n">{$satsPerAud.toLocaleString()}</span>
-        {:else}
-          <span class="sats-n muted">—</span>
-        {/if}
+        <span class="sats-cur">{$satsPerAud !== null ? $satsPerAud.toLocaleString() : '—'}</span>
       </div>
-      <span class="stat-l"><span class="price-label-cur">{displayCur}</span> · <span style="color:var(--orange);">SATS</span></span>
+      <span class="stat-l"><span style="color:var(--orange);">SATS</span> · <span class="price-label-cur">{displayCur}</span></span>
     </div>
 
     <div class="stat-tile halving-tile stat-tile--static" data-tooltip="Estimated blocks remaining until next Bitcoin halving">
@@ -185,6 +207,27 @@
       {:else}
         <span class="stat-n muted">—</span>
         <span class="stat-l">Days to Halving</span>
+      {/if}
+    </div>
+  </div>
+
+  <!-- BTC PRICE CHART CARD -->
+  <div class="gc btc-chart-card">
+    <div class="chart-header">
+      <p class="gc-title">Bitcoin Price Chart</p>
+      <div class="chart-range-btns" role="group" aria-label="Chart time range">
+        <button class="crb" class:crb--active={chartRange==='1D'} on:click={() => setChartRange('1D')}>1D</button>
+        <button class="crb" class:crb--active={chartRange==='7D'} on:click={() => setChartRange('7D')}>7D</button>
+        <button class="crb" class:crb--active={chartRange==='1M'} on:click={() => setChartRange('1M')}>1M</button>
+      </div>
+    </div>
+    <div class="chart-container">
+      {#if chartLoading}
+        <div class="skeleton" style="height:110px;border-radius:6px;"></div>
+      {:else if btcChartData.length >= 2}
+        <PriceChart prices={btcChartData} height={110} range={chartRange === '1D' ? '1d' : chartRange === '7D' ? '7d' : '30d'} />
+      {:else}
+        <p class="dim" style="text-align:center;padding:40px 0;">Loading chart data…</p>
       {/if}
     </div>
   </div>
@@ -770,25 +813,21 @@
   .price-pair { display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:4px; position:relative; z-index:1; margin-top:8px; }
   .price-usd { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; }
   .price-sep { font-size:.9rem; color:var(--t3); font-weight:400; }
-  .price-alt { font-size:1.1rem; font-weight:700; letter-spacing:-.02em; color:var(--orange); line-height:1.1; }
-  .price-label-usd { color:var(--up); font-weight:700; }
+  .price-alt { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; }
+  .price-label-usd { color:rgba(255,255,255,.55); font-weight:700; }
   .price-label-sep { color:var(--t3); }
   .price-label-cur { color:var(--orange); font-weight:700; }
   @media (max-width:500px) {
     .price-usd { font-size:1.05rem; }
-    .price-alt { font-size:.9rem; }
+    .price-alt { font-size:1.05rem; }
     .price-sep { font-size:.75rem; }
   }
 
-  /* Sats per currency — $1 | SATS format */
+  /* Sats per currency — large SATS display */
   .sats-display { display:flex; align-items:baseline; gap:6px; justify-content:center; margin-bottom:4px; }
-  .sats-cur { font-size:1.1rem; font-weight:700; color:var(--up); letter-spacing:-.02em; }
-  .sats-sep { font-size:.9rem; color:var(--t3); font-weight:400; }
-  .sats-n { font-size:1.2rem; font-weight:700; color:var(--orange); letter-spacing:-.025em; line-height:1.1; }
+  .sats-cur { font-size:1.4rem; font-weight:700; color:#e2e2e8; letter-spacing:-.025em; line-height:1.1; }
   @media (max-width:500px) {
-    .sats-cur { font-size:.9rem; }
-    .sats-n { font-size:1rem; }
-    .sats-sep { font-size:.75rem; }
+    .sats-cur { font-size:1rem; }
   }
 
   .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
@@ -827,6 +866,24 @@
     .stat-tile--chart .stat-l-row { padding-bottom:44px; }
     .halving-epoch { display:none; }
   }
+
+  /* ── BTC PRICE CHART CARD ───────────────────────────────── */
+  .btc-chart-card { padding:16px 18px; margin-bottom:14px; }
+  .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .chart-container { width:100%; }
+  .chart-range-btns { display:flex; gap:4px; }
+  .crb {
+    padding:4px 12px; font-size:.62rem; font-weight:700; letter-spacing:.06em;
+    text-transform:uppercase; font-family:'Poison',monospace;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
+    border-radius:4px; color:rgba(255,255,255,.45); cursor:pointer; transition:all .2s;
+  }
+  .crb:hover { color:rgba(255,255,255,.8); border-color:rgba(247,147,26,.3); }
+  .crb--active { background:rgba(247,147,26,.15); border-color:rgba(247,147,26,.5); color:var(--orange); }
+  :global(html.light) .crb { background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.5); }
+  :global(html.light) .crb:hover { color:rgba(0,0,0,.8); }
+  :global(html.light) .crb--active { background:rgba(247,147,26,.1); border-color:rgba(247,147,26,.4); color:#c77a10; }
+  @media (max-width:500px) { .btc-chart-card { padding:12px 12px; } }
 
   /* ── SIGNAL GRID ────────────────────────────────────────── */
   .signal-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
@@ -1276,6 +1333,8 @@
   :global(html.light) .news-img-overlay { background:linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.6) 70%, rgba(0,0,0,.82) 100%); }
 
   /* ── LIGHT MODE OVERRIDES (page-level) ────────────────── */
+  :global(html.light) .price-label-usd { color:rgba(0,0,0,.45); }
+  :global(html.light) .sats-cur { color:#111; }
   :global(html.light) .pbar { background:rgba(0,0,0,.06); }
   :global(html.light) .vband-track { background:rgba(0,0,0,.04); }
   :global(html.light) .vband-dot { background:#fff; border-color:var(--orange); }
