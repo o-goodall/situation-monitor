@@ -894,12 +894,21 @@
     padding:4px 12px; font-size:.62rem; font-weight:700; letter-spacing:.06em;
     text-transform:uppercase; font-family:'Poison',monospace;
     background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
-    border-radius:4px; color:rgba(255,255,255,.45); cursor:pointer; transition:all .2s;
+    border-radius:3px; color:rgba(255,255,255,.45); cursor:pointer;
+    transition:background .2s, border-color .2s, color .2s, box-shadow .2s;
+    position:relative; overflow:hidden;
   }
-  .crb:hover { color:rgba(255,255,255,.8); border-color:rgba(247,147,26,.3); }
+  .crb::after {
+    content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+    background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.55) 50%,transparent 75%);
+    background-size:200% 100%; background-position:-200% center;
+    transition:background-position .4s ease;
+  }
+  .crb:hover { color:var(--orange); border-color:rgba(247,147,26,.45); background:rgba(247,147,26,.14); box-shadow:0 0 8px rgba(247,147,26,.25); }
+  .crb:hover::after { background-position:200% center; }
   .crb--active { background:rgba(247,147,26,.15); border-color:rgba(247,147,26,.5); color:var(--orange); }
   :global(html.light) .crb { background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.5); }
-  :global(html.light) .crb:hover { color:rgba(0,0,0,.8); }
+  :global(html.light) .crb:hover { color:#c77a10; border-color:rgba(200,120,16,.45); background:rgba(247,147,26,.1); box-shadow:0 0 8px rgba(200,120,16,.2); }
   :global(html.light) .crb--active { background:rgba(247,147,26,.1); border-color:rgba(247,147,26,.4); color:#c77a10; }
   @media (max-width:500px) { .btc-chart-card { padding:12px 12px; } }
 
@@ -1240,14 +1249,22 @@
   /* Small icon refresh button */
   .btn-icon {
     display:inline-flex; align-items:center; justify-content:center;
-    width:26px; height:26px; padding:0; border-radius:50%;
+    width:28px; height:28px; padding:0; border-radius:4px;
     background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
-    color:rgba(255,255,255,.4); font-size:.72rem; cursor:pointer; transition:all .2s;
-    flex-shrink:0;
+    color:rgba(255,255,255,.4); font-size:.72rem; cursor:pointer;
+    transition:background .2s, border-color .2s, color .2s, box-shadow .2s;
+    flex-shrink:0; position:relative; overflow:hidden;
   }
-  .btn-icon:hover { border-color:rgba(247,147,26,.3); color:var(--orange); background:rgba(247,147,26,.06); transform:rotate(45deg); }
+  .btn-icon::after {
+    content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
+    background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.55) 50%,transparent 75%);
+    background-size:200% 100%; background-position:-200% center;
+    transition:background-position .4s ease;
+  }
+  .btn-icon:hover { border-color:rgba(247,147,26,.45); color:var(--orange); background:rgba(247,147,26,.14); box-shadow:0 0 8px rgba(247,147,26,.25); }
+  .btn-icon:hover::after { background-position:200% center; }
   :global(html.light) .btn-icon { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.12); color:rgba(0,0,0,.5); }
-  :global(html.light) .btn-icon:hover { border-color:rgba(247,147,26,.3); color:#c77a10; background:rgba(247,147,26,.06); }
+  :global(html.light) .btn-icon:hover { border-color:rgba(200,120,16,.45); color:#c77a10; background:rgba(247,147,26,.1); box-shadow:0 0 8px rgba(200,120,16,.2); }
 
   @media (max-width:600px) {
     .gf-nw { font-size:2.8rem; }

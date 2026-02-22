@@ -153,10 +153,17 @@ body::after {
   color: rgba(255,255,255,0.4); font-family: 'Poison', monospace;
   font-size: 0.72rem; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.08em;
-  cursor: pointer; transition: all 0.2s;
-  text-decoration: none;
+  cursor: pointer; transition: background .2s, border-color .2s, color .2s, box-shadow .2s;
+  text-decoration: none; position: relative; overflow: hidden;
 }
-.btn-ghost:hover { border-color: rgba(247,147,26,0.3); color: var(--orange); background: rgba(247,147,26,0.06); }
+.btn-ghost::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(105deg, transparent 25%, rgba(255,255,255,.55) 50%, transparent 75%);
+  background-size: 200% 100%; background-position: -200% center;
+  transition: background-position .4s ease;
+}
+.btn-ghost:hover { border-color: rgba(247,147,26,.45); color: var(--orange); background: rgba(247,147,26,.14); box-shadow: 0 0 8px rgba(247,147,26,.25); }
+.btn-ghost:hover::after { background-position: 200% center; }
 
 /* ══ GLASS CARD ════════════════════════════════════════ */
 .card {
@@ -320,7 +327,7 @@ html.light .section-divider { background: linear-gradient(90deg,transparent,rgba
 html.light .section-divider::after { box-shadow: 0 0 8px rgba(200,120,16,.4); }
 html.light .sect-title { color: #c77a10; text-shadow: 0 0 10px rgba(200,120,16,0.5); background: none; }
 html.light .btn-ghost { color:rgba(0,0,0,.5); border-color:rgba(0,0,0,.1); background:rgba(0,0,0,.02); }
-html.light .btn-ghost:hover { color:#c77a10; border-color:rgba(200,120,16,.3); background:rgba(247,147,26,.06); }
+html.light .btn-ghost:hover { color:#c77a10; border-color:rgba(200,120,16,.45); background:rgba(247,147,26,.1); box-shadow:0 0 8px rgba(200,120,16,.2); }
 html.light .btn-secondary { border-color:rgba(200,120,16,.5); color:#c77a10; }
 html.light .btn-secondary:hover { background:rgba(247,147,26,.08); color:#111; border-color:#111; }
 html.light ::-webkit-scrollbar-thumb { background:rgba(200,120,16,.3); }
