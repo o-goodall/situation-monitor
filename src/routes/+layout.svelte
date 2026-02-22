@@ -13,7 +13,7 @@
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfAnnualizedPct, gfFirstOrderDate, gfOrdersCount,
-    persistSettings, fxRates, btcWsConnected, btcMa200, btcHashrate
+    persistSettings, fxRates, btcWsConnected, btcMa200, btcHashrate, gfPortfolioChart
   } from '$lib/store';
 
   let newKeyword = '', newSource = '', newSourceName = '';
@@ -201,6 +201,7 @@
         $gfAnnualizedPct = d.annualizedPerformancePct ?? null;
         $gfFirstOrderDate = d.firstOrderDate ?? null;
         $gfOrdersCount   = d.ordersCount   ?? null;
+        $gfPortfolioChart = d.portfolioChart ?? [];
         $gfUpdated = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
       }
     } catch { $gfError = 'Connection failed'; } finally { $gfLoading = false; }
