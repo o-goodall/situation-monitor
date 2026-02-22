@@ -565,7 +565,7 @@
             </div>
             <PriceChart
               prices={$gfPortfolioChart}
-              height={140}
+              height={200}
               range="max"
               formatY={fmtPct}
             />
@@ -1155,7 +1155,7 @@
   @media (max-width:400px) { .asset-panels { grid-template-columns:1fr; } .ap-pct { font-size:1.5rem; } }
 
   .gf-hero { display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap; margin-bottom:18px; }
-  .gf-nw   { font-size:3.6rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
+  .gf-nw   { font-size:4.2rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
   .gf-perf { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; flex:1; border-left:1px solid rgba(255,255,255,.06); padding-left:20px; min-width:0; }
   .gfp     { display:flex; flex-direction:column; gap:6px; }
   .gfp-v   { font-size:1.2rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
@@ -1181,7 +1181,7 @@
   :global(html.light) .btn-icon:hover { border-color:rgba(247,147,26,.3); color:#c77a10; background:rgba(247,147,26,.06); }
 
   @media (max-width:600px) {
-    .gf-nw { font-size:2.4rem; }
+    .gf-nw { font-size:2.8rem; }
     .gf-perf { border-left:none; padding-left:0; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; width:100%; }
     .gfp-v { font-size:1rem; }
   }
