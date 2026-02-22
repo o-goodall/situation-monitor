@@ -65,7 +65,7 @@
     await fetchHashrateChart(r);
   }
 
-  let intelView: 'cutting-edge'|'classic' = 'cutting-edge';
+  let intelView: 'cutting-edge'|'classic' = 'classic';
   const INTEL_TILE_LIMIT = 12; // 3 columns × 4 rows
 
   const n   = (v:number, dec=0) => v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
@@ -700,7 +700,7 @@
     {#if $newsItems.length===0}
       <p class="dim">Fetching RSS feeds…</p>
     {:else}
-      <div class="pm-grid">
+      <div class="pm-grid news-pm-grid">
         {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
           <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card" aria-label="{item.title}">
             <div class="pm-card-tags">
@@ -897,8 +897,8 @@
     .btc-network-card,
     .btc-hashrate-card,
     .btc-chart-card { display:none; }
-    /* Show only the top 3 intel stories so they fit in one screen */
-    #intel .pm-grid .pm-card:nth-child(n+4) { display:none; }
+    /* Show only the top 3 intel stories (cutting-edge) so they fit in one screen */
+    #intel .pm-grid:not(.news-pm-grid) .pm-card:nth-child(n+4) { display:none; }
   }
 
   /* ── ATOMS ──────────────────────────────────────────────── */
@@ -1269,8 +1269,8 @@
     .pm-grid { grid-template-columns:1fr; }
     .pm-card-q { font-size:.78rem; }
     .pm-outcome-pct { font-size:.95rem; }
-    /* Limit to 6 cards on mobile to avoid overwhelming scroll */
-    .pm-card:nth-child(n+7) { display:none; }
+    /* Limit to 6 cards on mobile for cutting-edge view */
+    .pm-grid:not(.news-pm-grid) .pm-card:nth-child(n+7) { display:none; }
   }
   :global(html.light) .pm-card { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
   :global(html.light) .pm-card:hover { border-color:rgba(247,147,26,.2); }
@@ -1285,11 +1285,44 @@
     width:100%; height:100px; border-radius:6px; overflow:hidden;
     background-size:cover; background-position:center;
     flex-shrink:0;
-    filter:saturate(80%);
+    position:relative;
+  }
+  /* Frosted blur: blurred image layer behind orange tint.
+     inset:-8px extends beyond bounds to prevent blur edge artifacts at the rounded corners. */
+  .news-card-img::before {
+    content:''; position:absolute; inset:-8px;
+    background:inherit; background-size:cover; background-position:center;
+    filter:blur(10px) saturate(90%);
+    transform:scale(1.08);
+    z-index:1;
+  }
+  /* Orange tint overlay */
+  .news-card-img::after {
+    content:''; position:absolute; inset:0;
+    background:rgba(247,147,26,.22);
+    z-index:2;
   }
   .news-card-desc { font-size:.68rem; color:var(--t2); line-height:1.55; opacity:.75; }
   :global(html.light) .news-card-desc { color:rgba(0,0,0,.45); }
   :global(html.light) .pm-news-src { background:rgba(247,147,26,.08); border-color:rgba(247,147,26,.25); color:#c77a10; }
+
+  /* ── MOBILE NEWS CAROUSEL ────────────────────────────────── */
+  @media (max-width:600px) {
+    .news-pm-grid {
+      display:flex; flex-direction:column;
+      overflow-y:auto; scroll-snap-type:y mandatory;
+      /* Show ~2 articles at a time: 2 × card height (200px) + gap (12px) */
+      max-height:calc(2 * 200px + 12px);
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
+    }
+    .news-pm-grid::-webkit-scrollbar { display:none; }
+    .news-pm-grid .pm-card {
+      scroll-snap-align:start;
+      flex-shrink:0;
+      display:flex !important;
+    }
+  }
 
   /* Intel section: no forced full-height — content determines height */
   #intel.section { min-height: auto; padding-bottom: 80px; }
