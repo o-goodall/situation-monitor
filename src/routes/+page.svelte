@@ -1406,6 +1406,14 @@
     }
     .pm-card-q { font-size:.82rem; }
   }
+  @media (max-width:700px) {
+    /* Intel section content area is scrollable on mobile */
+    .intel-gc {
+      max-height:65vh;
+      overflow-y:auto;
+      -webkit-overflow-scrolling:touch;
+    }
+  }
   :global(html.light) .pm-card { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
   :global(html.light) .pm-card:hover { border-color:rgba(247,147,26,.2); }
   :global(html.light) .pm-tag { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); color:rgba(0,0,0,.5); }
