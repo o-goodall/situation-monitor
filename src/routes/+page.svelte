@@ -740,12 +740,12 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:700px) {
-    .section { padding:20px 12px 0; min-height: auto; }
-    .section-header { margin-bottom:12px; }
+    .section { padding:20px 12px 0; min-height: 100svh; }
+    .section-header { margin-bottom:16px; }
     .section-divider { margin-top:24px; }
   }
   @media (max-width:600px) {
-    .section-header { margin-bottom:10px; }
+    .section-header { margin-bottom:14px; }
   }
 
   /* ── STAT STRIP ─────────────────────────────────────────── */
@@ -828,10 +828,12 @@
 
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(3,1fr); } }
   @media (max-width:500px) {
-    .stat-strip{ grid-template-columns:repeat(3,1fr); gap:6px; }
-    .stat-n { font-size:1.05rem; }
-    .stat-tile { padding:10px 8px; }
-    .stat-tile--chart .stat-l-row { padding-bottom:44px; }
+    /* BTC price tile spans full width; sats + halving sit side-by-side below */
+    .stat-strip{ grid-template-columns:1fr 1fr; gap:8px; }
+    .stat-tile--chart { grid-column:1 / -1; }
+    .stat-n { font-size:1.1rem; }
+    .stat-tile { padding:12px 10px; }
+    .stat-tile--chart .stat-l-row { padding-bottom:52px; }
   }
 
   /* ── BTC PRICE CHART CARD ───────────────────────────────── */
@@ -1258,6 +1260,8 @@
     .pm-grid { grid-template-columns:1fr; }
     .pm-card-q { font-size:.78rem; }
     .pm-outcome-pct { font-size:.95rem; }
+    /* Limit to 6 cards on mobile to avoid overwhelming scroll */
+    .pm-card:nth-child(n+7) { display:none; }
   }
   :global(html.light) .pm-card { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
   :global(html.light) .pm-card:hover { border-color:rgba(247,147,26,.2); }
@@ -1279,10 +1283,10 @@
   :global(html.light) .pm-news-src { background:rgba(247,147,26,.08); border-color:rgba(247,147,26,.25); color:#c77a10; }
 
   /* Intel section: no forced full-height — content determines height */
-  #intel.section { min-height: auto; padding-bottom: 64px; }
+  #intel.section { min-height: auto; padding-bottom: 80px; }
   @media (max-width:700px) {
-    #intel.section { padding-top: 20px; }
-    #intel .section-header { margin-bottom: 10px; }
+    #intel.section { padding-top: 20px; padding-bottom: 88px; }
+    #intel .section-header { margin-bottom: 14px; }
   }
 
   /* ── FEED CAROUSEL ───────────────────────────────────────── */
