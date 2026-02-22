@@ -67,30 +67,35 @@
 
   let intelView: 'cutting-edge'|'classic' = 'classic';
   let intelTransitioning = false;
+  const BLUR_DURATION_MS = 400;   // blur phase before content swap
+  const REVEAL_DURATION_MS = 600; // reveal phase after content swap
   function switchIntelView() {
     intelTransitioning = true;
     setTimeout(() => {
       intelView = intelView === 'cutting-edge' ? 'classic' : 'cutting-edge';
-      setTimeout(() => { intelTransitioning = false; }, 600);
-    }, 400);
+      setTimeout(() => { intelTransitioning = false; }, REVEAL_DURATION_MS);
+    }, BLUR_DURATION_MS);
   }
   const INTEL_TILE_LIMIT = 12; // 3 columns × 4 rows
 
   /** Detect topic keyword for frosted background tint */
+  const TOPIC_MAP: [RegExp, string][] = [
+    [/trump|maga|republican|gop/, '🇺🇸'],
+    [/iran|tehran|persian/, '🇮🇷'],
+    [/china|beijing|xi jinping/, '🇨🇳'],
+    [/russia|moscow|putin|kremlin/, '🇷🇺'],
+    [/bitcoin|btc|crypto|ethereum/, '₿'],
+    [/fed|federal reserve|interest rate|inflation/, '🏛️'],
+    [/israel|gaza|hamas|palestine/, '⚔️'],
+    [/ukraine|kyiv|zelensky/, '🇺🇦'],
+    [/oil|opec|energy|gas/, '🛢️'],
+    [/election|vote|ballot|poll/, '🗳️'],
+    [/war|military|missile|nuclear/, '⚠️'],
+    [/trade|tariff|sanction/, '📊'],
+  ];
   function detectTopic(text: string): string {
     const t = text.toLowerCase();
-    if (/trump|maga|republican|gop/.test(t)) return '🇺🇸';
-    if (/iran|tehran|persian/.test(t)) return '🇮🇷';
-    if (/china|beijing|xi jinping/.test(t)) return '🇨🇳';
-    if (/russia|moscow|putin|kremlin/.test(t)) return '🇷🇺';
-    if (/bitcoin|btc|crypto|ethereum/.test(t)) return '₿';
-    if (/fed|federal reserve|interest rate|inflation/.test(t)) return '🏛️';
-    if (/israel|gaza|hamas|palestine/.test(t)) return '⚔️';
-    if (/ukraine|kyiv|zelensky/.test(t)) return '🇺🇦';
-    if (/oil|opec|energy|gas/.test(t)) return '🛢️';
-    if (/election|vote|ballot|poll/.test(t)) return '🗳️';
-    if (/war|military|missile|nuclear/.test(t)) return '⚠️';
-    if (/trade|tariff|sanction/.test(t)) return '📊';
+    for (const [re, icon] of TOPIC_MAP) { if (re.test(t)) return icon; }
     return '◈';
   }
 
