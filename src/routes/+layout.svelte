@@ -499,7 +499,7 @@
   <!-- Brand — always left -->
   <a href="/" class="brand" aria-label="gl4nce home">
     <div class="eye-wrap" aria-hidden="true">
-      <svg class="eye-svg" viewBox="0 0 40 24" xmlns="http://www.w3.org/2000/svg">
+      <svg class="eye-svg" viewBox="0 0 60 24" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <radialGradient id="irisGrad" cx="45%" cy="40%" r="55%">
             <stop offset="0%" stop-color="#2a1200"/>
@@ -511,7 +511,7 @@
             <stop offset="100%" stop-color="rgba(247,147,26,0.18)"/>
           </radialGradient>
           <clipPath id="eyeClip">
-            <path d="M20,3.5 C12,3.5 4,12 4,12 C4,12 12,20.5 20,20.5 C28,20.5 36,12 36,12 C36,12 28,3.5 20,3.5 Z"/>
+            <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z"/>
           </clipPath>
           <linearGradient id="shimmerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%" stop-color="rgba(255,255,255,0)" />
@@ -521,43 +521,44 @@
           </linearGradient>
         </defs>
         <!-- Eye background -->
-        <path d="M20,3.5 C12,3.5 4,12 4,12 C4,12 12,20.5 20,20.5 C28,20.5 36,12 36,12 C36,12 28,3.5 20,3.5 Z" fill="#030201"/>
+        <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="#030201"/>
         <!-- Iris group — subtle drift animation -->
         <g class="eye-iris">
-          <circle cx="20" cy="12" r="8" fill="url(#irisGrad)"/>
-          <circle cx="20" cy="12" r="8" fill="url(#irisRingGrad)"/>
-          <circle cx="20" cy="12" r="6.5" fill="none" stroke="rgba(247,147,26,0.18)" stroke-width="0.5"/>
-          <circle cx="20" cy="12" r="5" fill="none" stroke="rgba(247,147,26,0.1)" stroke-width="0.4"/>
+          <circle cx="30" cy="12" r="8" fill="url(#irisGrad)"/>
+          <circle cx="30" cy="12" r="8" fill="url(#irisRingGrad)"/>
+          <circle cx="30" cy="12" r="6.5" fill="none" stroke="rgba(247,147,26,0.18)" stroke-width="0.5"/>
+          <circle cx="30" cy="12" r="5" fill="none" stroke="rgba(247,147,26,0.1)" stroke-width="0.4"/>
           <!-- Pupil -->
-          <circle cx="20" cy="12" r="3.2" fill="#020101"/>
+          <circle cx="30" cy="12" r="3.2" fill="#020101"/>
           <!-- Pupil inner depth -->
-          <circle cx="20" cy="12" r="2" fill="#010101"/>
+          <circle cx="30" cy="12" r="2" fill="#010101"/>
         </g>
         <!-- Scanlines clipped to eye shape -->
         <g clip-path="url(#eyeClip)" class="eye-scanlines">
-          <rect x="4" y="9" width="32" height="0.5" fill="rgba(247,147,26,0.06)"/>
-          <rect x="4" y="11" width="32" height="0.5" fill="rgba(247,147,26,0.04)"/>
-          <rect x="4" y="13" width="32" height="0.5" fill="rgba(247,147,26,0.06)"/>
-          <rect x="4" y="15" width="32" height="0.5" fill="rgba(247,147,26,0.04)"/>
+          <rect x="6" y="9" width="48" height="0.5" fill="rgba(247,147,26,0.06)"/>
+          <rect x="6" y="11" width="48" height="0.5" fill="rgba(247,147,26,0.04)"/>
+          <rect x="6" y="13" width="48" height="0.5" fill="rgba(247,147,26,0.06)"/>
+          <rect x="6" y="15" width="48" height="0.5" fill="rgba(247,147,26,0.04)"/>
         </g>
         <!-- Foil shimmer sweep clipped to eye -->
         <g clip-path="url(#eyeClip)">
-          <rect class="eye-shimmer" x="-38" y="3.5" width="22" height="17" fill="url(#shimmerGrad)"/>
+          <!-- x=-57 starts shimmer off left edge (canvas=60, width=33); animation moves it 118px to exit right -->
+          <rect class="eye-shimmer" x="-57" y="3.5" width="33" height="17" fill="url(#shimmerGrad)"/>
         </g>
         <!-- Outer eye outline -->
-        <path d="M20,3.5 C12,3.5 4,12 4,12 C4,12 12,20.5 20,20.5 C28,20.5 36,12 36,12 C36,12 28,3.5 20,3.5 Z" fill="none" stroke="#f7931a" stroke-width="1" opacity="0.7"/>
+        <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="none" stroke="#f7931a" stroke-width="1" opacity="0.7"/>
         <!-- Corner accent dots -->
-        <circle cx="4" cy="12" r="1" fill="rgba(247,147,26,0.5)"/>
-        <circle cx="36" cy="12" r="1" fill="rgba(247,147,26,0.5)"/>
+        <circle cx="6" cy="12" r="1" fill="rgba(247,147,26,0.5)"/>
+        <circle cx="54" cy="12" r="1" fill="rgba(247,147,26,0.5)"/>
         <!-- Cornea highlight -->
-        <ellipse cx="16.5" cy="9.5" rx="1.4" ry="0.8" fill="rgba(255,255,255,0.5)" class="eye-highlight"/>
+        <ellipse cx="26.5" cy="9.5" rx="1.4" ry="0.8" fill="rgba(255,255,255,0.5)" class="eye-highlight"/>
         <!-- Binary flicker text inside pupil -->
-        <text aria-hidden="true" class="eye-binary" x="20" y="13.5" text-anchor="middle" font-size="2.2" fill="rgba(247,147,26,0.7)" font-family="monospace">01</text>
+        <text aria-hidden="true" class="eye-binary" x="30" y="13.5" text-anchor="middle" font-size="2.2" fill="rgba(247,147,26,0.7)" font-family="monospace">01</text>
       </svg>
+      <span class="brand-name">
+        <span class="b-gl">gl</span><span class="b-4">4</span><span class="b-nce">nce</span>
+      </span>
     </div>
-    <span class="brand-name" aria-hidden="true">
-      <span class="b-gl">gl</span><span class="b-4">4</span><span class="b-nce">nce</span><span class="b-dot">.</span>
-    </span>
   </a>
 
   <!-- Desktop nav — left-aligned after brand (Electric Xtra style) -->
@@ -785,7 +786,7 @@
 
 <!-- ══ FOOTER ════════════════════════════════════════════════ -->
 <footer class="site-footer" role="contentinfo">
-  <span class="footer-brand">gl<span style="color:var(--orange);">4</span>nce.</span>
+  <span class="footer-brand">gl<span style="color:var(--orange);">4</span>nce</span>
   <span class="footer-sources">
     <a href="https://mempool.space" target="_blank" rel="noopener noreferrer">mempool.space</a> ·
     <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">alternative.me</a> ·
@@ -820,7 +821,7 @@
   }
 
   /* Brand + nav sit together on the LEFT */
-  .brand { display:flex; align-items:center; gap:11px; text-decoration:none; flex-shrink:0; margin-right:28px; }
+  .brand { display:flex; align-items:center; text-decoration:none; flex-shrink:0; margin-right:28px; }
 
   /* Desktop nav — immediately after brand, left-aligned (Electric Xtra style) */
   .page-nav { display:flex; gap:4px; flex-shrink:0; }
@@ -870,7 +871,7 @@
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
 
   /* ── CYBERPUNK EYE ───────────────────────────────────────── */
-  .eye-wrap { width:38px; height:24px; position:relative; flex-shrink:0; overflow:visible; }
+  .eye-wrap { width:60px; height:24px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
   .eye-svg { width:100%; height:100%; overflow:visible; }
 
   /* Iris drift — slow, subtle */
@@ -880,7 +881,7 @@
     45%     { transform:translate(-0.3px,0.4px); }
     70%     { transform:translate(0.35px,0.25px); }
   }
-  .eye-iris { animation:irisDrift 8s ease-in-out infinite; transform-origin:20px 12px; }
+  .eye-iris { animation:irisDrift 8s ease-in-out infinite; transform-origin:30px 12px; }
 
   /* Scanline slow drift */
   @keyframes scanDrift {
@@ -891,10 +892,10 @@
 
   /* Foil shimmer — single sweep every ~13s, quick pass */
   @keyframes eyeShimmer {
-    0%,88%  { transform:translateX(0);    opacity:0; }
+    0%,88%  { transform:translateX(0);     opacity:0; }
     89%     { opacity:0.8; }
-    94%     { transform:translateX(78px); opacity:0.6; }
-    95%,100%{ transform:translateX(78px); opacity:0; }
+    94%     { transform:translateX(118px); opacity:0.6; }
+    95%,100%{ transform:translateX(118px); opacity:0; }
   }
   .eye-shimmer { animation:eyeShimmer 13s ease-in-out infinite; }
 
@@ -919,14 +920,14 @@
   }
 
   @media (max-width:768px) {
-    .eye-wrap { width:32px; height:20px; }
+    .eye-wrap { width:52px; height:21px; }
   }
 
   /* ── WORDMARK ────────────────────────────────────────────── */
-  .brand-name { font-family:'Nyxerin',monospace; font-weight:900; font-size:1rem; letter-spacing:.06em; line-height:1; }
+  /* font-size:.72rem fits "gl4nce" (~44px) within the 48px-wide eye interior at 60px canvas */
+  .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Nyxerin',monospace; font-weight:900; font-size:.72rem; letter-spacing:.06em; line-height:1; pointer-events:none; }
   .b-gl,.b-nce { color:rgba(234,234,234,.92); }
   .b-4 { color:var(--orange); text-shadow:0 0 14px rgba(247,147,26,.8),0 0 28px rgba(247,147,26,.4); animation:fourGlow 3s ease-in-out infinite; display:inline-block; }
-  .b-dot { color:var(--orange); opacity:.7; }
   @keyframes fourGlow{0%,100%{text-shadow:0 0 12px rgba(247,147,26,.8),0 0 24px rgba(247,147,26,.4)}50%{text-shadow:0 0 20px rgba(247,147,26,1),0 0 44px rgba(247,147,26,.5),0 0 70px rgba(247,147,26,.18)}}
 
   /* ── BURGER (mobile only) ────────────────────────────────── */
@@ -955,8 +956,8 @@
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:auto; }
-    .brand-name { font-size:.88rem; }
-    .eye-wrap { width:28px; height:18px; }
+    .brand-name { font-size:.63rem; }
+    .eye-wrap { width:52px; height:21px; }
   }
 
   /* ── MOBILE FULL-SCREEN MENU ─────────────────────────────── */
