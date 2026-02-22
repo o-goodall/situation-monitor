@@ -6,6 +6,7 @@
   export let range: string = '1d';
   export let formatY: ((v: number) => string) | undefined = undefined;
   export let overlays: { prices: { t: number; p: number }[]; color: string }[] = [];
+  export let fillParent = false; // when true the canvas fills its CSS container height
 
   let canvas: HTMLCanvasElement;
 
@@ -49,7 +50,7 @@
     const lineColor = isUp ? '#22c55e' : '#ef4444';
     const fillColor = isUp ? 'rgba(34,197,94,' : 'rgba(239,68,68,';
 
-    const PAD_L = 48, PAD_R = 10, PAD_T = 10, PAD_B = 22;
+    const PAD_L = formatY ? 58 : 48, PAD_R = 10, PAD_T = 10, PAD_B = 22;
     const dW = W - PAD_L - PAD_R;
     const dH = H - PAD_T - PAD_B;
 
@@ -124,7 +125,7 @@
     ctx.lineWidth = overlays.length > 0 ? 2 : 1.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.shadowBlur = 5;
+    ctx.shadowBlur = 2;
     ctx.shadowColor = lineColor;
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -141,7 +142,7 @@
       ctx.lineWidth = 1.5;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
-      ctx.shadowBlur = 4;
+      ctx.shadowBlur = 2;
       ctx.shadowColor = overlay.color;
       ctx.stroke();
       ctx.shadowBlur = 0;
@@ -161,7 +162,7 @@
     ctx.beginPath();
     ctx.arc(lx, ly, 3, 0, Math.PI * 2);
     ctx.fillStyle = lineColor;
-    ctx.shadowBlur = 8;
+    ctx.shadowBlur = 4;
     ctx.shadowColor = lineColor;
     ctx.fill();
     ctx.shadowBlur = 0;
@@ -173,6 +174,6 @@
 
 <canvas
   bind:this={canvas}
-  style="width:100%;height:{height}px;display:block;"
+  style="width:100%;height:{fillParent ? '100%' : height+'px'};display:block;"
   aria-hidden="true"
 ></canvas>

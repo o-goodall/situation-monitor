@@ -447,7 +447,22 @@
         transmissions = transmissions.filter(t => {
           const done = t.update();
           t.draw();
-          if (done) pings.push(new Ping(t.to.x, t.to.y));
+          if (done) {
+            pings.push(new Ping(t.to.x, t.to.y));
+            // Chain: ~55% of the time spawn the next transmission FROM the arrival node,
+            // producing a visible ping → line → ping → line trail pattern.
+            if (Math.random() < 0.55) {
+              const from = t.to;
+              let chainTo: Node | null = null, chainDist = Infinity;
+              for (const n of nodes) {
+                if (n === from) continue;
+                const dx = n.x - from.x, dy = n.y - from.y;
+                const d = Math.sqrt(dx * dx + dy * dy);
+                if (d < CONN_DIST() && d < chainDist) { chainTo = n; chainDist = d; }
+              }
+              if (chainTo) transmissions.push(new Transmission(from, chainTo));
+            }
+          }
           return !done;
         });
 
