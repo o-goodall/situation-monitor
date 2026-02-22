@@ -329,7 +329,7 @@
     </div>
 
     <!-- BITCOIN NETWORK — expanded with mempool data -->
-    <div class="gc">
+    <div class="gc btc-network-card">
       <div class="gc-head">
         <p class="gc-title">Bitcoin Network</p>
         <a href="https://mempool.space" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open mempool.space in new tab">mempool ↗</a>
@@ -417,7 +417,7 @@
     </div>
 
     <!-- BITCOIN HASHRATE — replaces My Stack -->
-    <div class="gc gc--hashrate">
+    <div class="gc gc--hashrate btc-hashrate-card">
       <div class="chart-header" style="margin-bottom:12px;">
         <p class="gc-title">Bitcoin Hashrate</p>
         <div class="chart-range-btns" role="group" aria-label="Hashrate chart range">
@@ -891,6 +891,15 @@
   .gc--hashrate { display:flex; flex-direction:column; }
   .gc--hashrate .chart-container { flex:1; min-height:160px; }
   .gc--hashrate .hash-row { margin-top:auto; padding-top:10px; }
+
+  /* ── MOBILE: hide supplementary sections, limit intel stories ── */
+  @media (max-width:768px) {
+    .btc-network-card,
+    .btc-hashrate-card,
+    .btc-chart-card { display:none; }
+    /* Show only the top 3 intel stories so they fit in one screen */
+    #intel .pm-grid .pm-card:nth-child(n+4) { display:none; }
+  }
 
   /* ── ATOMS ──────────────────────────────────────────────── */
   .eyebrow { font-size:.58rem; font-weight:500; text-transform:uppercase; letter-spacing:.12em; color:var(--t2); }
