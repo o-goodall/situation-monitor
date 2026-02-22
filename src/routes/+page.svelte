@@ -1282,24 +1282,25 @@
 
   /* ── NEWS CARD (Classic view — matches Polymarket card style) ─── */
   .news-card-img {
-    width:100%; height:100px; border-radius:6px; overflow:hidden;
+    width:100%; height:112px; border-radius:6px; overflow:hidden;
     background-size:cover; background-position:center;
     flex-shrink:0;
     position:relative;
+    margin-bottom:4px;
   }
   /* Frosted blur: blurred image layer behind orange tint.
      inset:-8px extends beyond bounds to prevent blur edge artifacts at the rounded corners. */
   .news-card-img::before {
     content:''; position:absolute; inset:-8px;
     background:inherit; background-size:cover; background-position:center;
-    filter:blur(10px) saturate(90%);
-    transform:scale(1.08);
+    filter:blur(12px) saturate(80%) brightness(0.82);
+    transform:scale(1.1);
     z-index:1;
   }
-  /* Orange tint overlay */
+  /* Orange tint + bottom gradient overlay for a polished blended look */
   .news-card-img::after {
     content:''; position:absolute; inset:0;
-    background:rgba(247,147,26,.22);
+    background:linear-gradient(180deg, rgba(247,147,26,.18) 0%, rgba(247,147,26,.28) 60%, rgba(10,6,2,.45) 100%);
     z-index:2;
   }
   .news-card-desc { font-size:.68rem; color:var(--t2); line-height:1.55; opacity:.75; }
