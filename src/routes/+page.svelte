@@ -16,21 +16,21 @@
   import PriceChart from '$lib/PriceChart.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
-  let btcChartRange: '1D' | '1W' | '1Y' | '5Y' | 'Max' = '1D';
+  let btcChartRange: '1D' | '1W' | '1Y' = '1D';
   let btcChartData: { t: number; p: number }[] = [];
   let btcChartLoading = false;
 
   async function fetchBtcChart(r = btcChartRange) {
     btcChartLoading = true;
     try {
-      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y', 'Max':'max' };
+      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y' };
       const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
       btcChartData = d.prices ?? [];
     } catch { btcChartData = []; }
     finally { btcChartLoading = false; }
   }
 
-  async function setBtcChartRange(r: '1D' | '1W' | '1Y' | '5Y' | 'Max') {
+  async function setBtcChartRange(r: '1D' | '1W' | '1Y') {
     btcChartRange = r;
     await fetchBtcChart(r);
   }
@@ -178,7 +178,7 @@
   }
 
   function btcApiRange(r = btcChartRange): string {
-    const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y', 'Max':'max' };
+    const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y' };
     return map[r] ?? '1d';
   }
 
@@ -691,8 +691,6 @@
           <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
           <button class="crb" class:crb--active={btcChartRange==='1W'} on:click={() => setBtcChartRange('1W')}>1W</button>
           <button class="crb" class:crb--active={btcChartRange==='1Y'} on:click={() => setBtcChartRange('1Y')}>1Y</button>
-          <button class="crb" class:crb--active={btcChartRange==='5Y'} on:click={() => setBtcChartRange('5Y')}>5Y</button>
-          <button class="crb" class:crb--active={btcChartRange==='Max'} on:click={() => setBtcChartRange('Max')}>Max</button>
         </div>
       </div>
     </div>
@@ -704,7 +702,7 @@
         <PriceChart
           prices={btcChartData}
           height={160}
-          range={btcChartRange === '1D' ? '1d' : btcChartRange === '5Y' ? '5y' : btcChartRange === 'Max' ? 'max' : '1y'}
+          range={btcChartRange === '1D' ? '1d' : '1y'}
         />
       {:else}
         <p class="dim" style="text-align:center;padding:60px 0;">Loading chart data…</p>

@@ -69,7 +69,11 @@ export async function GET() {
     const blocksToHalving = Math.max(0, NEXT_HALVING_BLOCK - blockHeight);
     const minutesToHalving = blocksToHalving * AVG_BLOCK_TIME_MINUTES;
     const msToHalving = minutesToHalving * 60 * 1000;
-    const estimatedHalvingDate = new Date(Date.now() + msToHalving).toISOString().split('T')[0];
+    const halvingDateObj = new Date(Date.now() + msToHalving);
+    const dd = String(halvingDateObj.getUTCDate()).padStart(2, '0');
+    const mm = String(halvingDateObj.getUTCMonth() + 1).padStart(2, '0');
+    const yyyy = halvingDateObj.getUTCFullYear();
+    const estimatedHalvingDate = `${dd}/${mm}/${yyyy}`;
     const halvingProgressPct = Math.min(100,
       ((blockHeight - PREV_HALVING_BLOCK) / (NEXT_HALVING_BLOCK - PREV_HALVING_BLOCK)) * 100
     );
