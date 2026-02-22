@@ -77,33 +77,6 @@
     }, BLUR_DURATION_MS);
   }
   const INTEL_TILE_LIMIT = 12; // 3 columns × 4 rows
-  const MOBILE_CAROUSEL_LIMIT = 6; // max items shown per view on mobile carousel
-  const CAROUSEL_GAP_PX = 12; // gap between carousel cards (matches CSS gap:12px)
-  const CAROUSEL_AUTO_ADVANCE_MS = 4000; // auto-advance interval for mobile carousel
-
-  let mktCarouselTrack: HTMLElement | null = null;
-  let newsCarouselTrack: HTMLElement | null = null;
-  let mktCarouselPage = 0;
-  let newsCarouselPage = 0;
-
-  function getCarouselCardSize(track: HTMLElement): number {
-    const first = track.firstElementChild as HTMLElement | null;
-    if (!first) return track.clientHeight;
-    // Carousel is vertical on mobile (overflow-y); height-based measurement is used.
-    return first.getBoundingClientRect().height + CAROUSEL_GAP_PX;
-  }
-  function carouselGo(track: HTMLElement | null, page: number) {
-    if (!track) return;
-    track.scrollTo({ top: page * getCarouselCardSize(track), behavior: 'smooth' });
-  }
-  function onMktScroll() {
-    if (!mktCarouselTrack) return;
-    mktCarouselPage = Math.round(mktCarouselTrack.scrollTop / getCarouselCardSize(mktCarouselTrack));
-  }
-  function onNewsScroll() {
-    if (!newsCarouselTrack) return;
-    newsCarouselPage = Math.round(newsCarouselTrack.scrollTop / getCarouselCardSize(newsCarouselTrack));
-  }
 
   /** Detect topic keyword for frosted background tint */
   const TOPIC_MAP: [RegExp, string][] = [
@@ -166,9 +139,6 @@
   $: freqHint  = ({daily:'How much to buy today',weekly:'How much to buy this week',fortnightly:'How much to buy this fortnight',monthly:'How much to buy this month'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'How much to buy this fortnight';
 
   $: cpiLoss = (()=>{if($cpiAnnual===null)return 0;const y=Math.max(.1,dcaDays/365.25);return(1-1/Math.pow(1+$cpiAnnual/100,y))*100;})();
-
-  // Mobile feed carousels — duplicate items so the CSS loop is seamless
-  $: newsLoop = $newsItems.length ? [...$newsItems, ...$newsItems] : [];
 
   async function refreshGF() {
     const token=$settings.ghostfolio?.token?.trim();if(!token)return;
@@ -715,64 +685,52 @@
           <div class="skeleton" style="height:90px;border-radius:10px;"></div>
         </div>
       {:else}
-        <div class="carousel-wrap">
-          <div class="pm-grid pm-carousel" bind:this={mktCarouselTrack} on:scroll={onMktScroll}>
-            {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
-              <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{m.question}">
-                <div class="pm-card-frosted-overlay"></div>
-                <!-- Tag row -->
-                <div class="pm-card-tags" style="position:relative;z-index:1;">
-                  {#if m.pinned}
-                    <span class="pm-tag pm-pin">★ Watching</span>
-                  {:else}
-                    <span class="pm-tag">{m.tag}</span>
-                  {/if}
-                  <span class="pm-tag pm-prob-tag" style="color:{pc(m.probability)};" aria-label="{m.topOutcome} probability {m.probability} percent">{m.topOutcome} {m.probability}%</span>
-                </div>
-                <!-- Question -->
-                <p class="pm-card-q" style="position:relative;z-index:1;">{m.question}</p>
-                <!-- Top outcomes list for multi-outcome markets (e.g. FIFA, elections) -->
-                {#if m.outcomes.length > 2}
-                  <ul class="pm-outcomes" style="position:relative;z-index:1;" aria-label="Top contenders">
-                    {#each m.outcomes.slice(0, 4) as o}
-                      <li class="pm-outcome-row">
-                        <span class="pm-outcome-name">{o.name}</span>
-                        <span class="pm-outcome-pct" style="color:{pc(o.probability)};">{o.probability}%</span>
-                      </li>
-                    {/each}
-                  </ul>
+        <div class="pm-grid">
+          {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
+            <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{m.question}">
+              <div class="pm-card-frosted-overlay"></div>
+              <!-- Tag row -->
+              <div class="pm-card-tags" style="position:relative;z-index:1;">
+                {#if m.pinned}
+                  <span class="pm-tag pm-pin">★ Watching</span>
+                {:else}
+                  <span class="pm-tag">{m.tag}</span>
                 {/if}
-                <!-- Enhanced data row -->
-                <div class="pm-card-data" style="position:relative;z-index:1;">
-                  <span class="pm-data-vol" title="Total volume">{fmtVol(m.volume)}</span>
-                  {#if m.volume24hr > 0}
-                    <span class="pm-data-vol24" title="24h volume">24h {fmtVol(m.volume24hr)}</span>
-                  {/if}
-                  {#if m.probability >= 70}
-                    <span class="pm-data-trend pm-data-trend--high" title="High probability">▲ Likely</span>
-                  {:else if m.probability <= 30}
-                    <span class="pm-data-trend pm-data-trend--low" title="Low probability">▼ Unlikely</span>
-                  {:else}
-                    <span class="pm-data-trend pm-data-trend--mid" title="Contested">◆ Contested</span>
-                  {/if}
-                </div>
-                <!-- Probability bar -->
-                <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
-                  <div class="pm-prob-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
-                </div>
-              </a>
-            {/each}
-          </div>
-          <!-- Mobile carousel navigation -->
-          <div class="carousel-nav" aria-label="Carousel navigation">
-            <button class="carousel-btn" on:click={() => { mktCarouselPage = Math.max(0, mktCarouselPage - 1); carouselGo(mktCarouselTrack, mktCarouselPage); }} aria-label="Previous market">‹</button>
-            <div class="carousel-dots" aria-hidden="true">
-              {#each $markets.slice(0, MOBILE_CAROUSEL_LIMIT) as _, i}
-                <button class="carousel-dot" class:carousel-dot--active={i === mktCarouselPage} on:click={() => { mktCarouselPage = i; carouselGo(mktCarouselTrack, mktCarouselPage); }} aria-label="Market {i + 1} of {Math.min($markets.length, MOBILE_CAROUSEL_LIMIT)}"></button>
-              {/each}
-            </div>
-            <button class="carousel-btn" on:click={() => { mktCarouselPage = Math.min(Math.min($markets.length, MOBILE_CAROUSEL_LIMIT) - 1, mktCarouselPage + 1); carouselGo(mktCarouselTrack, mktCarouselPage); }} aria-label="Next market">›</button>
-          </div>
+                <span class="pm-tag pm-prob-tag" style="color:{pc(m.probability)};" aria-label="{m.topOutcome} probability {m.probability} percent">{m.topOutcome} {m.probability}%</span>
+              </div>
+              <!-- Question -->
+              <p class="pm-card-q" style="position:relative;z-index:1;">{m.question}</p>
+              <!-- Top outcomes list for multi-outcome markets (e.g. FIFA, elections) -->
+              {#if m.outcomes.length > 2}
+                <ul class="pm-outcomes" style="position:relative;z-index:1;" aria-label="Top contenders">
+                  {#each m.outcomes.slice(0, 4) as o}
+                    <li class="pm-outcome-row">
+                      <span class="pm-outcome-name">{o.name}</span>
+                      <span class="pm-outcome-pct" style="color:{pc(o.probability)};">{o.probability}%</span>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
+              <!-- Enhanced data row -->
+              <div class="pm-card-data" style="position:relative;z-index:1;">
+                <span class="pm-data-vol" title="Total volume">{fmtVol(m.volume)}</span>
+                {#if m.volume24hr > 0}
+                  <span class="pm-data-vol24" title="24h volume">24h {fmtVol(m.volume24hr)}</span>
+                {/if}
+                {#if m.probability >= 70}
+                  <span class="pm-data-trend pm-data-trend--high" title="High probability">▲ Likely</span>
+                {:else if m.probability <= 30}
+                  <span class="pm-data-trend pm-data-trend--low" title="Low probability">▼ Unlikely</span>
+                {:else}
+                  <span class="pm-data-trend pm-data-trend--mid" title="Contested">◆ Contested</span>
+                {/if}
+              </div>
+              <!-- Probability bar -->
+              <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
+                <div class="pm-prob-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
+              </div>
+            </a>
+          {/each}
         </div>
       {/if}
     </div>
@@ -784,29 +742,17 @@
       {#if $newsItems.length===0}
         <p class="dim">Fetching RSS feeds…</p>
       {:else}
-        <div class="carousel-wrap">
-          <div class="pm-grid news-pm-grid pm-carousel" bind:this={newsCarouselTrack} on:scroll={onNewsScroll}>
-            {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
-              <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{item.title}">
-                <div class="pm-card-frosted-overlay"></div>
-                <div class="pm-card-tags" style="position:relative;z-index:1;">
-                  <span class="pm-tag pm-news-src">{item.source}</span>
-                  <span class="pm-tag">{ago(item.pubDate)} ago</span>
-                </div>
-                <p class="pm-card-q" style="position:relative;z-index:1;">{item.title}</p>
-              </a>
-            {/each}
-          </div>
-          <!-- Mobile carousel navigation -->
-          <div class="carousel-nav" aria-label="Carousel navigation">
-            <button class="carousel-btn" on:click={() => { newsCarouselPage = Math.max(0, newsCarouselPage - 1); carouselGo(newsCarouselTrack, newsCarouselPage); }} aria-label="Previous story">‹</button>
-            <div class="carousel-dots" aria-hidden="true">
-              {#each $newsItems.slice(0, MOBILE_CAROUSEL_LIMIT) as _, i}
-                <button class="carousel-dot" class:carousel-dot--active={i === newsCarouselPage} on:click={() => { newsCarouselPage = i; carouselGo(newsCarouselTrack, newsCarouselPage); }} aria-label="Story {i + 1} of {Math.min($newsItems.length, MOBILE_CAROUSEL_LIMIT)}"></button>
-              {/each}
-            </div>
-            <button class="carousel-btn" on:click={() => { newsCarouselPage = Math.min(Math.min($newsItems.length, MOBILE_CAROUSEL_LIMIT) - 1, newsCarouselPage + 1); carouselGo(newsCarouselTrack, newsCarouselPage); }} aria-label="Next story">›</button>
-          </div>
+        <div class="pm-grid news-pm-grid">
+          {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
+            <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{item.title}">
+              <div class="pm-card-frosted-overlay"></div>
+              <div class="pm-card-tags" style="position:relative;z-index:1;">
+                <span class="pm-tag pm-news-src">{item.source}</span>
+                <span class="pm-tag">{ago(item.pubDate)} ago</span>
+              </div>
+              <p class="pm-card-q" style="position:relative;z-index:1;">{item.title}</p>
+            </a>
+          {/each}
         </div>
       {/if}
     </div>
@@ -1453,7 +1399,6 @@
   .pm-prob-tag { font-weight:700; }
   .pm-card-q { font-size:.84rem; color:var(--t1); line-height:1.5; font-weight:500; flex:1; }
   @media (max-width:600px) {
-    /* Both pm-grid types use a vertical scroll on mobile */
     .pm-grid {
       display:flex; flex-direction:column;
       overflow-x:hidden;
@@ -1466,39 +1411,7 @@
     }
     .pm-card-q { font-size:.82rem; }
   }
-  /* ── INTEL CAROUSEL (mobile) ──────────────────────────────── */
-  /* Desktop: carousel-nav hidden, pm-carousel behaves as normal pm-grid */
-  .carousel-wrap { position:relative; }
-  .carousel-nav { display:none; }
 
-  @media (max-width:700px) {
-    /* Remove the old max-height overflow constraint */
-    .intel-gc { max-height:unset; overflow-y:visible; }
-
-    /* Vertical list — no scroll constraint, all items visible */
-    .pm-carousel {
-      display:flex !important;
-      flex-direction:column !important;
-      overflow:visible;
-      gap:10px;
-    }
-
-    /* Each card fills full width */
-    .pm-carousel .pm-card {
-      flex:none !important;
-      width:100% !important;
-      min-height:auto;
-    }
-
-    /* Show all cards on mobile (no item limit) */
-
-    /* Hide carousel navigation entirely */
-    .carousel-nav { display:none; }
-  }
-  :global(html.light) .carousel-btn { background:rgba(0,0,0,.05); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.7); }
-  :global(html.light) .carousel-btn:hover { background:rgba(0,0,0,.1); }
-  :global(html.light) .carousel-dot { background:rgba(0,0,0,.18); }
-  :global(html.light) .carousel-dot--active { background:#c77a10; }
   :global(html.light) .pm-card { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
   :global(html.light) .pm-card:hover { border-color:rgba(247,147,26,.2); }
   :global(html.light) .pm-tag { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); color:rgba(0,0,0,.5); }
@@ -1506,38 +1419,10 @@
 
   :global(html.light) .pm-news-src { background:rgba(247,147,26,.08); border-color:rgba(247,147,26,.25); color:#c77a10; }
 
-  /* ── MOBILE NEWS/MARKET CAROUSEL ────────────────────────────── */
-  /* (scroll-snap applied to all .pm-grid on mobile in the block above) */
-
   /* Intel section padding on mobile */
   #intel.section { padding-bottom: 80px; }
   @media (max-width:700px) {
     #intel.section { min-height: auto; padding-top: 20px; padding-bottom: 40px; }
-  }
-
-  /* ── FEED CAROUSEL ───────────────────────────────────────── */
-  /* Desktop: normal vertical list flow */
-  .feed-carousel { display:block; }
-
-  /* Animation keyframes kept for potential future use */
-  @keyframes feedScroll {
-    from { transform:translateX(0); }
-    to   { transform:translateX(-50%); }
-  }
-
-  @media (max-width:700px) {
-    /* Mobile: static vertical list, no auto-scroll */
-    .feed-carousel { display:block; }
-
-    /* Limit feed to first 5 items on mobile */
-    .news-slide:nth-child(n+6),
-    .mkt-slide:nth-child(n+6) { display:none; }
-
-    /* Restore normal block layout for slides */
-    .news-slide, .mkt-slide {
-      min-width:unset;
-      flex-shrink:unset;
-    }
   }
 
   /* Prediction market — PolyMarket-inspired */
