@@ -504,12 +504,6 @@
           <clipPath id="eyeClip">
             <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z"/>
           </clipPath>
-          <linearGradient id="shimmerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%"   stop-color="rgba(255,255,255,0)" />
-            <stop offset="38%"  stop-color="rgba(255,235,190,0.42)" />
-            <stop offset="58%"  stop-color="rgba(247,147,26,0.52)" />
-            <stop offset="100%" stop-color="rgba(255,255,255,0)" />
-          </linearGradient>
           <filter id="outlineGlow" x="-10%" y="-30%" width="120%" height="160%">
             <feGaussianBlur in="SourceGraphic" stdDeviation="0.7" result="blur"/>
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
@@ -517,10 +511,6 @@
         </defs>
         <!-- Eye background -->
         <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="#040201"/>
-        <!-- Foil shimmer sweep clipped to eye -->
-        <g clip-path="url(#eyeClip)">
-          <rect class="eye-shimmer" x="-57" y="3.5" width="33" height="17" fill="url(#shimmerGrad)"/>
-        </g>
         <!-- Top eyelid arc -->
         <path d="M6,12 C18,3.5 42,3.5 54,12" fill="none" stroke="rgba(247,147,26,0.55)" stroke-width="0.7" stroke-linecap="round"/>
         <!-- Full eye outline with soft glow -->
@@ -531,13 +521,11 @@
         <!-- Eyelid cover — slides up on load to reveal GL4NCE text (once, on page load) -->
         <g clip-path="url(#eyeClip)">
           <rect class="eye-lid-reveal" x="6" y="3.5" width="48" height="17" fill="#040201">
-            <animate attributeName="y" from="3.5" to="-17" dur="2.2s" begin="0.3s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
+            <animate attributeName="y" from="3.5" to="-17" dur="2.4s" begin="0.4s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.42 0 0.18 1"/>
           </rect>
         </g>
       </svg>
-      <span class="brand-name">
-        <span class="b-gl">GL</span><svg class="b-4" viewBox="0 0 10 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M5,1 L1,13 M5,1 L9,13 M2.4,8.5 L7.6,8.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><span class="b-nce">NCE</span>
-      </span>
+      <span class="brand-name">GL<span class="b-4">4</span>NCE</span>
     </div>
   </a>
 
@@ -858,20 +846,11 @@
   @keyframes eyeOutlinePulse { 0%,100%{opacity:.78} 50%{opacity:.96} }
   .eye-outline { animation:eyeOutlinePulse 3s ease-in-out infinite; }
 
-  /* Foil shimmer — single sweep every ~13s, quick pass */
-  @keyframes eyeShimmer {
-    0%,88%  { transform:translateX(0);     opacity:0; }
-    89%     { opacity:0.85; }
-    94%     { transform:translateX(118px); opacity:0.65; }
-    95%,100%{ transform:translateX(118px); opacity:0; }
-  }
-  .eye-shimmer { animation:eyeShimmer 13s ease-in-out infinite; }
-
   /* Eyelid reveal: hidden once open (SMIL animate handles the motion in SVG) */
   .eye-lid-reveal { transform-box:fill-box; }
 
   @media (prefers-reduced-motion:reduce) {
-    .eye-shimmer,.eye-outline { animation:none; }
+    .eye-outline { animation:none; }
     .eye-lid-reveal { display:none; }
     .brand-name { animation:none !important; opacity:1 !important; }
   }
@@ -881,18 +860,10 @@
   }
 
   /* ── WORDMARK ────────────────────────────────────────────── */
-  /* padding:0 10% aligns text with the eye outline corners (x=6 & x=54 in a 60-unit viewBox) */
-  /* brand-name fades in after eyelid lifts (~2.2s open + 0.3s delay = starts reveal at 2.0s) */
-  .brand-name { position:absolute; inset:0; display:flex; align-items:center; font-family:'Gardion','Nyxerin',monospace; font-weight:900; font-size:1.0rem; letter-spacing:.08em; line-height:1; pointer-events:none; padding:0 10%; animation:brandReveal 0.9s ease-out 1.9s both; }
+  /* Eyelid finishes at begin(0.4s) + dur(2.4s) = 2.8s; text reveal starts at 2.2s for synchronized overlap */
+  .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.92rem; letter-spacing:.12em; line-height:1; pointer-events:none; color:#eaeaea; text-transform:uppercase; animation:brandReveal 1.0s ease-out 2.2s both; }
   @keyframes brandReveal { from{opacity:0} to{opacity:1} }
-  .b-gl, .b-nce { color:rgba(234,234,234,.92); flex:1; display:flex; }
-  .b-gl  { justify-content:flex-start; }
-  .b-nce { justify-content:flex-end; }
-  .b-4 { color:var(--orange); height:1.15em; width:0.83em; flex-shrink:0; filter:drop-shadow(0 0 5px rgba(247,147,26,.8)) drop-shadow(0 0 12px rgba(247,147,26,.4)); animation:fourGlow 3s ease-in-out infinite; }
-  @keyframes fourGlow {
-    0%,100% { filter:drop-shadow(0 0 4px rgba(247,147,26,.85)) drop-shadow(0 0 10px rgba(247,147,26,.45)); }
-    50%     { filter:drop-shadow(0 0 8px rgba(247,147,26,1)) drop-shadow(0 0 18px rgba(247,147,26,.55)) drop-shadow(0 0 30px rgba(247,147,26,.18)); }
-  }
+  .b-4 { color:var(--orange); }
 
   /* ── BURGER (mobile only) ────────────────────────────────── */
   .burger {
@@ -1054,7 +1025,7 @@
     background:rgba(0,0,0,.55);
     backdrop-filter:blur(8px);
   }
-  .footer-brand { font-family:'Nyxerin',monospace; font-size:.65rem; font-weight:900; color:rgba(255,255,255,.28); letter-spacing:.1em; }
+  .footer-brand { font-family:'Turbo Driver','Nyxerin',monospace; font-size:.65rem; font-weight:900; color:rgba(255,255,255,.28); letter-spacing:.1em; text-transform:uppercase; }
   .footer-sources { font-size:.56rem; color:rgba(255,255,255,.18); letter-spacing:.02em; }
   .footer-sources a { color:rgba(255,255,255,.25); text-decoration:none; transition:color .2s; }
   .footer-sources a:hover { color:var(--orange); }
@@ -1067,7 +1038,7 @@
   :global(html.light) body::after { background: linear-gradient(transparent 50%, rgba(0,0,0,0.008) 50%); }
   :global(html.light) .hdr { background:rgba(255,255,255,.92); border-bottom-color:rgba(0,0,0,.08); }
   :global(html.light) .hdr--scrolled { background:rgba(255,255,255,.97); box-shadow:0 2px 12px rgba(0,0,0,.08); }
-  :global(html.light) .b-gl,:global(html.light) .b-nce { color:#111; }
+  :global(html.light) .brand-name { color:#111; }
   :global(html.light) .hdr-clock { color:rgba(0,0,0,.45); }
   :global(html.light) .nav-link { color:rgba(0,0,0,.55); }
   :global(html.light) .nav-link:hover { color:#111; border-color:rgba(247,147,26,.4); }
