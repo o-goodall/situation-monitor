@@ -16,22 +16,52 @@
   import PriceChart from '$lib/PriceChart.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
-  let chartRange: '3M' | '6M' | '1Y' = '6M';
-  let hashrateData: { t: number; p: number }[] = [];
-  let chartLoading = false;
+  let btcChartRange: '1D' | '7D' | '1M' = '1D';
+  let btcChartData: { t: number; p: number }[] = [];
+  let btcChartLoading = false;
 
-  async function fetchHashrateChart(r = chartRange) {
-    chartLoading = true;
+  async function fetchBtcChart(r = btcChartRange) {
+    btcChartLoading = true;
+    try {
+      const map: Record<string,'1d'|'7d'|'30d'> = { '1D':'1d', '7D':'7d', '1M':'30d' };
+      const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
+      btcChartData = d.prices ?? [];
+    } catch { btcChartData = []; }
+    finally { btcChartLoading = false; }
+  }
+
+  async function setBtcChartRange(r: '1D' | '7D' | '1M') {
+    btcChartRange = r;
+    await fetchBtcChart(r);
+  }
+
+  // Keep last chart price point in sync with live WebSocket price.
+  // Only update when price changes by >0.05% to avoid excessive array copies.
+  let _lastChartPrice = 0;
+  $: if ($btcPrice > 0 && btcChartData.length > 0) {
+    const changePct = _lastChartPrice > 0 ? Math.abs($btcPrice - _lastChartPrice) / _lastChartPrice : 1;
+    if (changePct >= 0.0005) {
+      _lastChartPrice = $btcPrice;
+      btcChartData = [...btcChartData.slice(0, -1), { t: Date.now(), p: $btcPrice }];
+    }
+  }
+
+  let hashrateChartRange: '3M' | '6M' | '1Y' = '6M';
+  let hashrateData: { t: number; p: number }[] = [];
+  let hashrateLoading = false;
+
+  async function fetchHashrateChart(r = hashrateChartRange) {
+    hashrateLoading = true;
     try {
       const map: Record<string,'3m'|'6m'|'1y'> = { '3M':'3m', '6M':'6m', '1Y':'1y' };
       const d = await fetch(`/api/bitcoin/hashrate?range=${map[r]}`).then(res => res.json());
       hashrateData = d.hashrates ?? [];
     } catch { hashrateData = []; }
-    finally { chartLoading = false; }
+    finally { hashrateLoading = false; }
   }
 
-  async function setChartRange(r: '3M' | '6M' | '1Y') {
-    chartRange = r;
+  async function setHashrateChartRange(r: '3M' | '6M' | '1Y') {
+    hashrateChartRange = r;
     await fetchHashrateChart(r);
   }
 
