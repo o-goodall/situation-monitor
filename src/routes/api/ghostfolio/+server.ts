@@ -111,7 +111,7 @@ export async function GET({ url }) {
     cash          = d?.cash ?? null;
     firstOrderDate = d?.firstOrderDate ?? null;
     ordersCount   = d?.ordersCount ?? null;
-    annualizedPerformancePct = d?.annualizedPerformancePercent ?? null;
+    annualizedPerformancePct = d?.annualizedPerformancePercentWithCurrencyEffect ?? d?.annualizedPerformancePercent ?? null;
     // Ghostfolio always returns percentages as decimals (e.g. 0.12 = 12%)
     if (annualizedPerformancePct !== null) {
       annualizedPerformancePct = annualizedPerformancePct * 100;
