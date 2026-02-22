@@ -502,56 +502,81 @@
       <svg class="eye-svg" viewBox="0 0 60 24" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <radialGradient id="irisGrad" cx="45%" cy="40%" r="55%">
-            <stop offset="0%" stop-color="#2a1200"/>
-            <stop offset="50%" stop-color="#130800"/>
-            <stop offset="100%" stop-color="#050200"/>
+            <stop offset="0%" stop-color="#3d1a00"/>
+            <stop offset="45%" stop-color="#1a0900"/>
+            <stop offset="100%" stop-color="#050202"/>
           </radialGradient>
           <radialGradient id="irisRingGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="60%" stop-color="transparent"/>
-            <stop offset="100%" stop-color="rgba(247,147,26,0.18)"/>
+            <stop offset="55%" stop-color="transparent"/>
+            <stop offset="100%" stop-color="rgba(247,147,26,0.24)"/>
+          </radialGradient>
+          <radialGradient id="eyeAmbiGrad" cx="50%" cy="50%" r="50%">
+            <stop offset="40%" stop-color="transparent"/>
+            <stop offset="100%" stop-color="rgba(247,147,26,0.07)"/>
           </radialGradient>
           <clipPath id="eyeClip">
             <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z"/>
           </clipPath>
           <linearGradient id="shimmerGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stop-color="rgba(255,255,255,0)" />
-            <stop offset="40%" stop-color="rgba(255,230,180,0.35)" />
-            <stop offset="60%" stop-color="rgba(247,147,26,0.45)" />
+            <stop offset="0%"   stop-color="rgba(255,255,255,0)" />
+            <stop offset="38%"  stop-color="rgba(255,235,190,0.42)" />
+            <stop offset="58%"  stop-color="rgba(247,147,26,0.52)" />
             <stop offset="100%" stop-color="rgba(255,255,255,0)" />
           </linearGradient>
+          <filter id="outlineGlow" x="-10%" y="-30%" width="120%" height="160%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="0.7" result="blur"/>
+            <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
         </defs>
+        <!-- Ambient glow ellipse behind eye -->
+        <ellipse cx="30" cy="12" rx="27" ry="12" fill="url(#eyeAmbiGrad)" class="eye-outer-glow"/>
         <!-- Eye background -->
-        <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="#030201"/>
+        <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="#040201"/>
         <!-- Iris group — subtle drift animation -->
         <g class="eye-iris">
-          <circle cx="30" cy="12" r="8" fill="url(#irisGrad)"/>
-          <circle cx="30" cy="12" r="8" fill="url(#irisRingGrad)"/>
-          <circle cx="30" cy="12" r="6.5" fill="none" stroke="rgba(247,147,26,0.18)" stroke-width="0.5"/>
-          <circle cx="30" cy="12" r="5" fill="none" stroke="rgba(247,147,26,0.1)" stroke-width="0.4"/>
+          <circle cx="30" cy="12" r="8"   fill="url(#irisGrad)"/>
+          <circle cx="30" cy="12" r="8"   fill="url(#irisRingGrad)"/>
+          <circle cx="30" cy="12" r="7"   fill="none" stroke="rgba(247,147,26,0.10)" stroke-width="0.4"/>
+          <circle cx="30" cy="12" r="6"   fill="none" stroke="rgba(247,147,26,0.16)" stroke-width="0.5"/>
+          <circle cx="30" cy="12" r="4.8" fill="none" stroke="rgba(247,147,26,0.10)" stroke-width="0.35"/>
+          <!-- Subtle iris spokes -->
+          <line x1="30" y1="4.4"   x2="30" y2="6.2"   stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
+          <line x1="30" y1="17.8"  x2="30" y2="19.6"  stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
+          <line x1="22.4" y1="7.6" x2="23.5" y2="8.7" stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
+          <line x1="36.5" y1="15.3" x2="37.6" y2="16.4" stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
+          <line x1="22" y1="12"    x2="23.8" y2="12"   stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
+          <line x1="36.2" y1="12"  x2="38" y2="12"    stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
           <!-- Pupil -->
-          <circle cx="30" cy="12" r="3.2" fill="#020101"/>
-          <!-- Pupil inner depth -->
-          <circle cx="30" cy="12" r="2" fill="#010101"/>
+          <circle cx="30" cy="12" r="3"   fill="#010101"/>
+          <circle cx="30" cy="12" r="1.8" fill="#000"/>
         </g>
         <!-- Scanlines clipped to eye shape -->
         <g clip-path="url(#eyeClip)" class="eye-scanlines">
-          <rect x="6" y="9" width="48" height="0.5" fill="rgba(247,147,26,0.06)"/>
-          <rect x="6" y="11" width="48" height="0.5" fill="rgba(247,147,26,0.04)"/>
-          <rect x="6" y="13" width="48" height="0.5" fill="rgba(247,147,26,0.06)"/>
-          <rect x="6" y="15" width="48" height="0.5" fill="rgba(247,147,26,0.04)"/>
+          <rect x="6" y="9"  width="48" height="0.45" fill="rgba(247,147,26,0.07)"/>
+          <rect x="6" y="11" width="48" height="0.45" fill="rgba(247,147,26,0.05)"/>
+          <rect x="6" y="13" width="48" height="0.45" fill="rgba(247,147,26,0.07)"/>
+          <rect x="6" y="15" width="48" height="0.45" fill="rgba(247,147,26,0.05)"/>
         </g>
         <!-- Foil shimmer sweep clipped to eye -->
         <g clip-path="url(#eyeClip)">
-          <!-- x=-57 starts shimmer off left edge (canvas=60, width=33); animation moves it 118px to exit right -->
           <rect class="eye-shimmer" x="-57" y="3.5" width="33" height="17" fill="url(#shimmerGrad)"/>
         </g>
-        <!-- Outer eye outline -->
-        <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="none" stroke="#f7931a" stroke-width="1" opacity="0.7"/>
-        <!-- Corner accent dots -->
-        <circle cx="6" cy="12" r="1" fill="rgba(247,147,26,0.5)"/>
-        <circle cx="54" cy="12" r="1" fill="rgba(247,147,26,0.5)"/>
+        <!-- Outer eye outline with soft glow -->
+        <path class="eye-outline" filter="url(#outlineGlow)" d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="none" stroke="#f7931a" stroke-width="0.85" opacity="0.78"/>
+        <!-- Eyelash accent ticks above -->
+        <line x1="20" y1="5.1"  x2="18.2" y2="3.5"  stroke="rgba(247,147,26,0.38)" stroke-width="0.6" stroke-linecap="round"/>
+        <line x1="30" y1="3.5"  x2="30"   y2="1.6"   stroke="rgba(247,147,26,0.44)" stroke-width="0.6" stroke-linecap="round"/>
+        <line x1="40" y1="5.1"  x2="41.8" y2="3.5"  stroke="rgba(247,147,26,0.38)" stroke-width="0.6" stroke-linecap="round"/>
+        <!-- Corner accent dots + chevrons -->
+        <circle cx="6"  cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
+        <circle cx="54" cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
+        <line x1="3.2" y1="10.4" x2="5.8" y2="12"   stroke="rgba(247,147,26,0.32)" stroke-width="0.5"/>
+        <line x1="3.2" y1="13.6" x2="5.8" y2="12"   stroke="rgba(247,147,26,0.32)" stroke-width="0.5"/>
+        <line x1="56.8" y1="10.4" x2="54.2" y2="12" stroke="rgba(247,147,26,0.32)" stroke-width="0.5"/>
+        <line x1="56.8" y1="13.6" x2="54.2" y2="12" stroke="rgba(247,147,26,0.32)" stroke-width="0.5"/>
         <!-- Cornea highlight -->
-        <ellipse cx="26.5" cy="9.5" rx="1.4" ry="0.8" fill="rgba(255,255,255,0.5)" class="eye-highlight"/>
+        <ellipse cx="26.5" cy="9.5"  rx="1.6" ry="0.9" fill="rgba(255,255,255,0.55)" class="eye-highlight"/>
+        <ellipse cx="28.8" cy="10.6" rx="0.6" ry="0.4" fill="rgba(255,255,255,0.25)" class="eye-highlight"/>
         <!-- Binary flicker text inside pupil -->
         <text aria-hidden="true" class="eye-binary" x="30" y="13.5" text-anchor="middle" font-size="2.2" fill="rgba(247,147,26,0.7)" font-family="monospace">01</text>
       </svg>
@@ -871,8 +896,16 @@
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
 
   /* ── CYBERPUNK EYE ───────────────────────────────────────── */
-  .eye-wrap { width:68px; height:27px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
+  .eye-wrap { width:96px; height:38px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
   .eye-svg { width:100%; height:100%; overflow:visible; }
+
+  /* Ambient outer glow pulse */
+  @keyframes eyeAmbiGlow { 0%,100%{opacity:.7} 50%{opacity:1} }
+  .eye-outer-glow { animation:eyeAmbiGlow 5s ease-in-out infinite; }
+
+  /* Outline subtle pulse */
+  @keyframes eyeOutlinePulse { 0%,100%{opacity:.78} 50%{opacity:.96} }
+  .eye-outline { animation:eyeOutlinePulse 3s ease-in-out infinite; }
 
   /* Iris drift — slow, subtle */
   @keyframes irisDrift {
@@ -893,16 +926,16 @@
   /* Foil shimmer — single sweep every ~13s, quick pass */
   @keyframes eyeShimmer {
     0%,88%  { transform:translateX(0);     opacity:0; }
-    89%     { opacity:0.8; }
-    94%     { transform:translateX(118px); opacity:0.6; }
+    89%     { opacity:0.85; }
+    94%     { transform:translateX(118px); opacity:0.65; }
     95%,100%{ transform:translateX(118px); opacity:0; }
   }
   .eye-shimmer { animation:eyeShimmer 13s ease-in-out infinite; }
 
   /* Cornea highlight gentle pulse */
   @keyframes highlightPulse {
-    0%,100% { opacity:0.5; }
-    50%     { opacity:0.75; }
+    0%,100% { opacity:0.55; }
+    50%     { opacity:0.8; }
   }
   .eye-highlight { animation:highlightPulse 3s ease-in-out infinite; }
 
@@ -915,22 +948,25 @@
   .eye-binary { animation:binaryFlicker 9s ease-in-out infinite; }
 
   @media (prefers-reduced-motion:reduce) {
-    .eye-iris,.eye-scanlines,.eye-shimmer,.eye-highlight,.eye-binary { animation:none; }
+    .eye-iris,.eye-scanlines,.eye-shimmer,.eye-highlight,.eye-binary,.eye-outer-glow,.eye-outline { animation:none; }
     .eye-binary { opacity:0; }
   }
 
   @media (max-width:768px) {
-    .eye-wrap { width:58px; height:23px; }
+    .eye-wrap { width:80px; height:32px; }
   }
 
   /* ── WORDMARK ────────────────────────────────────────────── */
-  /* font-size:.80rem fits "gl4nce" within the eye interior; flex sides centre the "4" over the pupil */
-  .brand-name { position:absolute; inset:0; display:flex; align-items:center; font-family:'Nyxerin',monospace; font-weight:900; font-size:.80rem; letter-spacing:.06em; line-height:1; pointer-events:none; }
+  /* flex sides keep the "4" centred exactly over the pupil at 50% of wrapper width */
+  .brand-name { position:absolute; inset:0; display:flex; align-items:center; font-family:'Nyxerin',monospace; font-weight:900; font-size:1.0rem; letter-spacing:.08em; line-height:1; pointer-events:none; }
   .b-gl, .b-nce { color:rgba(234,234,234,.92); flex:1; display:flex; }
-  .b-gl  { justify-content:flex-end; }
-  .b-nce { justify-content:flex-start; }
-  .b-4 { color:var(--orange); text-shadow:0 0 14px rgba(247,147,26,.8),0 0 28px rgba(247,147,26,.4); animation:fourGlow 3s ease-in-out infinite; display:inline-block; }
-  @keyframes fourGlow{0%,100%{text-shadow:0 0 12px rgba(247,147,26,.8),0 0 24px rgba(247,147,26,.4)}50%{text-shadow:0 0 20px rgba(247,147,26,1),0 0 44px rgba(247,147,26,.5),0 0 70px rgba(247,147,26,.18)}}
+  .b-gl  { justify-content:flex-end; padding-right:1px; }
+  .b-nce { justify-content:flex-start; padding-left:1px; }
+  .b-4 { color:var(--orange); font-size:1.15em; text-shadow:0 0 14px rgba(247,147,26,.8),0 0 28px rgba(247,147,26,.4); animation:fourGlow 3s ease-in-out infinite; display:inline-block; }
+  @keyframes fourGlow {
+    0%,100% { text-shadow:0 0 12px rgba(247,147,26,.85),0 0 26px rgba(247,147,26,.45); }
+    50%     { text-shadow:0 0 22px rgba(247,147,26,1),0 0 48px rgba(247,147,26,.55),0 0 80px rgba(247,147,26,.18); }
+  }
 
   /* ── BURGER (mobile only) ────────────────────────────────── */
   .burger {
@@ -958,8 +994,8 @@
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:auto; }
-    .brand-name { font-size:.68rem; }
-    .eye-wrap { width:58px; height:23px; }
+    .brand-name { font-size:.86rem; }
+    .eye-wrap { width:80px; height:32px; }
   }
 
   /* ── MOBILE FULL-SCREEN MENU ─────────────────────────────── */
