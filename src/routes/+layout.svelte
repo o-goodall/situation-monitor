@@ -288,8 +288,8 @@
       const ELECTRIC = 'rgba(0,200,255,';
 
       function isMobile() { return window.innerWidth < 768; }
-      const NODE_COUNT = () => isMobile() ? 16 : 32;
-      const CONN_DIST = () => isMobile() ? 180 : 220;
+      const NODE_COUNT = () => isMobile() ? 10 : 32;
+      const CONN_DIST = () => isMobile() ? 150 : 220;
 
       let resizeTimer: any;
       function resize() {
@@ -436,11 +436,11 @@
 
         // Spawn transmissions periodically
         spawnTimer++;
-        const spawnRate = isMobile() ? 90 : 50;
+        const spawnRate = isMobile() ? 120 : 50;
         if (spawnTimer >= spawnRate) {
           spawnTransmission();
-          // Occasional burst
-          if (Math.random() < 0.2) { spawnTransmission(); spawnTransmission(); }
+          // Occasional burst — less frequent on mobile
+          if (Math.random() < (isMobile() ? 0.1 : 0.2)) { spawnTransmission(); spawnTransmission(); }
           spawnTimer = 0;
         }
 
@@ -450,9 +450,8 @@
           t.draw();
           if (done) {
             pings.push(new Ping(t.to.x, t.to.y));
-            // Chain: ~55% of the time spawn the next transmission FROM the arrival node,
-            // producing a visible ping → line → ping → line trail pattern.
-            if (Math.random() < 0.55) {
+            // Chain: ~55% on desktop, ~30% on mobile to reduce CPU load
+            if (Math.random() < (isMobile() ? 0.3 : 0.55)) {
               const from = t.to;
               let chainTo: Node | null = null, chainDist = Infinity;
               for (const n of nodes) {
@@ -534,19 +533,6 @@
     <button class="nav-link" class:nav-link--active={$activeSection==='signal'}    on:click={()=>navigateTo('signal')}>₿ Signal</button>
     <button class="nav-link" class:nav-link--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')}>↗ Portfolio</button>
     <button class="nav-link" class:nav-link--active={$activeSection==='intel'}     on:click={()=>navigateTo('intel')}>◈ Intel</button>
-  </nav>
-
-  <!-- Mobile section icons — in header, visible on small screens -->
-  <nav class="mobile-section-nav mobile-only" aria-label="Section navigation">
-    <button class="mobile-nav-btn" class:mobile-nav-btn--active={$activeSection==='signal'} on:click={()=>navigateTo('signal')} aria-label="Signal section">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M15.31 8h-6.62A1.5 1.5 0 0 0 7.5 10.5V11a2 2 0 0 0 2 2h5a2 2 0 0 1 2 2v.5a1.5 1.5 0 0 1-1.5 1.5H8.69"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
-    </button>
-    <button class="mobile-nav-btn" class:mobile-nav-btn--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')} aria-label="Portfolio section">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
-    </button>
-    <button class="mobile-nav-btn" class:mobile-nav-btn--active={$activeSection==='intel'} on:click={()=>navigateTo('intel')} aria-label="Intel section">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-    </button>
   </nav>
 
   <!-- Spacer pushes right controls to far right on desktop -->
@@ -786,10 +772,30 @@
   </span>
 </footer>
 
+<!-- ══ MOBILE BOTTOM NAVIGATION ══════════════════════════════ -->
+<nav class="bottom-nav mobile-only" aria-label="Section navigation">
+  <button class="bnav-btn" class:bnav-btn--active={$activeSection==='signal'} on:click={()=>navigateTo('signal')} aria-label="Signal section" aria-current={$activeSection==='signal'?'page':undefined}>
+    <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M15.31 8h-6.62A1.5 1.5 0 0 0 7.5 10.5V11a2 2 0 0 0 2 2h5a2 2 0 0 1 2 2v.5a1.5 1.5 0 0 1-1.5 1.5H8.69"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+    <span class="bnav-label">Signal</span>
+  </button>
+  <button class="bnav-btn" class:bnav-btn--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')} aria-label="Portfolio section" aria-current={$activeSection==='portfolio'?'page':undefined}>
+    <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+    <span class="bnav-label">Portfolio</span>
+  </button>
+  <button class="bnav-btn" class:bnav-btn--active={$activeSection==='intel'} on:click={()=>navigateTo('intel')} aria-label="Intel section" aria-current={$activeSection==='intel'?'page':undefined}>
+    <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <span class="bnav-label">Intel</span>
+  </button>
+</nav>
+
 <style>
   /* Canvas */
   #net-canvas { position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; will-change:transform; transition:opacity .5s; }
   :global(html.light) #net-canvas { opacity:0.2; }
+
+  /* ── LAYOUT TOKENS ───────────────────────────────────────── */
+  /* Height of the sticky mobile bottom nav — used for clearance calculations */
+  :root { --bottom-nav-h: 72px; }
 
   /* ── HEADER ──────────────────────────────────────────────── */
   .hdr {
@@ -896,46 +902,73 @@
   .desktop-only { display:flex; }
   .mobile-only  { display:none; }
 
-  /* ── MOBILE HEADER SECTION NAV ───────────────────────────── */
-  .mobile-section-nav { display:none; gap:2px; align-items:center; margin-left:10px; }
-  .mobile-nav-btn {
-    width:34px; height:34px; padding:0; border-radius:3px;
-    background:none; border:1px solid transparent;
-    color:rgba(255,255,255,.5); cursor:pointer;
-    transition:all .2s; display:flex; align-items:center; justify-content:center;
-    position:relative;
-  }
-  .mobile-nav-btn::after {
-    content:''; position:absolute; bottom:0; left:0; width:0; height:2px;
-    background:linear-gradient(90deg,#f7931a,#00c8ff);
-    transition:width .25s ease;
-  }
-  .mobile-nav-btn:hover { color:rgba(255,255,255,.9); border-color:rgba(247,147,26,.3); }
-  .mobile-nav-btn--active { color:var(--orange)!important; border-color:rgba(247,147,26,.3)!important; }
-  .mobile-nav-btn--active::after { width:100%; }
-
   /* ── MOBILE HEADER RIGHT CONTROLS ───────────────────────── */
   .mobile-hdr-right { display:none; align-items:center; gap:6px; }
 
   @media (max-width:768px) {
-    .hdr { position:relative; height:54px; padding:0 16px; }
+    .hdr { position:relative; height:54px; padding:0 16px; backdrop-filter:blur(12px) saturate(160%); -webkit-backdrop-filter:blur(12px) saturate(160%); }
     .hdr--scrolled { height:54px; }
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:0; }
     .brand-name { font-size:0.76rem; }
     .eye-wrap { width:90px; height:38px; }
-    .mobile-section-nav { display:flex; }
     .mobile-hdr-right { display:flex; }
     /* Uniform button size for all header controls on mobile */
     .mobile-hdr-right .btn-ghost,
     .mobile-hdr-right .ws-badge,
     .mobile-hdr-right .mode-toggle,
     .mobile-hdr-right .settings-btn {
-      width:34px; height:34px; padding:0;
+      width:44px; height:44px; padding:0;
       display:flex; align-items:center; justify-content:center;
     }
   }
+
+  /* ── MOBILE BOTTOM NAVIGATION ────────────────────────────── */
+  .bottom-nav {
+    position:fixed; bottom:0; left:0; right:0; z-index:350;
+    display:none;
+    align-items:stretch;
+    background:rgba(10,10,10,0.96);
+    backdrop-filter:blur(20px) saturate(180%);
+    -webkit-backdrop-filter:blur(20px) saturate(180%);
+    border-top:1px solid rgba(247,147,26,0.14);
+    box-shadow:0 -4px 24px rgba(0,0,0,.4);
+    /* Safe area inset for notched phones */
+    padding-bottom:env(safe-area-inset-bottom, 0px);
+    padding-left:env(safe-area-inset-left, 0px);
+    padding-right:env(safe-area-inset-right, 0px);
+  }
+  .bnav-btn {
+    flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:4px; padding:10px 4px;
+    background:none; border:none; cursor:pointer;
+    color:rgba(255,255,255,.35);
+    transition:color .2s, background .2s;
+    position:relative; min-height:56px;
+  }
+  .bnav-btn::before {
+    content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:0; height:2px;
+    background:linear-gradient(90deg,#f7931a,#00c8ff);
+    box-shadow:0 0 8px rgba(247,147,26,.7);
+    transition:width .25s ease;
+  }
+  .bnav-btn:hover { color:rgba(255,255,255,.7); background:rgba(247,147,26,.05); }
+  .bnav-btn--active { color:var(--orange)!important; }
+  .bnav-btn--active::before { width:40px; }
+  .bnav-icon { width:20px; height:20px; flex-shrink:0; }
+  .bnav-label {
+    font-family:'Poison',monospace; font-size:.55rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.1em; line-height:1;
+  }
+  @media (max-width:768px) {
+    .bottom-nav { display:flex; }
+  }
+  :global(html.light) .bottom-nav { background:rgba(255,255,255,.97); border-top-color:rgba(0,0,0,.08); box-shadow:0 -2px 16px rgba(0,0,0,.08); }
+  :global(html.light) .bnav-btn { color:rgba(0,0,0,.4); }
+  :global(html.light) .bnav-btn:hover { background:rgba(247,147,26,.06); color:rgba(0,0,0,.7); }
+  :global(html.light) .bnav-btn--active { color:#c77a10!important; }
 
   /* ── MOBILE FULL-SCREEN MENU ─────────────────────────────── */
   .mobile-menu {
@@ -950,7 +983,7 @@
     position:absolute; top:54px; left:0; right:0;
     background:rgba(10,10,10,.97); backdrop-filter:blur(28px);
     border-bottom:1px solid rgba(247,147,26,.2);
-    padding:0 0 24px; max-height:calc(100vh - 54px - 60px); overflow-y:auto;
+    padding:0 0 24px; max-height:calc(100vh - 54px - var(--bottom-nav-h)); overflow-y:auto;
   }
   .mobile-nav { display:flex; flex-direction:column; padding:8px 0; }
   .mobile-nav-link {
@@ -981,7 +1014,7 @@
 
   /* ── PAGE WRAP ───────────────────────────────────────────── */
   .page-wrap { padding-top:64px; min-height:100vh; }
-  @media (max-width:768px) { .page-wrap { padding-top:0; } }
+  @media (max-width:768px) { .page-wrap { padding-top:0; padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px)); } }
   @media (max-width:700px) {
     .page-wrap { display:flex; flex-direction:column; }
   }
@@ -998,7 +1031,7 @@
     from { opacity:0; transform:translateY(-8px); }
     to   { opacity:1; transform:translateY(0); }
   }
-  @media (max-width:768px) { .drawer { top: 54px; max-height: calc(100vh - 54px); } }
+  @media (max-width:768px) { .drawer { top: 54px; max-height: calc(100vh - 54px - var(--bottom-nav-h)); } }
   .drawer-inner { max-width:900px; margin:0 auto; padding:28px 24px; display:flex; flex-direction:column; gap:22px; }
   .dg-hd { font-size:.72rem; font-weight:600; color:rgba(255,255,255,.5); margin-bottom:12px; display:flex; align-items:center; gap:8px; font-family:'Poison',monospace; letter-spacing:.06em; text-transform:uppercase; }
   .dhint { font-size:.62rem; color:rgba(255,255,255,.2); font-weight:400; font-family:'Poison',monospace; text-transform:none; letter-spacing:0; }
