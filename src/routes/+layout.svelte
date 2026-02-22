@@ -860,7 +860,7 @@
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
 
   /* ── CYBERPUNK EYE ───────────────────────────────────────── */
-  .eye-wrap { width:108px; height:44px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
+  .eye-wrap { width:124px; height:52px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
   .eye-svg { width:100%; height:100%; overflow:visible; }
 
   /* Outline subtle pulse then fades to silver after reveal */
@@ -884,28 +884,13 @@
   }
 
   @media (max-width:768px) {
-    .eye-wrap { width:90px; height:36px; }
+    .eye-wrap { width:100px; height:42px; }
   }
 
   /* ── WORDMARK ────────────────────────────────────────────── */
   /* Eyelid finishes at begin(0.4s) + dur(2.4s) = 2.8s; text reveal starts at 2.2s for synchronized overlap */
   .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.92rem; letter-spacing:.12em; line-height:1; pointer-events:none; color:#eaeaea; text-transform:uppercase; overflow:hidden; isolation:isolate; animation:brandReveal 1.0s ease-out 2.2s both; }
   @keyframes brandReveal { from{opacity:0} to{opacity:1} }
-  /* Foil glimmer sweeps across GL4NCE every ~9s */
-  .brand-name::after {
-    content:''; position:absolute; inset:-4px;
-    background:linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.6) 50%, transparent 70%);
-    transform:translateX(-250%);
-    pointer-events:none;
-    mix-blend-mode:screen;
-    animation:brandFoilSweep 9s ease-in-out 4s infinite;
-  }
-  @keyframes brandFoilSweep {
-    0%   { transform:translateX(-250%); opacity:0; }
-    2%   { transform:translateX(-200%); opacity:1; }
-    10%  { transform:translateX(200%);  opacity:0; }
-    100% { transform:translateX(-250%); opacity:0; }
-  }
   /* "4" Bitcoin orange glow — hums continuously */
   @keyframes b4Hum {
     0%,100% { text-shadow:0 0 6px rgba(247,147,26,0.45), 0 0 12px rgba(247,147,26,0.18); }
@@ -945,7 +930,7 @@
     .mobile-only  { display:flex !important; }
     .brand { margin-right:0; }
     .brand-name { font-size:.86rem; }
-    .eye-wrap { width:90px; height:36px; }
+    .eye-wrap { width:100px; height:42px; }
     .mobile-section-nav { display:flex; }
     .mobile-hdr-right { display:flex; }
   }
@@ -995,6 +980,9 @@
   /* ── PAGE WRAP ───────────────────────────────────────────── */
   .page-wrap { padding-top:64px; min-height:100vh; }
   @media (max-width:768px) { .page-wrap { padding-top:54px; } }
+  @media (max-width:700px) {
+    .page-wrap { display:flex; flex-direction:column; }
+  }
 
   /* ── SETTINGS DRAWER ────────────────────────────────────── */
   .drawer {
