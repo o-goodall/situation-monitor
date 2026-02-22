@@ -526,6 +526,7 @@
         </g>
       </svg>
       <span class="brand-name">GL<span class="b-4">4</span>NCE</span>
+      <span class="mobile-logo-4"><span class="b-4">4</span></span>
     </div>
   </a>
 
@@ -858,7 +859,7 @@
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
 
   /* ── CYBERPUNK EYE ───────────────────────────────────────── */
-  .eye-wrap { width:124px; height:52px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
+  .eye-wrap { width:136px; height:58px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
   .eye-svg { width:100%; height:100%; overflow:visible; }
 
   /* Outline subtle pulse then fades to silver after reveal */
@@ -881,10 +882,6 @@
     .brand-name { animation:none !important; opacity:1 !important; }
   }
 
-  @media (max-width:768px) {
-    .eye-wrap { width:100px; height:42px; }
-  }
-
   /* ── WORDMARK ────────────────────────────────────────────── */
   /* Eyelid finishes at begin(0.4s) + dur(2.4s) = 2.8s; text reveal starts at 2.2s for synchronized overlap */
   .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.92rem; letter-spacing:.12em; line-height:1; pointer-events:none; color:#eaeaea; text-transform:uppercase; overflow:visible; z-index:1; animation:brandReveal 1.0s ease-out 2.2s both; }
@@ -895,6 +892,7 @@
     50%     { text-shadow:0 0 10px rgba(247,147,26,0.9), 0 0 22px rgba(247,147,26,0.5), 0 0 40px rgba(247,147,26,0.2); }
   }
   .b-4 { color:var(--orange); animation:b4Hum 3s ease-in-out infinite; }
+  .mobile-logo-4 { display:none; position:absolute; inset:0; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.85rem; pointer-events:none; z-index:1; }
 
   /* ── RESPONSIVE VISIBILITY ───────────────────────────────── */
   .desktop-only { display:flex; }
@@ -927,8 +925,9 @@
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:0; }
-    .brand-name { font-size:.86rem; }
-    .eye-wrap { width:100px; height:42px; }
+    .brand-name { display:none; }
+    .eye-wrap { width:34px; height:34px; }
+    .mobile-logo-4 { display:flex; }
     .mobile-section-nav { display:flex; }
     .mobile-hdr-right { display:flex; }
     /* Uniform button size for all header controls on mobile */
