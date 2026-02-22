@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, afterUpdate } from 'svelte';
+  import { onMount, afterUpdate, onDestroy } from 'svelte';
 
   export let prices: { t: number; p: number }[] = [];
   export let height = 110;
@@ -176,8 +176,17 @@
     ctx.shadowBlur = 0;
   }
 
-  onMount(() => draw());
+  let resizeObserver: ResizeObserver | undefined;
+
+  onMount(() => {
+    draw();
+    resizeObserver = new ResizeObserver(() => draw());
+    resizeObserver.observe(canvas);
+  });
+
   afterUpdate(() => draw());
+
+  onDestroy(() => resizeObserver?.disconnect());
 </script>
 
 <canvas
