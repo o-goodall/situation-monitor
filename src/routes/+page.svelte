@@ -66,7 +66,38 @@
   }
 
   let intelView: 'cutting-edge'|'classic' = 'classic';
+  let intelTransitioning = false;
+  const BLUR_DURATION_MS = 400;   // blur phase before content swap
+  const REVEAL_DURATION_MS = 600; // reveal phase after content swap
+  function switchIntelView() {
+    intelTransitioning = true;
+    setTimeout(() => {
+      intelView = intelView === 'cutting-edge' ? 'classic' : 'cutting-edge';
+      setTimeout(() => { intelTransitioning = false; }, REVEAL_DURATION_MS);
+    }, BLUR_DURATION_MS);
+  }
   const INTEL_TILE_LIMIT = 12; // 3 columns × 4 rows
+
+  /** Detect topic keyword for frosted background tint */
+  const TOPIC_MAP: [RegExp, string][] = [
+    [/trump|maga|republican|gop/, '🇺🇸'],
+    [/iran|tehran|persian/, '🇮🇷'],
+    [/china|beijing|xi jinping/, '🇨🇳'],
+    [/russia|moscow|putin|kremlin/, '🇷🇺'],
+    [/bitcoin|btc|crypto|ethereum/, '₿'],
+    [/fed|federal reserve|interest rate|inflation/, '🏛️'],
+    [/israel|gaza|hamas|palestine/, '⚔️'],
+    [/ukraine|kyiv|zelensky/, '🇺🇦'],
+    [/oil|opec|energy|gas/, '🛢️'],
+    [/election|vote|ballot|poll/, '🗳️'],
+    [/war|military|missile|nuclear/, '⚠️'],
+    [/trade|tariff|sanction/, '📊'],
+  ];
+  function detectTopic(text: string): string {
+    const t = text.toLowerCase();
+    for (const [re, icon] of TOPIC_MAP) { if (re.test(t)) return icon; }
+    return '◈';
+  }
 
   const n   = (v:number, dec=0) => v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
   const pct = (v:number|null)   => v===null?'—':(v>=0?'+':'')+v.toFixed(2)+'%';
@@ -620,7 +651,7 @@
       <button
         class="apple-toggle"
         class:apple-toggle--classic={intelView==='classic'}
-        on:click={() => intelView = intelView === 'cutting-edge' ? 'classic' : 'cutting-edge'}
+        on:click={switchIntelView}
         role="switch"
         aria-checked={intelView === 'cutting-edge'}
         aria-label="Switch intel view. Currently {intelView === 'cutting-edge' ? 'Cutting Edge' : 'Classic'}"
@@ -631,64 +662,93 @@
     </div>
   </div>
 
-  {#if intelView === 'cutting-edge'}
-  <!-- ── CUTTING EDGE: Polymarket Geopolitics card grid ── -->
-  <div class="gc" style="padding:20px 18px;">
-    <div class="gc-head" style="margin-bottom:16px;">
-      <div>
-        <p class="gc-title">Geopolitics</p>
-        <p class="dim" style="margin-top:3px;">Live prediction markets · what the crowd expects</p>
-      </div>
-      <a href="https://polymarket.com/markets/geopolitics" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open Polymarket Geopolitics in new tab">polymarket.com ↗</a>
-    </div>
-    {#if $markets.length===0}
-      <div class="markets-loading" role="status" aria-label="Loading markets">
-        <div class="skeleton" style="height:90px;border-radius:10px;"></div>
-        <div class="skeleton" style="height:90px;border-radius:10px;"></div>
-        <div class="skeleton" style="height:90px;border-radius:10px;"></div>
-      </div>
-    {:else}
-      <div class="pm-grid">
-        {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
-          <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card" aria-label="{m.question}">
-            <!-- Tag row -->
-            <div class="pm-card-tags">
-              {#if m.pinned}
-                <span class="pm-tag pm-pin">★ Watching</span>
-              {:else}
-                <span class="pm-tag">{m.tag}</span>
-              {/if}
-              <span class="pm-tag pm-prob-tag" style="color:{pc(m.probability)};" aria-label="{m.topOutcome} probability {m.probability} percent">{m.topOutcome} {m.probability}%</span>
-            </div>
-            <!-- Question -->
-            <p class="pm-card-q">{m.question}</p>
-          </a>
-        {/each}
-      </div>
-    {/if}
-  </div>
+  <!-- Transition wrapper — fixed container prevents layout shift -->
+  <div class="intel-view-wrap" class:intel-view-wrap--transitioning={intelTransitioning}>
+    <div class="intel-foil-sweep" class:intel-foil-sweep--active={intelTransitioning}></div>
 
-  {:else}
-  <!-- ── CLASSIC: News RSS feeds ── -->
-  <div class="gc" style="padding:20px 18px;">
-    <div class="gc-head" style="margin-bottom:16px;"><p class="gc-title">News Feed</p><span class="dim">{Math.min($newsItems.length, INTEL_TILE_LIMIT)} articles</span></div>
-    {#if $newsItems.length===0}
-      <p class="dim">Fetching RSS feeds…</p>
-    {:else}
-      <div class="pm-grid news-pm-grid">
-        {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
-          <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card" aria-label="{item.title}">
-            <div class="pm-card-tags">
-              <span class="pm-tag pm-news-src">{item.source}</span>
-              <span class="pm-tag">{ago(item.pubDate)} ago</span>
-            </div>
-            <p class="pm-card-q">{item.title}</p>
-          </a>
-        {/each}
+    {#if intelView === 'cutting-edge'}
+    <!-- ── CUTTING EDGE: Polymarket Geopolitics card grid ── -->
+    <div class="gc intel-gc" style="padding:20px 18px;">
+      <div class="gc-head" style="margin-bottom:16px;">
+        <div>
+          <p class="gc-title">Geopolitics</p>
+          <p class="dim" style="margin-top:3px;">Live prediction markets · what the crowd expects</p>
+        </div>
+        <a href="https://polymarket.com/markets/geopolitics" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open Polymarket Geopolitics in new tab">polymarket.com ↗</a>
       </div>
+      {#if $markets.length===0}
+        <div class="markets-loading" role="status" aria-label="Loading markets">
+          <div class="skeleton" style="height:90px;border-radius:10px;"></div>
+          <div class="skeleton" style="height:90px;border-radius:10px;"></div>
+          <div class="skeleton" style="height:90px;border-radius:10px;"></div>
+        </div>
+      {:else}
+        <div class="pm-grid">
+          {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
+            <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{m.question}">
+              <!-- Topic icon background -->
+              <span class="pm-card-topic-icon" aria-hidden="true">{detectTopic(m.question)}</span>
+              <div class="pm-card-frosted-overlay"></div>
+              <!-- Tag row -->
+              <div class="pm-card-tags" style="position:relative;z-index:1;">
+                {#if m.pinned}
+                  <span class="pm-tag pm-pin">★ Watching</span>
+                {:else}
+                  <span class="pm-tag">{m.tag}</span>
+                {/if}
+                <span class="pm-tag pm-prob-tag" style="color:{pc(m.probability)};" aria-label="{m.topOutcome} probability {m.probability} percent">{m.topOutcome} {m.probability}%</span>
+              </div>
+              <!-- Question -->
+              <p class="pm-card-q" style="position:relative;z-index:1;">{m.question}</p>
+              <!-- Enhanced data row -->
+              <div class="pm-card-data" style="position:relative;z-index:1;">
+                <span class="pm-data-vol" title="Total volume">{fmtVol(m.volume)}</span>
+                {#if m.volume24hr > 0}
+                  <span class="pm-data-vol24" title="24h volume">24h {fmtVol(m.volume24hr)}</span>
+                {/if}
+                {#if m.probability >= 70}
+                  <span class="pm-data-trend pm-data-trend--high" title="High probability">▲ Likely</span>
+                {:else if m.probability <= 30}
+                  <span class="pm-data-trend pm-data-trend--low" title="Low probability">▼ Unlikely</span>
+                {:else}
+                  <span class="pm-data-trend pm-data-trend--mid" title="Contested">◆ Contested</span>
+                {/if}
+              </div>
+              <!-- Probability bar -->
+              <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
+                <div class="pm-prob-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
+              </div>
+            </a>
+          {/each}
+        </div>
+      {/if}
+    </div>
+
+    {:else}
+    <!-- ── CLASSIC: News RSS feeds ── -->
+    <div class="gc intel-gc" style="padding:20px 18px;">
+      <div class="gc-head" style="margin-bottom:16px;"><p class="gc-title">News Feed</p><span class="dim">{Math.min($newsItems.length, INTEL_TILE_LIMIT)} articles</span></div>
+      {#if $newsItems.length===0}
+        <p class="dim">Fetching RSS feeds…</p>
+      {:else}
+        <div class="pm-grid news-pm-grid">
+          {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
+            <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{item.title}">
+              <!-- Topic icon background -->
+              <span class="pm-card-topic-icon" aria-hidden="true">{detectTopic(item.title)}</span>
+              <div class="pm-card-frosted-overlay"></div>
+              <div class="pm-card-tags" style="position:relative;z-index:1;">
+                <span class="pm-tag pm-news-src">{item.source}</span>
+                <span class="pm-tag">{ago(item.pubDate)} ago</span>
+              </div>
+              <p class="pm-card-q" style="position:relative;z-index:1;">{item.title}</p>
+            </a>
+          {/each}
+        </div>
+      {/if}
+    </div>
     {/if}
   </div>
-  {/if}
 
 </section>
 
@@ -1192,6 +1252,74 @@
   :global(html.light) .apple-toggle--classic { background:var(--orange); border-color:var(--orange); }
   :global(html.light) .toggle-icon { color:rgba(0,0,0,.3); }
   :global(html.light) .toggle-icon--active { color:#c77a10; }
+
+  /* ── INTEL VIEW TRANSITION ─────────────────────────────── */
+  .intel-view-wrap { position:relative; transition:filter .4s ease; }
+  .intel-view-wrap--transitioning { filter:blur(6px) brightness(.92); pointer-events:none; }
+  .intel-foil-sweep {
+    position:absolute; inset:0; z-index:10; pointer-events:none; opacity:0;
+    background:linear-gradient(105deg,transparent 30%,rgba(247,147,26,.18) 45%,rgba(255,224,160,.22) 50%,rgba(247,147,26,.18) 55%,transparent 70%);
+    background-size:250% 100%; border-radius:8px;
+  }
+  .intel-foil-sweep--active {
+    opacity:1;
+    animation:intelFoilSweep .8s ease-out forwards;
+  }
+  @keyframes intelFoilSweep {
+    0%   { background-position:-100% center; opacity:1; }
+    80%  { opacity:1; }
+    100% { background-position:200% center; opacity:0; }
+  }
+  @media (prefers-reduced-motion:reduce) {
+    .intel-view-wrap--transitioning { filter:none; }
+    .intel-foil-sweep--active { animation:none; opacity:0; }
+  }
+
+  /* ── INTEL CONSISTENT GC CONTAINER ─────────────────────── */
+  .intel-gc { min-height:280px; }
+
+  /* ── INTEL CARD – CONSISTENT SIZING FOR BOTH VIEWS ─────── */
+  .pm-card--intel { min-height:130px; }
+
+  /* ── TOPIC ICON BACKGROUND (frosted) ───────────────────── */
+  .pm-card-topic-icon {
+    position:absolute; top:50%; right:10px; transform:translateY(-50%);
+    font-size:2.8rem; line-height:1; opacity:.08; pointer-events:none; z-index:0;
+    filter:blur(1px);
+  }
+  .pm-card-frosted-overlay {
+    position:absolute; inset:0; z-index:0; pointer-events:none; border-radius:10px;
+    background:linear-gradient(135deg,rgba(247,147,26,.03) 0%,transparent 60%);
+  }
+  :global(html.light) .pm-card-topic-icon { opacity:.06; }
+
+  /* ── POLYMARKET DATA ROW ───────────────────────────────── */
+  .pm-card-data {
+    display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:auto;
+  }
+  .pm-data-vol, .pm-data-vol24 {
+    font-size:.54rem; font-weight:600; color:var(--t3); text-transform:uppercase; letter-spacing:.05em;
+    padding:1px 6px; border-radius:4px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05);
+  }
+  .pm-data-vol24 { color:var(--t2); }
+  .pm-data-trend {
+    font-size:.54rem; font-weight:700; letter-spacing:.04em; margin-left:auto;
+  }
+  .pm-data-trend--high { color:var(--up); }
+  .pm-data-trend--low { color:var(--dn); }
+  .pm-data-trend--mid { color:var(--orange); }
+  :global(html.light) .pm-data-vol, :global(html.light) .pm-data-vol24 {
+    background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.06); color:rgba(0,0,0,.4);
+  }
+  :global(html.light) .pm-data-vol24 { color:rgba(0,0,0,.55); }
+
+  /* ── PROBABILITY BAR ───────────────────────────────────── */
+  .pm-card-prob-bar {
+    height:3px; background:rgba(255,255,255,.04); border-radius:2px; overflow:hidden; margin-top:4px;
+  }
+  .pm-prob-fill { height:100%; border-radius:2px; transition:width .7s ease; opacity:.7; }
+  :global(html.light) .pm-card-prob-bar { background:rgba(0,0,0,.04); }
+  :global(html.light) .pm-prob-fill { opacity:.5; }
 
   /* ── INTEL GRID ─────────────────────────────────────────── */
   .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
