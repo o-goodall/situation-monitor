@@ -608,12 +608,9 @@
           </div>
           {/if}
 
-          {#if portCAGR!==null||$cpiAnnual!==null||$goldYtdPct!==null}
+          {#if portCAGR!==null}
           <div class="bench">
-            {#if portCAGR!==null}<div class="bench-c"><p class="eyebrow orange">Portfolio CAGR</p><p class="bench-v" style="color:{portCAGR>=0?'var(--up)':'var(--dn)'};">{portCAGR>=0?'+':''}{portCAGR.toFixed(1)}<span style="font-size:.55em;opacity:.5;">%/yr</span></p>{#if $cpiAnnual!==null}<p class="bench-vs" style="color:{portCAGR>$cpiAnnual?'var(--up)':'var(--dn)'};">{portCAGR>$cpiAnnual?'▲':'▼'} {Math.abs(portCAGR-$cpiAnnual).toFixed(1)}% vs CPI</p>{/if}</div>{/if}
-            {#if $cpiAnnual!==null}<div class="bench-c"><p class="eyebrow dn">Inflation</p><p class="bench-v dn">+{$cpiAnnual.toFixed(1)}<span style="font-size:.55em;opacity:.5;">%/yr</span></p></div>{/if}
-            {#if $goldYtdPct!==null}<div class="bench-c"><p class="eyebrow" style="color:#c9a84c;">Gold 1Y</p><p class="bench-v" style="color:{$goldYtdPct>=0?'#c9a84c':'var(--dn)'};">{$goldYtdPct>=0?'+':''}{$goldYtdPct.toFixed(1)}<span style="font-size:.55em;opacity:.5;">%</span></p></div>{/if}
-            {#if $sp500YtdPct!==null}<div class="bench-c"><p class="eyebrow">S&amp;P 500</p><p class="bench-v" style="color:{$sp500YtdPct>=0?'var(--t1)':'var(--dn)'};">{$sp500YtdPct>=0?'+':''}{$sp500YtdPct.toFixed(1)}<span style="font-size:.55em;opacity:.5;">%</span></p></div>{/if}
+            <div class="bench-c"><p class="eyebrow orange">Portfolio CAGR</p><p class="bench-v" style="color:{portCAGR>=0?'var(--up)':'var(--dn)'};">{portCAGR>=0?'+':''}{portCAGR.toFixed(1)}<span style="font-size:.55em;opacity:.5;">%/yr</span></p></div>
           </div>
           {/if}
 
@@ -1259,7 +1256,7 @@
   @media (max-width:400px) { .asset-panels { grid-template-columns:1fr; } .ap-pct { font-size:1.5rem; } }
 
   .gf-hero { display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap; margin-bottom:18px; }
-  .gf-nw   { font-size:2.4rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
+  .gf-nw   { font-size:3.6rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
   .gf-cpi  { opacity:.5; cursor:help; }
   .gf-est  { font-size:.5em; opacity:.6; }
   .gf-perf { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; flex:1; border-left:1px solid rgba(255,255,255,.06); padding-left:20px; min-width:0; }
@@ -1319,7 +1316,7 @@
   :global(html.light) .alloc-bar { background:rgba(0,0,0,.04); }
   :global(html.light) .sort-btns { background:rgba(0,0,0,.06); }
   @media (max-width:600px) {
-    .gf-nw { font-size:1.8rem; }
+    .gf-nw { font-size:2.4rem; }
     .gf-perf { border-left:none; padding-left:0; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; width:100%; }
     .gfp-v { font-size:1rem; }
     .bench-c { padding:10px 12px; min-width:70px; }
