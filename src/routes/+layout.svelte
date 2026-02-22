@@ -721,7 +721,14 @@
 <!-- ══ FOOTER ════════════════════════════════════════════════ -->
 <footer class="site-footer" role="contentinfo">
   <span class="footer-brand">gl<span style="color:var(--orange);">4</span>nce.</span>
-  <span class="footer-sources">mempool.space · alternative.me · binance · exchangerate-api · ghostfol.io · worldbank</span>
+  <span class="footer-sources">
+    <a href="https://mempool.space" target="_blank" rel="noopener noreferrer">mempool.space</a> ·
+    <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">alternative.me</a> ·
+    <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer">binance</a> ·
+    <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">exchangerate-api</a> ·
+    <a href="https://ghostfol.io" target="_blank" rel="noopener noreferrer">ghostfol.io</a> ·
+    <a href="https://www.worldbank.org" target="_blank" rel="noopener noreferrer">worldbank</a>
+  </span>
 </footer>
 
 <style>
@@ -903,10 +910,16 @@
     flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center;
     gap:3px; background:none; border:none; cursor:pointer;
     color:rgba(255,255,255,.4); transition:color .2s;
-    padding:8px 4px; height:100%;
+    padding:8px 4px; height:100%; position:relative;
+  }
+  .tab-btn::after {
+    content:''; position:absolute; top:0; left:50%; transform:translateX(-50%);
+    width:0; height:2px; background:linear-gradient(90deg,#f7931a,#00c8ff);
+    border-radius:0 0 2px 2px; transition:width .25s ease;
   }
   .tab-btn:hover { color:rgba(255,255,255,.75); }
   .tab-btn--active { color:var(--orange); }
+  .tab-btn--active::after { width:60%; }
   .tab-icon { font-size:1.1rem; line-height:1; }
   .tab-label { font-size:.55rem; font-weight:700; text-transform:uppercase; letter-spacing:.1em; font-family:'Orbitron',monospace; }
   :global(html.light) .mobile-tabs { background:rgba(255,255,255,.97); border-top-color:rgba(0,0,0,.1); }
@@ -920,6 +933,11 @@
     overflow-y: auto; max-height: calc(100vh - 64px);
     background:rgba(8,8,8,.97); backdrop-filter:blur(24px);
     border-bottom:1px solid rgba(247,147,26,.15);
+    animation: slideDown 0.22s ease-out both;
+  }
+  @keyframes slideDown {
+    from { opacity:0; transform:translateY(-8px); }
+    to   { opacity:1; transform:translateY(0); }
   }
   @media (max-width:768px) { .drawer { top: 54px; max-height: calc(100vh - 54px); } }
   .drawer-inner { max-width:900px; margin:0 auto; padding:28px 24px; display:flex; flex-direction:column; gap:22px; }
@@ -928,10 +946,10 @@
   .dfields { display:flex; gap:10px; flex-wrap:wrap; }
   .df { display:flex; flex-direction:column; gap:5px; flex:1; min-width:100px; }
   .dlbl { font-size:.58rem; color:rgba(255,255,255,.25); font-weight:500; text-transform:uppercase; letter-spacing:.1em; }
-  .dinp { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,94,0,.22); border-radius:3px; padding:10px 12px; color:#eaeaea; font-family:'Inter',sans-serif; font-size:.82rem; transition:border-color .2s,box-shadow .2s; }
-  .dinp:focus { outline:none; border-color:var(--orange); box-shadow:0 0 0 2px rgba(247,147,26,.15),0 0 16px rgba(247,147,26,.2); }
+  .dinp { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,94,0,.22); border-radius:6px; padding:10px 12px; color:#eaeaea; font-family:'Inter',sans-serif; font-size:.82rem; transition:border-color .2s,box-shadow .2s; }
+  .dinp:focus { outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(247,147,26,.12),0 0 16px rgba(247,147,26,.18); }
   .dtags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
-  .dtag { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; background:rgba(247,147,26,.07); border:1px solid rgba(247,147,26,.2); border-radius:3px; font-size:.68rem; color:rgba(255,255,255,.55); }
+  .dtag { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; background:rgba(247,147,26,.07); border:1px solid rgba(247,147,26,.2); border-radius:999px; font-size:.68rem; color:rgba(255,255,255,.55); }
   .dtag-x { background:none; border:none; color:rgba(255,255,255,.25); cursor:pointer; font-size:1rem; padding:0; line-height:1; transition:color .15s; }
   .dtag-x:hover { color:var(--dn); }
   .dinp-row { display:flex; gap:8px; flex-wrap:wrap; }
@@ -962,9 +980,16 @@
   :global(html.light) .feed-toggle:hover { border-color:rgba(247,147,26,.3); }
 
   /* ── FOOTER ──────────────────────────────────────────────── */
-  .site-footer { border-top:1px solid rgba(247,147,26,.12); padding:18px 32px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background:rgba(0,0,0,.5); }
-  .footer-brand { font-family:'Orbitron',monospace; font-size:.62rem; font-weight:900; color:rgba(255,255,255,.25); letter-spacing:.1em; }
-  .footer-sources { font-size:.56rem; color:rgba(255,255,255,.14); }
+  .site-footer {
+    border-top:1px solid rgba(247,147,26,.12);
+    padding:20px 32px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;
+    background:rgba(0,0,0,.55);
+    backdrop-filter:blur(8px);
+  }
+  .footer-brand { font-family:'Orbitron',monospace; font-size:.65rem; font-weight:900; color:rgba(255,255,255,.28); letter-spacing:.1em; }
+  .footer-sources { font-size:.56rem; color:rgba(255,255,255,.18); letter-spacing:.02em; }
+  .footer-sources a { color:rgba(255,255,255,.25); text-decoration:none; transition:color .2s; }
+  .footer-sources a:hover { color:var(--orange); }
   @media (max-width:600px) { .site-footer { display:none; } }
 
   /* ── LIGHT MODE ──────────────────────────────────────────── */
@@ -987,9 +1012,11 @@
   :global(html.light) .dlbl { color:rgba(0,0,0,.5); }
   :global(html.light) .dtag { background:rgba(247,147,26,.08); border-color:rgba(247,147,26,.25); color:rgba(0,0,0,.6); }
   :global(html.light) .dtag-x { color:rgba(0,0,0,.3); }
-  :global(html.light) .site-footer { background:rgba(255,255,255,.7); border-top-color:rgba(0,0,0,.06); }
+  :global(html.light) .site-footer { background:rgba(255,255,255,.75); border-top-color:rgba(0,0,0,.06); }
   :global(html.light) .footer-brand { color:rgba(0,0,0,.4); }
-  :global(html.light) .footer-sources { color:rgba(0,0,0,.3); }
+  :global(html.light) .footer-sources { color:rgba(0,0,0,.35); }
+  :global(html.light) .footer-sources a { color:rgba(0,0,0,.35); }
+  :global(html.light) .footer-sources a:hover { color:#c77a10; }
   :global(html.light) .mobile-menu-panel { background:rgba(255,255,255,.98); }
   :global(html.light) .mobile-menu-backdrop { background:rgba(0,0,0,.25); }
   :global(html.light) .mobile-nav-link { color:rgba(0,0,0,.75); border-bottom-color:rgba(0,0,0,.06); }
