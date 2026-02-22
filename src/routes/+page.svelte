@@ -285,7 +285,7 @@
           {/if}
         </div>
         <span class="stat-l">Days to Halving</span>
-        {#if $halvingDate}<span class="halving-date">{$halvingDate}</span>{/if}
+        {#if $halvingDate}<span class="halving-date halving-date--glow">{$halvingDate}</span>{/if}
       {:else}
         <span class="stat-n muted">—</span>
         <span class="stat-l">Days to Halving</span>
@@ -390,9 +390,7 @@
             </div>
             {/if}
 
-            <button class="dca-flip-btn" on:click={() => dcaFlipped = true} aria-label="Show DCA formula">
-              <span class="dca-flip-shimmer" aria-hidden="true"></span>✦ How it works
-            </button>
+            <button class="dca-info-btn" on:click={() => dcaFlipped = true} aria-label="Show DCA formula">?</button>
           </div>
 
         {:else}
@@ -979,7 +977,25 @@
   .halving-n { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; }
 
   /* Projected halving date label */
-  .halving-date { font-size:.58rem; color:var(--t3); margin-top:4px; font-variant-numeric:tabular-nums; letter-spacing:.03em; }
+  .halving-date { font-size:.58rem; color:var(--orange); margin-top:4px; font-variant-numeric:tabular-nums; letter-spacing:.03em; position:relative; display:inline-block; }
+
+  /* Subtle foil sweep — fires once every ~10 s, single pass */
+  @keyframes halvingFoil {
+    0%   { background-position: -200% center; }
+    15%  { background-position: 200% center; }
+    100% { background-position: 200% center; }
+  }
+  .halving-date--glow {
+    background: linear-gradient(105deg, var(--orange) 30%, #ffe0a0 50%, var(--orange) 70%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: halvingFoil 10s linear infinite;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .halving-date--glow { animation: none; -webkit-text-fill-color: var(--orange); color: var(--orange); }
+  }
 
   /* Static stat tile — no hover lift or underline animation */
   .stat-tile--static { cursor:default; }
@@ -1147,33 +1163,37 @@
 
   /* ── DCA FLIP SCENE ─────────────────────────────────────── */
   .dca-flip-scene { perspective:900px; position:relative; z-index:2; }
-  .dca-face { animation:dcaFaceIn .38s cubic-bezier(.25,.46,.45,.94) both; }
+  .dca-face { animation:dcaFaceIn .38s cubic-bezier(.25,.46,.45,.94) both; position:relative; }
   @keyframes dcaFaceIn {
     from { opacity:0; transform:rotateY(72deg) scale(.97); }
     to   { opacity:1; transform:rotateY(0deg)  scale(1);   }
   }
   @media (prefers-reduced-motion:reduce) { .dca-face { animation:none; } }
 
-  /* Glimmer "How it works" button */
-  .dca-flip-btn {
-    position:relative; overflow:hidden; width:100%;
-    margin-top:16px; padding:8px 16px;
-    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
-    border-radius:6px; color:var(--t2); font-size:.6rem; font-weight:600;
-    text-transform:uppercase; letter-spacing:.1em; cursor:pointer;
-    transition:border-color .25s, color .25s, background .25s;
+  /* Small "?" info button — bottom-right corner of the DCA front face */
+  .dca-info-btn {
+    position:absolute; bottom:14px; right:14px; z-index:3;
+    width:22px; height:22px; padding:0; border-radius:50%;
+    background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+    color:rgba(255,255,255,.38); font-size:.62rem; font-weight:700;
+    line-height:1; cursor:pointer;
+    transition:background .2s, border-color .2s, color .2s, box-shadow .2s;
+    display:flex; align-items:center; justify-content:center;
+    overflow:hidden;
   }
-  .dca-flip-btn:hover { border-color:rgba(247,147,26,.35); color:var(--orange); background:rgba(247,147,26,.06); }
-  .dca-flip-shimmer {
-    position:absolute; inset:0; pointer-events:none;
-    background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.32) 50%,transparent 75%);
-    transform:translateX(-100%);
-    animation:shimmerSlide 2.8s ease-in-out infinite;
+  .dca-info-btn::after {
+    content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+    background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.55) 50%,transparent 75%);
+    background-size:200% 100%; background-position:-200% center;
+    transition:background-position .4s ease;
   }
-  @keyframes shimmerSlide {
-    0%,40%  { transform:translateX(-120%); }
-    70%,100%{ transform:translateX(140%); }
+  .dca-info-btn:hover {
+    background:rgba(247,147,26,.14); border-color:rgba(247,147,26,.45);
+    color:var(--orange); box-shadow:0 0 8px rgba(247,147,26,.25);
   }
+  .dca-info-btn:hover::after { background-position:200% center; }
+  :global(html.light) .dca-info-btn { background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.12); color:rgba(0,0,0,.4); }
+  :global(html.light) .dca-info-btn:hover { background:rgba(247,147,26,.1); border-color:rgba(247,147,26,.35); color:#c77a10; }
 
   /* Formula back face */
   .dca-formula-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
@@ -1194,8 +1214,6 @@
   .formula-steps ul { margin:5px 0 0; padding-left:10px; border-left:1px solid rgba(255,255,255,.1); display:flex; flex-direction:column; gap:3px; }
   .formula-steps ul li { font-size:.63rem; color:var(--t2); line-height:1.55; }
   .formula-boost { color:var(--up); font-weight:700; }
-  :global(html.light) .dca-flip-btn { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.45); }
-  :global(html.light) .dca-flip-btn:hover { border-color:rgba(247,147,26,.3); color:#c77a10; }
   :global(html.light) .formula-steps ul { border-left-color:rgba(0,0,0,.1); }
   :global(html.light) .formula-steps > li::before { background:rgba(199,122,16,.15); color:#c77a10; }
   :global(html.light) .signal-zone--red   { background:linear-gradient(180deg,rgba(239,68,68,.06) 0%,rgba(255,255,255,.72) 80px) !important; }
