@@ -287,14 +287,14 @@
       const ORANGE = 'rgba(247,147,26,';
       const ELECTRIC = 'rgba(0,200,255,';
 
-      function isMobile() { return window.innerWidth < 768; }
-      const NODE_COUNT = () => isMobile() ? 10 : 32;
-      const CONN_DIST = () => isMobile() ? 150 : 220;
+      let mobile = window.innerWidth < 768;
+      const NODE_COUNT = () => mobile ? 10 : 32;
+      const CONN_DIST = () => mobile ? 150 : 220;
 
       let resizeTimer: any;
       function resize() {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; init(); }, 200);
+        resizeTimer = setTimeout(() => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; mobile = window.innerWidth < 768; init(); }, 200);
         if (!W) { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
       }
 
@@ -400,12 +400,13 @@
         if (nodes.length < 2) return;
         const a = nodes[Math.floor(Math.random() * nodes.length)];
         // Find a nearby node
+        const connDist = CONN_DIST();
         let best: Node | null = null, bestDist = Infinity;
         for (const n of nodes) {
           if (n === a) continue;
           const dx = n.x - a.x, dy = n.y - a.y;
           const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < CONN_DIST() && d < bestDist) { best = n; bestDist = d; }
+          if (d < connDist && d < bestDist) { best = n; bestDist = d; }
         }
         if (best) transmissions.push(new Transmission(a, best));
       }
@@ -436,29 +437,30 @@
 
         // Spawn transmissions periodically
         spawnTimer++;
-        const spawnRate = isMobile() ? 120 : 50;
+        const spawnRate = mobile ? 120 : 50;
         if (spawnTimer >= spawnRate) {
           spawnTransmission();
           // Occasional burst — less frequent on mobile
-          if (Math.random() < (isMobile() ? 0.1 : 0.2)) { spawnTransmission(); spawnTransmission(); }
+          if (Math.random() < (mobile ? 0.1 : 0.2)) { spawnTransmission(); spawnTransmission(); }
           spawnTimer = 0;
         }
 
         // Update & draw transmissions
+        const chainConnDist = CONN_DIST();
         transmissions = transmissions.filter(t => {
           const done = t.update();
           t.draw();
           if (done) {
             pings.push(new Ping(t.to.x, t.to.y));
             // Chain: ~55% on desktop, ~30% on mobile to reduce CPU load
-            if (Math.random() < (isMobile() ? 0.3 : 0.55)) {
+            if (Math.random() < (mobile ? 0.3 : 0.55)) {
               const from = t.to;
               let chainTo: Node | null = null, chainDist = Infinity;
               for (const n of nodes) {
                 if (n === from) continue;
                 const dx = n.x - from.x, dy = n.y - from.y;
                 const d = Math.sqrt(dx * dx + dy * dy);
-                if (d < CONN_DIST() && d < chainDist) { chainTo = n; chainDist = d; }
+                if (d < chainConnDist && d < chainDist) { chainTo = n; chainDist = d; }
               }
               if (chainTo) transmissions.push(new Transmission(from, chainTo));
             }

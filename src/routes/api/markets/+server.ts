@@ -113,11 +113,17 @@ async function getBtcPerformance(
   sinceDate?: Date
 ): Promise<{ currentPrice: number; pctChange: number } | null> {
   try {
-    // Current price
-    const curRes = await fetch(
+    // Fire both fetches in parallel when sinceDate is provided; the historical
+    // price lookup is independent of the current price so there is no reason to
+    // wait for one before starting the other.
+    const curFetch = fetch(
       'https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd',
       { headers: HEADERS }
     );
+    const startFetch = sinceDate ? getBtcPriceOnDate(sinceDate) : Promise.resolve(null);
+
+    const [curRes, startPrice] = await Promise.all([curFetch, startFetch]);
+
     const currentPrice: number = curRes.ok
       ? ((await curRes.json())?.bitcoin?.usd ?? 0)
       : 0;
@@ -131,7 +137,6 @@ async function getBtcPerformance(
       return { currentPrice, pctChange: yf.pctChange };
     }
 
-    const startPrice = await getBtcPriceOnDate(sinceDate);
     if (!startPrice) return { currentPrice, pctChange: 0 };
     const pctChange = ((currentPrice - startPrice) / startPrice) * 100;
     return { currentPrice, pctChange };

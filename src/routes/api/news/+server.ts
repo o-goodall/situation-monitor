@@ -54,8 +54,9 @@ export async function GET({ url }: RequestEvent) {
       }
     });
 
-    items.sort((a, b) => (b.pubDate ? new Date(b.pubDate).getTime() : 0) - (a.pubDate ? new Date(a.pubDate).getTime() : 0));
-    return json({ items: items.slice(0, 20) });
+    const withTs = items.map(item => ({ item, ts: item.pubDate ? new Date(item.pubDate).getTime() : 0 }));
+    withTs.sort((a, b) => b.ts - a.ts);
+    return json({ items: withTs.slice(0, 20).map(x => x.item) });
   } catch {
     return json({ items: [] });
   }
