@@ -858,9 +858,6 @@
       margin-bottom:16px;
     }
     .section-divider { margin-top:24px; }
-    #signal    { order:1; }
-    #intel     { order:2; }
-    #portfolio { order:3; }
     /* Bottom padding for each section so content doesn't abut next section */
     #signal    { padding-bottom:32px; }
     #portfolio { padding-bottom:32px; }
