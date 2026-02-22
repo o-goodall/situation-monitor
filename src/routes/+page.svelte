@@ -853,14 +853,14 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:700px) {
-    .section { padding:20px 12px 0; min-height: 100svh; }
+    .section { padding:20px 12px 0; min-height:auto; scroll-snap-align:none; }
     .section-header {
       margin-bottom:16px;
     }
     .section-divider { margin-top:24px; }
-    #signal    { order:1; }
-    #intel     { order:2; }
-    #portfolio { order:3; }
+    /* Bottom padding for each section so content doesn't abut next section */
+    #signal    { padding-bottom:32px; }
+    #portfolio { padding-bottom:32px; }
   }
   @media (max-width:600px) {
     .section-header { margin-bottom:14px; }
@@ -900,16 +900,16 @@
   .price-label-sep { color:var(--t3); }
   .price-label-cur { color:var(--orange); font-weight:700; }
   @media (max-width:500px) {
-    .price-usd { font-size:1.05rem; }
-    .price-alt { font-size:1.05rem; }
-    .price-sep { font-size:.75rem; }
+    .price-usd { font-size:1.2rem; }
+    .price-alt { font-size:1.2rem; }
+    .price-sep { font-size:.8rem; }
   }
 
   /* Sats per currency — large SATS display */
   .sats-display { display:flex; align-items:baseline; gap:6px; justify-content:center; margin-bottom:4px; }
   .sats-cur { font-size:1.4rem; font-weight:700; color:#e2e2e8; letter-spacing:-.025em; line-height:1.1; }
   @media (max-width:500px) {
-    .sats-cur { font-size:1rem; }
+    .sats-cur { font-size:1.15rem; }
   }
 
   .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
@@ -947,10 +947,10 @@
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(3,1fr); } }
   @media (max-width:500px) {
     /* BTC price tile spans full width; sats + halving sit side-by-side below */
-    .stat-strip{ grid-template-columns:1fr 1fr; gap:8px; }
+    .stat-strip{ grid-template-columns:1fr 1fr; gap:10px; }
     .stat-tile--chart { grid-column:1 / -1; }
-    .stat-n { font-size:1.1rem; }
-    .stat-tile { padding:12px 10px; }
+    .stat-n { font-size:1.25rem; }
+    .stat-tile { padding:16px 12px; }
     .stat-tile--chart .stat-l-row { padding-bottom:52px; }
   }
 
@@ -988,8 +988,7 @@
   /* ── SIGNAL GRID ────────────────────────────────────────── */
   .signal-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
   @media (max-width:1100px) { .signal-grid{grid-template-columns:1fr 1fr;} }
-  @media (max-width:700px)  { .signal-grid{grid-template-columns:1fr 1fr; gap:10px;} }
-  @media (max-width:500px)  { .signal-grid{grid-template-columns:1fr; gap:8px;} }
+  @media (max-width:700px)  { .signal-grid{grid-template-columns:1fr; gap:10px;} }
 
   /* ── GLASS CARD ─────────────────────────────────────────── */
   .gc {
@@ -1557,10 +1556,10 @@
   /* ── MOBILE NEWS/MARKET CAROUSEL ────────────────────────────── */
   /* (scroll-snap applied to all .pm-grid on mobile in the block above) */
 
-  /* Intel section: full viewport height on mobile for scroll-snap */
+  /* Intel section padding on mobile */
   #intel.section { padding-bottom: 80px; }
   @media (max-width:700px) {
-    #intel.section { min-height: 100svh; padding-top: 20px; padding-bottom: 88px; }
+    #intel.section { min-height: auto; padding-top: 20px; padding-bottom: 40px; }
   }
 
   /* ── FEED CAROUSEL ───────────────────────────────────────── */
