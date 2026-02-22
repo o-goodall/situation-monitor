@@ -754,7 +754,7 @@
 
 <style>
   /* ── LAYOUT ──────────────────────────────────────────────── */
-  .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; min-height: 100vh; scroll-snap-align: start; scroll-snap-stop: always; position: relative; overflow: hidden; }
+  .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; min-height: 100vh; scroll-snap-align: start; scroll-snap-stop: always; position: relative; overflow: clip; }
   .section::before { content: ''; position: absolute; inset: -20% 0; z-index: -1; background: radial-gradient(ellipse at 50% 30%, rgba(247,147,26,.04) 0%, transparent 70%); transform: translateY(0); transition: transform 0.6s ease-out; pointer-events: none; }
   .section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
 
@@ -770,7 +770,13 @@
   }
   @media (max-width:700px) {
     .section { padding:20px 12px 0; min-height: 100svh; }
-    .section-header { margin-bottom:16px; }
+    .section-header {
+      margin-bottom:16px;
+      position:sticky; top:54px; z-index:10;
+      background:rgba(14,14,14,0.90); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+      margin-left:-12px; margin-right:-12px;
+      padding-left:12px; padding-right:12px; padding-top:6px; padding-bottom:6px;
+    }
     .section-divider { margin-top:24px; }
   }
   @media (max-width:600px) {
@@ -926,8 +932,6 @@
     .btc-network-card,
     .btc-hashrate-card,
     .btc-chart-card { display:none; }
-    /* Show only the top 3 intel stories (cutting-edge) so they fit in one screen */
-    #intel .pm-grid:not(.news-pm-grid) .pm-card:nth-child(n+4) { display:none; }
   }
 
   /* ── ATOMS ──────────────────────────────────────────────── */
@@ -1353,11 +1357,13 @@
   .pm-prob-tag { font-weight:700; }
   .pm-card-q { font-size:.84rem; color:var(--t1); line-height:1.5; font-weight:500; flex:1; }
   @media (max-width:600px) {
-    /* Both pm-grid types use the same scroll-snap vertical carousel on mobile */
+    /* Both pm-grid types use a horizontal swipe carousel on mobile */
     .pm-grid {
-      display:flex; flex-direction:column;
-      overflow-y:auto; scroll-snap-type:y mandatory;
-      max-height:calc(3 * 90px + 2 * 12px);
+      display:flex; flex-direction:row;
+      overflow-x:auto; overflow-y:hidden;
+      scroll-snap-type:x mandatory;
+      gap:12px;
+      padding-bottom:8px;
       -webkit-overflow-scrolling:touch;
       scrollbar-width:none;
     }
@@ -1365,9 +1371,11 @@
     .pm-grid .pm-card {
       scroll-snap-align:start;
       flex-shrink:0;
+      width:82vw;
+      min-height:160px;
       display:flex !important;
     }
-    .pm-card-q { font-size:.78rem; }
+    .pm-card-q { font-size:.82rem; }
   }
   :global(html.light) .pm-card { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
   :global(html.light) .pm-card:hover { border-color:rgba(247,147,26,.2); }
@@ -1383,7 +1391,6 @@
   #intel.section { min-height: auto; padding-bottom: 80px; }
   @media (max-width:700px) {
     #intel.section { padding-top: 20px; padding-bottom: 88px; }
-    #intel .section-header { margin-bottom: 14px; }
   }
 
   /* ── FEED CAROUSEL ───────────────────────────────────────── */
@@ -1448,11 +1455,12 @@
   .news-img::before {
     content:''; position:absolute; inset:-6px;
     background:inherit; background-size:cover; background-position:center;
-    filter:blur(8px) saturate(110%) sepia(15%); z-index:0; border-radius:8px;
+    filter:blur(12px) saturate(90%) sepia(25%); z-index:0; border-radius:8px;
     transform:scale(1.05);
   }
   .news-img-overlay {
-    position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(247,147,26,.07) 0%, rgba(15,7,0,.72) 55%, rgba(8,3,0,.92) 100%);
+    position:absolute; inset:0; z-index:1; background:linear-gradient(180deg, rgba(247,147,26,.13) 0%, rgba(15,7,0,.74) 55%, rgba(8,3,0,.93) 100%);
+    backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px);
     border-radius:8px;
   }
   .news-img-content {
@@ -1501,4 +1509,7 @@
   :global(html.light) .ap:hover { border-color:rgba(0,0,0,.12); }
   :global(html.light) .gf-perf { border-top-color:rgba(0,0,0,.08); }
   :global(html.light) .gfp { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
+  @media (max-width:700px) {
+    :global(html.light) .section-header { background:rgba(255,255,255,0.92); }
+  }
 </style>
