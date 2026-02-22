@@ -19,8 +19,8 @@
   --glass-bd:  rgba(255,255,255,0.10);
   --glass-bd2: rgba(255,255,255,0.16);
   --t1: #eaeaea;
-  --t2: #888888;
-  --t3: #333333;
+  --t2: #b0b0b0;
+  --t3: #585858;
   --up: #22c55e;
   --dn: #ef4444;
   /* Consistent radius scale */
@@ -44,7 +44,7 @@ html { font-size: 16px; -webkit-font-smoothing: antialiased; scroll-behavior: sm
 body {
   background: var(--bg);
   color: var(--t1);
-  font-family: 'Poison', system-ui, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-weight: 400;
   font-size: 0.875rem;
   line-height: 1.6;
