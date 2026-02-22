@@ -871,7 +871,7 @@
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
 
   /* ── CYBERPUNK EYE ───────────────────────────────────────── */
-  .eye-wrap { width:60px; height:24px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
+  .eye-wrap { width:68px; height:27px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
   .eye-svg { width:100%; height:100%; overflow:visible; }
 
   /* Iris drift — slow, subtle */
@@ -920,13 +920,15 @@
   }
 
   @media (max-width:768px) {
-    .eye-wrap { width:52px; height:21px; }
+    .eye-wrap { width:58px; height:23px; }
   }
 
   /* ── WORDMARK ────────────────────────────────────────────── */
-  /* font-size:.72rem fits "gl4nce" (~44px) within the 48px-wide eye interior at 60px canvas */
-  .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Nyxerin',monospace; font-weight:900; font-size:.72rem; letter-spacing:.06em; line-height:1; pointer-events:none; }
-  .b-gl,.b-nce { color:rgba(234,234,234,.92); }
+  /* font-size:.80rem fits "gl4nce" within the eye interior; flex sides centre the "4" over the pupil */
+  .brand-name { position:absolute; inset:0; display:flex; align-items:center; font-family:'Nyxerin',monospace; font-weight:900; font-size:.80rem; letter-spacing:.06em; line-height:1; pointer-events:none; }
+  .b-gl, .b-nce { color:rgba(234,234,234,.92); flex:1; display:flex; }
+  .b-gl  { justify-content:flex-end; }
+  .b-nce { justify-content:flex-start; }
   .b-4 { color:var(--orange); text-shadow:0 0 14px rgba(247,147,26,.8),0 0 28px rgba(247,147,26,.4); animation:fourGlow 3s ease-in-out infinite; display:inline-block; }
   @keyframes fourGlow{0%,100%{text-shadow:0 0 12px rgba(247,147,26,.8),0 0 24px rgba(247,147,26,.4)}50%{text-shadow:0 0 20px rgba(247,147,26,1),0 0 44px rgba(247,147,26,.5),0 0 70px rgba(247,147,26,.18)}}
 
@@ -956,8 +958,8 @@
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:auto; }
-    .brand-name { font-size:.63rem; }
-    .eye-wrap { width:52px; height:21px; }
+    .brand-name { font-size:.68rem; }
+    .eye-wrap { width:58px; height:23px; }
   }
 
   /* ── MOBILE FULL-SCREEN MENU ─────────────────────────────── */
