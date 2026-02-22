@@ -3,7 +3,7 @@ import type { RequestEvent } from '@sveltejs/kit';
 
 export async function GET({ url }: RequestEvent) {
   const range = url.searchParams.get('range') ?? '6m';
-  const validRanges = ['3m', '6m', '1y', '2y'];
+  const validRanges = ['3m', '6m', '1y', '2y', '3y', '5y', 'all'];
   const safeRange = validRanges.includes(range) ? range : '6m';
 
   try {

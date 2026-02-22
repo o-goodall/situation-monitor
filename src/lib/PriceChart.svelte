@@ -12,6 +12,7 @@
   function fmtLabel(ts: number): string {
     const d = new Date(ts);
     if (range === '1d') return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+    if (range === '5y' || range === 'max') return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 

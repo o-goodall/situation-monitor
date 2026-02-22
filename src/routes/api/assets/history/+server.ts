@@ -18,6 +18,9 @@ const RANGE_MAP: Record<string, { range: string; interval: string }> = {
   '1d':  { range: '1d',  interval: '30m' },
   '7d':  { range: '5d',  interval: '60m' },
   '30d': { range: '1mo', interval: '1d'  },
+  '1y':  { range: '1y',  interval: '1wk' },
+  '5y':  { range: '5y',  interval: '1mo' },
+  'max': { range: 'max', interval: '3mo' },
 };
 
 async function fetchYahooHistory(
