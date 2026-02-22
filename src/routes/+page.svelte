@@ -658,35 +658,10 @@
               {:else}
                 <span class="pm-tag">{m.tag}</span>
               {/if}
+              <span class="pm-tag pm-prob-tag" style="color:{pc(m.probability)};" aria-label="{m.topOutcome} probability {m.probability} percent">{m.topOutcome} {m.probability}%</span>
             </div>
             <!-- Question -->
             <p class="pm-card-q">{m.question}</p>
-            <!-- Outcomes bar -->
-            <div class="pm-outcomes" class:pm-outcomes--multi={m.outcomes && m.outcomes.length > 2}>
-              {#if m.outcomes && m.outcomes.length >= 2}
-                {#each m.outcomes.slice(0, m.outcomes.length > 2 ? 3 : 2) as outcome}
-                  <div class="pm-outcome" style="--oc:{pc(outcome.probability)};">
-                    <span class="pm-outcome-name">{outcome.name}</span>
-                    <span class="pm-outcome-pct" style="color:{pc(outcome.probability)};">{outcome.probability}<span style="font-size:.65em;opacity:.6;">%</span></span>
-                  </div>
-                {/each}
-              {:else}
-                <div class="pm-outcome" style="--oc:{pc(m.probability)};">
-                  <span class="pm-outcome-name">{m.topOutcome}</span>
-                  <span class="pm-outcome-pct" style="color:{pc(m.probability)};">{m.probability}<span style="font-size:.65em;opacity:.6;">%</span></span>
-                </div>
-              {/if}
-            </div>
-            <!-- Probability bar (leading outcome) -->
-            <div class="pm-bar">
-              <div class="pm-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
-              <div class="pm-fill-rest" style="width:{100-m.probability}%;"></div>
-            </div>
-            <!-- Meta -->
-            <div class="pm-meta">
-              {#if m.endDate}<span class="dim">Ends {fmtDate(m.endDate)}</span>{/if}
-              <span class="dim">{fmtVol(m.volume)} vol</span>
-            </div>
           </a>
         {/each}
       </div>
@@ -1247,52 +1222,34 @@
     background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:var(--t2); }
   .pm-pin { background:rgba(247,147,26,.09); border-color:rgba(247,147,26,.26); color:var(--orange); }
   .pm-news-src { background:rgba(247,147,26,.09); border-color:rgba(247,147,26,.26); color:var(--orange); }
+  .pm-prob-tag { font-weight:700; }
   .pm-card-q { font-size:.84rem; color:var(--t1); line-height:1.5; font-weight:500; flex:1; }
-  .pm-outcomes { display:flex; gap:8px; }
-  .pm-outcomes--multi { flex-wrap:wrap; }
-  .pm-outcomes--multi .pm-outcome { flex:1; min-width:calc(33% - 6px); }
-  .pm-outcome { display:flex; align-items:center; justify-content:space-between; gap:6px;
-    flex:1; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07); border-radius:6px; padding:8px 10px; }
-  .pm-outcome-name { font-size:.64rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.05em; }
-  .pm-outcome-pct { font-size:1.1rem; font-weight:800; letter-spacing:-.03em; line-height:1; }
-  .pm-bar { height:4px; background:rgba(255,255,255,.05); border-radius:2px; overflow:hidden; display:flex; }
-  .pm-fill { height:100%; border-radius:2px 0 0 2px; transition:width .6s; opacity:.75; }
-  .pm-fill-rest { height:100%; border-radius:0 2px 2px 0; background:rgba(255,255,255,.04); transition:width .6s; }
-  .pm-meta { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   @media (max-width:600px) {
-    .pm-grid { grid-template-columns:1fr; }
+    /* Both pm-grid types use the same scroll-snap vertical carousel on mobile */
+    .pm-grid {
+      display:flex; flex-direction:column;
+      overflow-y:auto; scroll-snap-type:y mandatory;
+      max-height:calc(3 * 90px + 2 * 12px);
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
+    }
+    .pm-grid::-webkit-scrollbar { display:none; }
+    .pm-grid .pm-card {
+      scroll-snap-align:start;
+      flex-shrink:0;
+      display:flex !important;
+    }
     .pm-card-q { font-size:.78rem; }
-    .pm-outcome-pct { font-size:.95rem; }
-    /* Limit to 6 cards on mobile for cutting-edge view */
-    .pm-grid:not(.news-pm-grid) .pm-card:nth-child(n+7) { display:none; }
   }
   :global(html.light) .pm-card { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
   :global(html.light) .pm-card:hover { border-color:rgba(247,147,26,.2); }
   :global(html.light) .pm-tag { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.08); color:rgba(0,0,0,.5); }
   :global(html.light) .pm-card-q { color:rgba(0,0,0,.75); }
-  :global(html.light) .pm-outcome { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
-  :global(html.light) .pm-bar { background:rgba(0,0,0,.05); }
-  :global(html.light) .pm-fill-rest { background:rgba(0,0,0,.04); }
 
   :global(html.light) .pm-news-src { background:rgba(247,147,26,.08); border-color:rgba(247,147,26,.25); color:#c77a10; }
 
-  /* ── MOBILE NEWS CAROUSEL ────────────────────────────────── */
-  @media (max-width:600px) {
-    .news-pm-grid {
-      display:flex; flex-direction:column;
-      overflow-y:auto; scroll-snap-type:y mandatory;
-      /* Show ~3 headline-only cards at a time */
-      max-height:calc(3 * 90px + 2 * 12px);
-      -webkit-overflow-scrolling:touch;
-      scrollbar-width:none;
-    }
-    .news-pm-grid::-webkit-scrollbar { display:none; }
-    .news-pm-grid .pm-card {
-      scroll-snap-align:start;
-      flex-shrink:0;
-      display:flex !important;
-    }
-  }
+  /* ── MOBILE NEWS/MARKET CAROUSEL ────────────────────────────── */
+  /* (scroll-snap applied to all .pm-grid on mobile in the block above) */
 
   /* Intel section: no forced full-height — content determines height */
   #intel.section { min-height: auto; padding-bottom: 80px; }

@@ -501,19 +501,6 @@
     <div class="eye-wrap" aria-hidden="true">
       <svg class="eye-svg" viewBox="0 0 60 24" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <radialGradient id="irisGrad" cx="45%" cy="40%" r="55%">
-            <stop offset="0%" stop-color="#3d1a00"/>
-            <stop offset="45%" stop-color="#1a0900"/>
-            <stop offset="100%" stop-color="#050202"/>
-          </radialGradient>
-          <radialGradient id="irisRingGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="55%" stop-color="transparent"/>
-            <stop offset="100%" stop-color="rgba(247,147,26,0.24)"/>
-          </radialGradient>
-          <radialGradient id="eyeAmbiGrad" cx="50%" cy="50%" r="50%">
-            <stop offset="40%" stop-color="transparent"/>
-            <stop offset="100%" stop-color="rgba(247,147,26,0.07)"/>
-          </radialGradient>
           <clipPath id="eyeClip">
             <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z"/>
           </clipPath>
@@ -528,56 +515,28 @@
             <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
           </filter>
         </defs>
-        <!-- Ambient glow ellipse behind eye -->
-        <ellipse cx="30" cy="12" rx="27" ry="12" fill="url(#eyeAmbiGrad)" class="eye-outer-glow"/>
         <!-- Eye background -->
         <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="#040201"/>
-        <!-- Iris group — subtle drift animation -->
-        <g class="eye-iris">
-          <circle cx="30" cy="12" r="8"   fill="url(#irisGrad)"/>
-          <circle cx="30" cy="12" r="8"   fill="url(#irisRingGrad)"/>
-          <circle cx="30" cy="12" r="7"   fill="none" stroke="rgba(247,147,26,0.10)" stroke-width="0.4"/>
-          <circle cx="30" cy="12" r="6"   fill="none" stroke="rgba(247,147,26,0.16)" stroke-width="0.5"/>
-          <circle cx="30" cy="12" r="4.8" fill="none" stroke="rgba(247,147,26,0.10)" stroke-width="0.35"/>
-          <!-- Subtle iris spokes -->
-          <line x1="30" y1="4.4"   x2="30" y2="6.2"   stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
-          <line x1="30" y1="17.8"  x2="30" y2="19.6"  stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
-          <line x1="22.4" y1="7.6" x2="23.5" y2="8.7" stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
-          <line x1="36.5" y1="15.3" x2="37.6" y2="16.4" stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
-          <line x1="22" y1="12"    x2="23.8" y2="12"   stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
-          <line x1="36.2" y1="12"  x2="38" y2="12"    stroke="rgba(247,147,26,0.09)" stroke-width="0.35"/>
-          <!-- Pupil is represented by the orange "4" in the wordmark overlay -->
-        </g>
-        <!-- Scanlines clipped to eye shape -->
-        <g clip-path="url(#eyeClip)" class="eye-scanlines">
-          <rect x="6" y="9"  width="48" height="0.45" fill="rgba(247,147,26,0.07)"/>
-          <rect x="6" y="11" width="48" height="0.45" fill="rgba(247,147,26,0.05)"/>
-          <rect x="6" y="13" width="48" height="0.45" fill="rgba(247,147,26,0.07)"/>
-          <rect x="6" y="15" width="48" height="0.45" fill="rgba(247,147,26,0.05)"/>
-        </g>
         <!-- Foil shimmer sweep clipped to eye -->
         <g clip-path="url(#eyeClip)">
           <rect class="eye-shimmer" x="-57" y="3.5" width="33" height="17" fill="url(#shimmerGrad)"/>
         </g>
-        <!-- Outer eye outline with soft glow -->
+        <!-- Top eyelid arc -->
+        <path d="M6,12 C18,3.5 42,3.5 54,12" fill="none" stroke="rgba(247,147,26,0.55)" stroke-width="0.7" stroke-linecap="round"/>
+        <!-- Full eye outline with soft glow -->
         <path class="eye-outline" filter="url(#outlineGlow)" d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="none" stroke="#f7931a" stroke-width="0.85" opacity="0.78"/>
-        <!-- Eyelash accent ticks above -->
-        <line x1="20" y1="5.1"  x2="18.2" y2="3.5"  stroke="rgba(247,147,26,0.38)" stroke-width="0.6" stroke-linecap="round"/>
-        <line x1="30" y1="3.5"  x2="30"   y2="1.6"   stroke="rgba(247,147,26,0.44)" stroke-width="0.6" stroke-linecap="round"/>
-        <line x1="40" y1="5.1"  x2="41.8" y2="3.5"  stroke="rgba(247,147,26,0.38)" stroke-width="0.6" stroke-linecap="round"/>
-        <!-- Corner accent dots + chevrons -->
+        <!-- Corner accent dots -->
         <circle cx="6"  cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
         <circle cx="54" cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
-        <line x1="3.2" y1="10.4" x2="5.8" y2="12"   stroke="rgba(247,147,26,0.32)" stroke-width="0.5"/>
-        <line x1="3.2" y1="13.6" x2="5.8" y2="12"   stroke="rgba(247,147,26,0.32)" stroke-width="0.5"/>
-        <line x1="56.8" y1="10.4" x2="54.2" y2="12" stroke="rgba(247,147,26,0.32)" stroke-width="0.5"/>
-        <line x1="56.8" y1="13.6" x2="54.2" y2="12" stroke="rgba(247,147,26,0.32)" stroke-width="0.5"/>
-        <!-- Cornea highlight -->
-        <ellipse cx="26.5" cy="9.5"  rx="1.6" ry="0.9" fill="rgba(255,255,255,0.55)" class="eye-highlight"/>
-        <ellipse cx="28.8" cy="10.6" rx="0.6" ry="0.4" fill="rgba(255,255,255,0.25)" class="eye-highlight"/>
+        <!-- Eyelid cover — slides up on load to reveal GL4NCE text (once, on page load) -->
+        <g clip-path="url(#eyeClip)">
+          <rect class="eye-lid-reveal" x="6" y="3.5" width="48" height="17" fill="#040201">
+            <animate attributeName="y" from="3.5" to="-17" dur="2.2s" begin="0.3s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.4 0 0.2 1"/>
+          </rect>
+        </g>
       </svg>
       <span class="brand-name">
-        <span class="b-gl">gl</span><svg class="b-4" viewBox="0 0 10 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M5,1 L1,13 M5,1 L9,13 M2.4,8.5 L7.6,8.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><span class="b-nce">nce</span>
+        <span class="b-gl">GL</span><svg class="b-4" viewBox="0 0 10 14" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false"><path d="M5,1 L1,13 M5,1 L9,13 M2.4,8.5 L7.6,8.5" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round"/></svg><span class="b-nce">NCE</span>
       </span>
     </div>
   </a>
@@ -807,7 +766,7 @@
 
 <!-- ══ FOOTER ════════════════════════════════════════════════ -->
 <footer class="site-footer" role="contentinfo">
-  <span class="footer-brand">gl<span style="color:var(--orange);">4</span>nce</span>
+  <span class="footer-brand">GL<span style="color:var(--orange);">4</span>NCE</span>
   <span class="footer-sources">
     <a href="https://mempool.space" target="_blank" rel="noopener noreferrer">mempool.space</a> ·
     <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">alternative.me</a> ·
@@ -895,29 +854,9 @@
   .eye-wrap { width:96px; height:38px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
   .eye-svg { width:100%; height:100%; overflow:visible; }
 
-  /* Ambient outer glow pulse */
-  @keyframes eyeAmbiGlow { 0%,100%{opacity:.7} 50%{opacity:1} }
-  .eye-outer-glow { animation:eyeAmbiGlow 5s ease-in-out infinite; }
-
   /* Outline subtle pulse */
   @keyframes eyeOutlinePulse { 0%,100%{opacity:.78} 50%{opacity:.96} }
   .eye-outline { animation:eyeOutlinePulse 3s ease-in-out infinite; }
-
-  /* Iris drift — slow, subtle */
-  @keyframes irisDrift {
-    0%,100% { transform:translate(0,0); }
-    20%     { transform:translate(0.4px,-0.3px); }
-    45%     { transform:translate(-0.3px,0.4px); }
-    70%     { transform:translate(0.35px,0.25px); }
-  }
-  .eye-iris { animation:irisDrift 8s ease-in-out infinite; transform-origin:30px 12px; }
-
-  /* Scanline slow drift */
-  @keyframes scanDrift {
-    0%,100% { transform:translateY(0); opacity:1; }
-    50%     { transform:translateY(0.8px); opacity:0.7; }
-  }
-  .eye-scanlines { animation:scanDrift 4s ease-in-out infinite; }
 
   /* Foil shimmer — single sweep every ~13s, quick pass */
   @keyframes eyeShimmer {
@@ -928,15 +867,13 @@
   }
   .eye-shimmer { animation:eyeShimmer 13s ease-in-out infinite; }
 
-  /* Cornea highlight gentle pulse */
-  @keyframes highlightPulse {
-    0%,100% { opacity:0.55; }
-    50%     { opacity:0.8; }
-  }
-  .eye-highlight { animation:highlightPulse 3s ease-in-out infinite; }
+  /* Eyelid reveal: hidden once open (SMIL animate handles the motion in SVG) */
+  .eye-lid-reveal { transform-box:fill-box; }
 
   @media (prefers-reduced-motion:reduce) {
-    .eye-iris,.eye-scanlines,.eye-shimmer,.eye-highlight,.eye-outer-glow,.eye-outline { animation:none; }
+    .eye-shimmer,.eye-outline { animation:none; }
+    .eye-lid-reveal { display:none; }
+    .brand-name { animation:none !important; opacity:1 !important; }
   }
 
   @media (max-width:768px) {
@@ -945,7 +882,9 @@
 
   /* ── WORDMARK ────────────────────────────────────────────── */
   /* padding:0 10% aligns text with the eye outline corners (x=6 & x=54 in a 60-unit viewBox) */
-  .brand-name { position:absolute; inset:0; display:flex; align-items:center; font-family:'Nyxerin',monospace; font-weight:900; font-size:1.0rem; letter-spacing:.08em; line-height:1; pointer-events:none; padding:0 10%; }
+  /* brand-name fades in after eyelid lifts (~2.2s open + 0.3s delay = starts reveal at 2.0s) */
+  .brand-name { position:absolute; inset:0; display:flex; align-items:center; font-family:'Gardion','Nyxerin',monospace; font-weight:900; font-size:1.0rem; letter-spacing:.08em; line-height:1; pointer-events:none; padding:0 10%; animation:brandReveal 0.9s ease-out 1.9s both; }
+  @keyframes brandReveal { from{opacity:0} to{opacity:1} }
   .b-gl, .b-nce { color:rgba(234,234,234,.92); flex:1; display:flex; }
   .b-gl  { justify-content:flex-start; }
   .b-nce { justify-content:flex-end; }
