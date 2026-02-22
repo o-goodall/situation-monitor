@@ -696,25 +696,23 @@
   {:else}
   <!-- ── CLASSIC: News RSS feeds ── -->
   <div class="gc" style="padding:20px 18px;">
-    <div class="gc-head" style="margin-bottom:12px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.length} articles</span></div>
+    <div class="gc-head" style="margin-bottom:16px;"><p class="gc-title">News Feed</p><span class="dim">{$newsItems.length} articles</span></div>
     {#if $newsItems.length===0}
       <p class="dim">Fetching RSS feeds…</p>
     {:else}
-      <div class="feed-carousel">
-        {#each newsLoop as item}
-          <a href={item.link} target="_blank" rel="noopener noreferrer" class="news news-slide">
+      <div class="pm-grid">
+        {#each $newsItems as item}
+          <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card" aria-label="{item.title}">
+            <div class="pm-card-tags">
+              <span class="pm-tag pm-news-src">{item.source}</span>
+              <span class="pm-tag">{ago(item.pubDate)} ago</span>
+            </div>
             {#if item.image}
-              <div class="news-img" style="background-image:url('{item.image}');">
-                <div class="news-img-overlay"></div>
-                <div class="news-img-content">
-                  <p class="news-title">{item.title}</p>
-                  <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
-                </div>
-              </div>
-            {:else}
-              <p class="news-title">{item.title}</p>
-              {#if item.description}<p class="news-desc">{item.description}</p>{/if}
-              <div class="news-meta"><span class="news-src">{item.source}</span><span class="dim">{ago(item.pubDate)} ago</span></div>
+              <div class="news-card-img" style="background-image:url('{item.image}');"></div>
+            {/if}
+            <p class="pm-card-q">{item.title}</p>
+            {#if item.description}
+              <p class="news-card-desc">{item.description}</p>
             {/if}
           </a>
         {/each}
@@ -767,12 +765,13 @@
   .stat-tile:hover::before { width:100%; }
 
   .stat-tile--chart { padding-bottom: 0; }
+  .stat-tile--chart::before { display:none; }
   .tile-spark { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; opacity: 0.7; pointer-events: none; }
   .stat-tile--chart .stat-n, .stat-tile--chart .stat-l, .stat-tile--chart .stat-l-row { position: relative; z-index: 1; }
   .stat-tile--chart .stat-n { margin-top: 8px; margin-bottom: 4px; }
   .stat-tile--chart .stat-l-row { display: flex; justify-content: center; align-items: center; gap: 10px; padding-bottom: 56px; }
 
-  .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
+  .stat-n { display:block; font-size:1.4rem; font-weight:700; font-family:'Orbitron',monospace; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
   .stat-l { font-size:.58rem; color:var(--t2); text-transform:uppercase; letter-spacing:.1em; }
 
   /* Halving progress bar — electricity surge effect */
@@ -789,7 +788,7 @@
     animation: electricSurge 2s linear infinite;
     transition: width .8s cubic-bezier(.4,0,.2,1);
   }
-  .halving-epoch { font-size:.52rem; color:var(--t3); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
+  .halving-epoch { font-size:.52rem; color:var(--t2); text-transform:uppercase; letter-spacing:.08em; margin-top:5px; }
   :global(html.light) .halving-bar { background:rgba(0,0,0,.07); }
 
   /* Halving number — Orbitron for crisp readability */
@@ -860,7 +859,7 @@
   .zone-bg-img {
     width:100%; height:100%; object-fit:cover; object-position:center 30%;
     opacity:0.18; filter:blur(4px) saturate(120%);
-    animation:zoneFadeIn .8s ease-out;
+    animation:zoneFadeIn .8s ease-out, gifGlitch 9s ease-in-out 3s infinite;
   }
   /* Frosted glass overlay on top of GIF */
   .zone-glass {
@@ -868,8 +867,33 @@
     background:linear-gradient(180deg, rgba(14,14,14,.72) 0%, rgba(14,14,14,.55) 40%, rgba(14,14,14,.7) 100%);
     backdrop-filter:blur(2px);
     -webkit-backdrop-filter:blur(2px);
+    animation:glassGlitch 9s ease-in-out 3s infinite;
   }
   @keyframes zoneFadeIn { from{opacity:0;} to{opacity:1;} }
+
+  /* DCA Signal tile — periodic glitch: briefly unblurs GIF + reduces glass opacity */
+  @keyframes gifGlitch {
+    0%, 78%, 100% { opacity:0.18; filter:blur(4px) saturate(120%); transform:translateX(0); }
+    79%  { opacity:0.45; filter:blur(1.5px) saturate(150%); transform:translateX(3px); }
+    80%  { opacity:0.60; filter:blur(0px) saturate(180%); transform:translateX(-4px); }
+    81%  { opacity:0.50; filter:blur(0.5px) saturate(160%); transform:translateX(2px); }
+    82%  { opacity:0.35; filter:blur(2px) saturate(140%); transform:translateX(-1px); }
+    83%  { opacity:0.20; filter:blur(3.5px) saturate(125%); transform:translateX(0); }
+  }
+  @keyframes glassGlitch {
+    0%, 78%, 100% { opacity:1; }
+    79%  { opacity:0.55; }
+    80%  { opacity:0.35; }
+    81%  { opacity:0.5; }
+    82%  { opacity:0.7; }
+    83%  { opacity:1; }
+  }
+
+  /* Accessibility: disable glitch animations for users who prefer reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    .zone-bg-img { animation: zoneFadeIn .8s ease-out; }
+    .zone-glass  { animation: none; }
+  }
 
   /* Light mode: brighter overlay to keep text readable */
   :global(html.light) .zone-glass {
@@ -885,7 +909,7 @@
     :global(html.light) .zone-glass { background:linear-gradient(180deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.65) 40%, rgba(255,255,255,.8) 100%); }
   }
   .dca-hero    { text-align:center; padding:18px 0 16px; position:relative; z-index:2; }
-  .dca-n       { display:block; font-size:clamp(3rem,7vw,5rem); font-weight:800; line-height:1; letter-spacing:-.045em; transition:color .5s,text-shadow .5s; }
+  .dca-n       { display:block; font-size:clamp(3rem,7vw,5rem); font-weight:800; font-family:'Orbitron',monospace; line-height:1; letter-spacing:-.045em; transition:color .5s,text-shadow .5s; }
   .dca-sub     { font-size:.62rem; color:var(--t2); text-transform:uppercase; letter-spacing:.12em; margin-top:8px; }
   @media (max-width:700px) {
     .dca-hero { padding:10px 0 10px; }
@@ -947,7 +971,7 @@
   /* Network + Stack shared */
   .met3  { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:14px; }
   .met   { display:flex; flex-direction:column; gap:7px; text-align:center; align-items:center; }
-  .met-n { font-size:1.4rem; font-weight:700; letter-spacing:-.03em; line-height:1; color:var(--t1); }
+  .met-n { font-size:1.4rem; font-weight:700; font-family:'Orbitron',monospace; letter-spacing:-.03em; line-height:1; color:var(--t1); }
   .met-u { font-size:.48em; color:var(--t2); font-weight:400; margin-left:2px; }
   .btc-pill  { display:flex; align-items:baseline; padding:12px 14px; background:rgba(247,147,26,.05); border:1px solid rgba(247,147,26,.12); border-radius:8px; margin-bottom:16px; flex-wrap:wrap; gap:4px; }
   .goal-head { display:flex; justify-content:space-between; margin-bottom:7px; }
@@ -994,14 +1018,14 @@
   .ap-icon { font-size:1.2rem; line-height:1; }
   .ap-ticker { font-size:.8rem; font-weight:700; }
   .ap-name { font-size:.58rem; color:var(--t2); margin-top:1px; }
-  .ap-pct { font-size:1.9rem; font-weight:800; letter-spacing:-.04em; line-height:1; margin-bottom:3px; }
+  .ap-pct { font-size:1.9rem; font-weight:800; font-family:'Orbitron',monospace; letter-spacing:-.04em; line-height:1; margin-bottom:3px; }
   .ap-sub { font-size:.62rem; color:var(--t2); margin-bottom:0; font-variant-numeric:tabular-nums; }
   .ap-live { font-size:.5em; color:var(--up); margin-left:4px; animation:blink 2s ease-in-out infinite; vertical-align:middle; }
   @keyframes apPulse { 0%,100%{opacity:.4} 50%{opacity:.8} }
   @media (max-width:400px) { .asset-panels { grid-template-columns:1fr; } .ap-pct { font-size:1.5rem; } }
 
   .gf-hero { display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap; margin-bottom:18px; }
-  .gf-nw   { font-size:2.4rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
+  .gf-nw   { font-size:2.4rem; font-weight:700; font-family:'Orbitron',monospace; letter-spacing:-.045em; line-height:1; color:var(--t1); }
   .gf-cpi  { opacity:.5; cursor:help; }
   .gf-est  { font-size:.5em; opacity:.6; }
   .gf-perf { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; flex:1; border-left:1px solid rgba(255,255,255,.06); padding-left:20px; min-width:0; }
@@ -1098,6 +1122,7 @@
   .pm-tag { font-size:.54rem; font-weight:600; text-transform:uppercase; letter-spacing:.07em; padding:2px 8px; border-radius:999px;
     background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.08); color:var(--t2); }
   .pm-pin { background:rgba(247,147,26,.09); border-color:rgba(247,147,26,.26); color:var(--orange); }
+  .pm-news-src { background:rgba(247,147,26,.09); border-color:rgba(247,147,26,.26); color:var(--orange); }
   .pm-card-q { font-size:.84rem; color:var(--t1); line-height:1.5; font-weight:500; flex:1; }
   .pm-outcomes { display:flex; gap:8px; }
   .pm-outcome { display:flex; align-items:center; justify-content:space-between; gap:6px;
@@ -1120,6 +1145,17 @@
   :global(html.light) .pm-outcome { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
   :global(html.light) .pm-bar { background:rgba(0,0,0,.05); }
   :global(html.light) .pm-fill-rest { background:rgba(0,0,0,.04); }
+
+  /* ── NEWS CARD (Classic view — matches Polymarket card style) ─── */
+  .news-card-img {
+    width:100%; height:100px; border-radius:6px; overflow:hidden;
+    background-size:cover; background-position:center;
+    flex-shrink:0;
+    filter:saturate(80%);
+  }
+  .news-card-desc { font-size:.68rem; color:var(--t2); line-height:1.55; opacity:.75; }
+  :global(html.light) .news-card-desc { color:rgba(0,0,0,.45); }
+  :global(html.light) .pm-news-src { background:rgba(247,147,26,.08); border-color:rgba(247,147,26,.25); color:#c77a10; }
 
   /* Intel section: no forced full-height — content determines height */
   #intel.section { min-height: auto; padding-bottom: 64px; }
