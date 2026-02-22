@@ -3,12 +3,17 @@ import type { RequestEvent } from '@sveltejs/kit';
 
 export async function GET({ url }: RequestEvent) {
   const range = url.searchParams.get('range') ?? '1d';
+  const validRanges = ['1d', '7d', '30d', '1y', '5y', 'max'];
+  const safeRange = validRanges.includes(range) ? range : '1d';
 
   let days: string;
-  switch (range) {
-    case '7d':  days = '7';  break;
-    case '30d': days = '30'; break;
-    default:    days = '1';
+  switch (safeRange) {
+    case '7d':   days = '7';    break;
+    case '30d':  days = '30';   break;
+    case '1y':   days = '365';  break;
+    case '5y':   days = '1825'; break;
+    case 'max':  days = 'max';  break;
+    default:     days = '1';
   }
 
   try {

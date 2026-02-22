@@ -16,21 +16,21 @@
   import PriceChart from '$lib/PriceChart.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
-  let btcChartRange: '1D' | '7D' | '1M' = '1D';
+  let btcChartRange: '1D' | '1W' | '1Y' | '5Y' | 'Max' = '1D';
   let btcChartData: { t: number; p: number }[] = [];
   let btcChartLoading = false;
 
   async function fetchBtcChart(r = btcChartRange) {
     btcChartLoading = true;
     try {
-      const map: Record<string,'1d'|'7d'|'30d'> = { '1D':'1d', '7D':'7d', '1M':'30d' };
+      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y', 'Max':'max' };
       const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
       btcChartData = d.prices ?? [];
     } catch { btcChartData = []; }
     finally { btcChartLoading = false; }
   }
 
-  async function setBtcChartRange(r: '1D' | '7D' | '1M') {
+  async function setBtcChartRange(r: '1D' | '1W' | '1Y' | '5Y' | 'Max') {
     btcChartRange = r;
     compGoldData = []; compSP500Data = [];
     await fetchBtcChart(r);
@@ -40,7 +40,7 @@
   // Keep last chart price point in sync with live WebSocket price.
   // Only update when price changes by >0.05% to avoid excessive array copies.
   let _lastChartPrice = 0;
-  $: if ($btcPrice > 0 && btcChartData.length > 0) {
+  $: if ($btcPrice > 0 && btcChartData.length > 0 && btcChartRange === '1D') {
     const changePct = _lastChartPrice > 0 ? Math.abs($btcPrice - _lastChartPrice) / _lastChartPrice : 1;
     if (changePct >= 0.0005) {
       _lastChartPrice = $btcPrice;
@@ -48,21 +48,21 @@
     }
   }
 
-  let hashrateChartRange: '3M' | '6M' | '1Y' = '6M';
+  let hashrateChartRange: '3M' | '6M' | '1Y' | '2Y' | 'All' = '1Y';
   let hashrateData: { t: number; p: number }[] = [];
   let hashrateLoading = false;
 
   async function fetchHashrateChart(r = hashrateChartRange) {
     hashrateLoading = true;
     try {
-      const map: Record<string,'3m'|'6m'|'1y'> = { '3M':'3m', '6M':'6m', '1Y':'1y' };
+      const map: Record<string,'3m'|'6m'|'1y'|'2y'|'all'> = { '3M':'3m', '6M':'6m', '1Y':'1y', '2Y':'2y', 'All':'all' };
       const d = await fetch(`/api/bitcoin/hashrate?range=${map[r]}`).then(res => res.json());
       hashrateData = d.hashrates ?? [];
     } catch { hashrateData = []; }
     finally { hashrateLoading = false; }
   }
 
-  async function setHashrateChartRange(r: '3M' | '6M' | '1Y') {
+  async function setHashrateChartRange(r: '3M' | '6M' | '1Y' | '2Y' | 'All') {
     hashrateChartRange = r;
     await fetchHashrateChart(r);
   }
@@ -213,7 +213,8 @@
   }
 
   function btcApiRange(r = btcChartRange): string {
-    return r === '1D' ? '1d' : r === '7D' ? '7d' : '30d';
+    const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y', 'Max':'max' };
+    return map[r] ?? '1d';
   }
 
   async function toggleGold() {
@@ -285,27 +286,6 @@
       {:else}
         <span class="stat-n muted">—</span>
         <span class="stat-l">Days to Halving</span>
-      {/if}
-    </div>
-  </div>
-
-  <!-- BITCOIN HASHRATE CHART CARD -->
-  <div class="gc btc-chart-card">
-    <div class="chart-header">
-      <p class="gc-title">Bitcoin Hashrate</p>
-      <div class="chart-range-btns" role="group" aria-label="Chart time range">
-        <button class="crb" class:crb--active={hashrateChartRange==='3M'} on:click={() => setHashrateChartRange('3M')}>3M</button>
-        <button class="crb" class:crb--active={hashrateChartRange==='6M'} on:click={() => setHashrateChartRange('6M')}>6M</button>
-        <button class="crb" class:crb--active={hashrateChartRange==='1Y'} on:click={() => setHashrateChartRange('1Y')}>1Y</button>
-      </div>
-    </div>
-    <div class="chart-container">
-      {#if hashrateLoading}
-        <div class="skeleton" style="height:110px;border-radius:6px;"></div>
-      {:else if hashrateData.length >= 2}
-        <PriceChart prices={hashrateData} height={110} range={hashrateChartRange === '3M' ? '7d' : hashrateChartRange === '6M' ? '30d' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
-      {:else}
-        <p class="dim" style="text-align:center;padding:40px 0;">Loading hashrate data…</p>
       {/if}
     </div>
   </div>
@@ -489,16 +469,16 @@
       <div class="chart-header" style="margin-bottom:12px;">
         <p class="gc-title">Bitcoin Hashrate</p>
         <div class="chart-range-btns" role="group" aria-label="Hashrate chart range">
-          <button class="crb" class:crb--active={hashrateChartRange==='3M'} on:click={() => setHashrateChartRange('3M')}>3M</button>
-          <button class="crb" class:crb--active={hashrateChartRange==='6M'} on:click={() => setHashrateChartRange('6M')}>6M</button>
           <button class="crb" class:crb--active={hashrateChartRange==='1Y'} on:click={() => setHashrateChartRange('1Y')}>1Y</button>
+          <button class="crb" class:crb--active={hashrateChartRange==='2Y'} on:click={() => setHashrateChartRange('2Y')}>2Y</button>
+          <button class="crb" class:crb--active={hashrateChartRange==='All'} on:click={() => setHashrateChartRange('All')}>All</button>
         </div>
       </div>
       <div class="chart-container">
         {#if hashrateLoading}
           <div class="skeleton" style="height:160px;border-radius:6px;"></div>
         {:else if hashrateData.length >= 2}
-          <PriceChart prices={hashrateData} height={160} range={hashrateChartRange === '3M' ? '7d' : hashrateChartRange === '6M' ? '30d' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
+          <PriceChart prices={hashrateData} height={160} range={hashrateChartRange === 'All' ? 'max' : hashrateChartRange === '2Y' ? '5y' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
         {:else}
           <p class="dim" style="text-align:center;padding:40px 0;">Loading hashrate data…</p>
         {/if}
@@ -726,8 +706,10 @@
         <!-- Range buttons -->
         <div class="chart-range-btns" role="group" aria-label="Chart time range">
           <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
-          <button class="crb" class:crb--active={btcChartRange==='7D'} on:click={() => setBtcChartRange('7D')}>7D</button>
-          <button class="crb" class:crb--active={btcChartRange==='1M'} on:click={() => setBtcChartRange('1M')}>1M</button>
+          <button class="crb" class:crb--active={btcChartRange==='1W'} on:click={() => setBtcChartRange('1W')}>1W</button>
+          <button class="crb" class:crb--active={btcChartRange==='1Y'} on:click={() => setBtcChartRange('1Y')}>1Y</button>
+          <button class="crb" class:crb--active={btcChartRange==='5Y'} on:click={() => setBtcChartRange('5Y')}>5Y</button>
+          <button class="crb" class:crb--active={btcChartRange==='Max'} on:click={() => setBtcChartRange('Max')}>Max</button>
         </div>
       </div>
     </div>
@@ -749,7 +731,7 @@
         <PriceChart
           prices={chartDisplayData}
           height={160}
-          range={btcChartRange === '1D' ? '1d' : btcChartRange === '7D' ? '7d' : '30d'}
+          range={btcChartRange === '1D' ? '1d' : btcChartRange === '5Y' ? '5y' : btcChartRange === 'Max' ? 'max' : '1y'}
           formatY={inOverlayMode ? (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : undefined}
           overlays={chartOverlays}
         />
