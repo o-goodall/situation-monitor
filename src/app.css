@@ -25,8 +25,8 @@
   --dn: #ef4444;
   /* Consistent radius scale */
   --r-sm: 4px;
-  --r-md: 8px;
-  --r-lg: 12px;
+  --r-md: 12px;
+  --r-lg: 18px;
   /* Shadow scale */
   --shadow-sm: 0 2px 8px rgba(0,0,0,0.28);
   --shadow-md: 0 6px 24px rgba(0,0,0,0.38), inset 0 1px 0 rgba(255,255,255,0.05);
@@ -285,7 +285,15 @@ body::after {
 .badge--dn     { background: rgba(239,68,68,0.1);  color: var(--dn);    border: 1px solid rgba(239,68,68,0.22); }
 .badge--muted  { background: rgba(255,255,255,.04); color: var(--t2);   border: 1px solid rgba(255,255,255,.1); }
 
-@media (max-width:600px) { .card { padding:16px; border-radius:6px; } }
+@media (max-width:600px) { .card { padding:16px; border-radius:var(--r-md); } }
+
+/* ══ MOBILE PERFORMANCE ═════════════════════════════════════ */
+@media (max-width:768px) {
+  /* Disable scanline texture on mobile — saves compositing + repaint */
+  body::after { display:none; }
+  /* Tone down ambient background animation on mobile */
+  body::before { animation:none; opacity:.65; }
+}
 
 @media (max-width:768px) {
   html { scroll-padding-top: 0; }

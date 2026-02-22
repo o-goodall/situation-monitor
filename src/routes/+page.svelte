@@ -778,14 +778,15 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:700px) {
-    .section { padding:20px 12px 0; min-height:auto; scroll-snap-align:none; }
+    .section { padding:20px 14px 0; min-height:auto; scroll-snap-align:none; }
     .section-header {
       margin-bottom:16px;
     }
     .section-divider { margin-top:24px; }
-    /* Bottom padding for each section so content doesn't abut next section */
-    #signal    { padding-bottom:32px; }
-    #portfolio { padding-bottom:32px; }
+    /* Bottom padding for each section — extra space for sticky bottom nav */
+    #signal    { padding-bottom:80px; }
+    #portfolio { padding-bottom:80px; }
+    #intel     { padding-bottom:80px; }
   }
   @media (max-width:600px) {
     .section-header { margin-bottom:14px; }
@@ -796,7 +797,7 @@
   .stat-tile {
     padding: 16px 14px; text-align: center;
     background: var(--glass-bg); border: 1px solid var(--glass-bd);
-    border-radius: 8px; backdrop-filter: blur(16px);
+    border-radius: var(--r-md); backdrop-filter: blur(16px);
     transition: transform .25s, border-color .25s, box-shadow .25s;
     position: relative; overflow: hidden;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -919,7 +920,7 @@
   .gc {
     background: var(--glass-bg); backdrop-filter: blur(24px) saturate(150%);
     -webkit-backdrop-filter: blur(24px) saturate(150%);
-    border: 1px solid var(--glass-bd); border-radius: 8px; padding: 24px;
+    border: 1px solid var(--glass-bd); border-radius: var(--r-md); padding: 24px;
     box-shadow: 0 6px 28px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.06);
     transition: border-color .3s, box-shadow .3s, transform .25s; position: relative; overflow: hidden;
   }
@@ -927,7 +928,12 @@
   .gc:hover { border-color:rgba(247,147,26,.2); box-shadow:0 12px 40px rgba(0,0,0,.5),0 0 0 1px rgba(247,147,26,.06),inset 0 1px 0 rgba(255,255,255,.08); transform:translateY(-1px); }
   .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; }
   .gc-title { font-family:'Poison',monospace; font-size:.72rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.08em; }
-  @media (max-width:600px) { .gc { padding:14px 12px; } }
+  @media (max-width:600px) { .gc { padding:16px 14px; border-radius:var(--r-md); } }
+  /* Reduce blur on mobile for better paint performance */
+  @media (max-width:768px) {
+    .gc { backdrop-filter:blur(12px) saturate(140%); -webkit-backdrop-filter:blur(12px) saturate(140%); }
+    .stat-tile { backdrop-filter:blur(10px); }
+  }
 
   /* Hashrate tile — flex column so the chart fills remaining tile height */
   .gc--hashrate { display:flex; flex-direction:column; }
@@ -937,8 +943,9 @@
   /* ── MOBILE: hide supplementary sections, limit intel stories ── */
   @media (max-width:768px) {
     .btc-network-card,
-    .btc-hashrate-card,
-    .btc-chart-card { display:none; }
+    .btc-hashrate-card { display:none; }
+    /* Show BTC price chart on mobile — collapse to single-chart layout */
+    .btc-chart-card { margin-top:10px; }
   }
 
   /* ── ATOMS ──────────────────────────────────────────────── */
