@@ -72,6 +72,7 @@ export const gfCash           = writable<number|null>(null);
 export const gfAnnualizedPct  = writable<number|null>(null);
 export const gfFirstOrderDate = writable<string|null>(null);
 export const gfOrdersCount    = writable<number|null>(null);
+export const gfPortfolioChart = writable<{t:number;p:number}[]>([]);
 
 // ── FX RATES ─────────────────────────────────────────────────
 // Map of currency code → rate from 1 USD (e.g. AUD: 1.58 means 1 USD = 1.58 AUD)

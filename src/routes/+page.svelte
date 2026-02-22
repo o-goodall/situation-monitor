@@ -8,9 +8,9 @@
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
-    gfDividendTotal, gfDividendYtd, gfCash, gfAnnualizedPct, gfFirstOrderDate, gfOrdersCount,
+    gfDividendTotal, gfDividendYtd, gfCash, gfFirstOrderDate, gfOrdersCount,
     markets, newsItems, btcDisplayPrice, btcWsConnected,
-    btcHashrate
+    btcHashrate, gfPortfolioChart
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
   import PriceChart from '$lib/PriceChart.svelte';
@@ -65,8 +65,6 @@
     await fetchHashrateChart(r);
   }
 
-  let showHoldings = false;
-  let holdingsSort: 'value'|'perf'|'alloc' = 'value';
   let intelView: 'cutting-edge'|'classic' = 'cutting-edge';
   const INTEL_TILE_LIMIT = 12; // 3 columns × 4 rows
 
@@ -113,17 +111,6 @@
   // otherwise fall back to DCA start date duration
   $: inflAdj = (()=>{if($gfNetWorth===null||$cpiAnnual===null)return null;const y=Math.max(.1,dcaDays/365.25);return $gfNetWorth/Math.pow(1+$cpiAnnual/100,y);})();
   $: cpiLoss = (()=>{if($cpiAnnual===null)return 0;const y=Math.max(.1,dcaDays/365.25);return(1-1/Math.pow(1+$cpiAnnual/100,y))*100;})();
-  $: portCAGR= (()=>{
-    // Prefer Ghostfolio's own annualised performance if available, otherwise compute
-    if ($gfAnnualizedPct !== null) return $gfAnnualizedPct;
-    if($gfNetGainPct===null)return null;
-    // Use Ghostfolio's first order date for portfolio duration when available,
-    // otherwise fall back to DCA start date
-    const startMs=$gfFirstOrderDate?new Date($gfFirstOrderDate).getTime():new Date($settings.dca.startDate).getTime();
-    const portfolioDays=Math.max(0,Math.floor((Date.now()-startMs)/86400000));
-    const y=Math.max(.1,portfolioDays/365.25);
-    return(Math.pow(1+$gfNetGainPct/100,1/y)-1)*100;
-  })();
 
   // Asset class allocation derived from holdings
   const CLASS_LABEL: Record<string,string> = {
@@ -141,13 +128,6 @@
       .map(([cls, pct]) => ({ cls, label: CLASS_LABEL[cls] ?? cls, pct: Math.round(pct * 10) / 10 }))
       .sort((a, b) => b.pct - a.pct);
   })();
-
-  // Sorted holdings list
-  $: sortedHoldings = [...$gfHoldings].sort((a, b) => {
-    if (holdingsSort === 'perf') return b.netPerformancePercentWithCurrencyEffect - a.netPerformancePercentWithCurrencyEffect;
-    if (holdingsSort === 'alloc') return b.allocationInPercentage - a.allocationInPercentage;
-    return b.valueInBaseCurrency - a.valueInBaseCurrency;
-  });
 
   // Mobile feed carousels — duplicate items so the CSS loop is seamless
   $: newsLoop = $newsItems.length ? [...$newsItems, ...$newsItems] : [];
@@ -172,9 +152,9 @@
         $gfDividendTotal=d.dividendTotal??null;
         $gfDividendYtd=d.dividendYtd??null;
         $gfCash=d.cash??null;
-        $gfAnnualizedPct=d.annualizedPerformancePct??null;
         $gfFirstOrderDate=d.firstOrderDate??null;
         $gfOrdersCount=d.ordersCount??null;
+        $gfPortfolioChart=d.portfolioChart??[];
         $gfUpdated=new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
       }
     }
@@ -185,6 +165,8 @@
     const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y' };
     return map[r] ?? '1d';
   }
+
+  const fmtPct = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
 
   onMount(() => { fetchBtcChart(); fetchHashrateChart(); });
 </script>
@@ -608,12 +590,6 @@
           </div>
           {/if}
 
-          {#if portCAGR!==null}
-          <div class="bench">
-            <div class="bench-c"><p class="eyebrow orange">Portfolio CAGR</p><p class="bench-v" style="color:{portCAGR>=0?'var(--up)':'var(--dn)'};">{portCAGR>=0?'+':''}{portCAGR.toFixed(1)}<span style="font-size:.55em;opacity:.5;">%/yr</span></p></div>
-          </div>
-          {/if}
-
           <!-- ASSET CLASS ALLOCATION (from holdings) -->
           {#if assetClasses.length>0}
           <div class="alloc-wrap">
@@ -639,41 +615,19 @@
           </div>
           {/if}
 
-          {#if $gfHoldings.length>0}
-          <div class="holdings-wrap">
-            <div class="holdings-head">
-              <button class="btn-secondary" on:click={()=>showHoldings=!showHoldings} style="font-size:.62rem;padding:7px 16px;"
-                aria-expanded={showHoldings}>
-                {showHoldings?'▲':'▼'} Holdings ({$gfHoldings.length})
-              </button>
-              {#if showHoldings}
-              <div class="sort-btns" role="group" aria-label="Sort holdings by">
-                <button class="sort-btn" class:sort-btn--active={holdingsSort==='value'} on:click={()=>holdingsSort='value'} aria-pressed={holdingsSort==='value'}>Value</button>
-                <button class="sort-btn" class:sort-btn--active={holdingsSort==='perf'} on:click={()=>holdingsSort='perf'} aria-pressed={holdingsSort==='perf'}>Return</button>
-                <button class="sort-btn" class:sort-btn--active={holdingsSort==='alloc'} on:click={()=>holdingsSort='alloc'} aria-pressed={holdingsSort==='alloc'}>Alloc</button>
-              </div>
-              {/if}
+          <!-- PORTFOLIO PERFORMANCE CHART -->
+          {#if $gfPortfolioChart.length >= 2}
+          <div class="perf-chart-wrap">
+            <div class="perf-chart-head">
+              <p class="eyebrow">Performance <span style="opacity:.5;">since inception · % return</span></p>
+              {#if $gfFirstOrderDate}<span class="dim">from {fmtDate($gfFirstOrderDate)}</span>{/if}
             </div>
-            {#if showHoldings}
-            <div class="hgrid">
-              {#each sortedHoldings as h}
-                {@const hp=h.netPerformancePercentWithCurrencyEffect}
-                {@const hcolor = CLASS_COLOR[h.assetClass] ?? 'var(--orange)'}
-                <div class="h-card">
-                  <div class="h-top">
-                    <div>
-                      <span class="h-sym">{h.symbol}</span>
-                      {#if h.assetClass}<span class="h-cls" style="background:{hcolor}22;color:{hcolor};">{CLASS_LABEL[h.assetClass]??h.assetClass}</span>{/if}
-                    </div>
-                    <span class="h-pct" style="color:{hp>=0?'var(--up)':'var(--dn)'};">{hp>=0?'+':''}{hp.toFixed(1)}%</span>
-                  </div>
-                  {#if h.name!==h.symbol}<p class="h-name">{h.name.slice(0,22)}</p>{/if}
-                  <div class="pbar" style="margin:8px 0 6px;"><div class="pfill" style="width:{Math.min(100,h.allocationInPercentage)}%;background:linear-gradient(90deg,{hcolor}88,{hcolor});"></div></div>
-                  <div class="h-foot"><span>{h.allocationInPercentage.toFixed(1)}%</span><span>${n(h.valueInBaseCurrency,0)}</span></div>
-                </div>
-              {/each}
-            </div>
-            {/if}
+            <PriceChart
+              prices={$gfPortfolioChart}
+              height={140}
+              range="max"
+              formatY={fmtPct}
+            />
           </div>
           {/if}
         {/if}
@@ -1264,26 +1218,6 @@
   .gfp-v   { font-size:1.2rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
   /* Live indicator dot (used in portfolio and loading states) */
   .live-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--up); flex-shrink:0; }
-  .bench   { display:flex; border:1px solid rgba(255,255,255,.07); border-radius:8px; overflow:hidden; margin-bottom:18px; background:rgba(255,255,255,.02); flex-wrap:wrap; }
-  .bench-c { flex:1; padding:14px; border-right:1px solid rgba(255,255,255,.06); display:flex; flex-direction:column; gap:5px; min-width:80px; align-items:center; text-align:center; }
-  .bench-c:last-child { border-right:none; }
-  .bench-v { font-size:1.15rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
-  .bench-vs { font-size:.6rem; }
-  .holdings-wrap { border-top:1px solid rgba(255,255,255,.05); padding-top:16px; }
-  .holdings-head { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; }
-  .sort-btns { display:flex; gap:2px; background:rgba(255,255,255,.05); border-radius:6px; padding:2px; }
-  .sort-btn { padding:3px 10px; font-size:.52rem; font-weight:700; letter-spacing:.08em;
-    background:none; border:none; color:var(--t2); cursor:pointer; border-radius:4px; transition:all .2s; text-transform:uppercase; }
-  .sort-btn--active { background:rgba(247,147,26,.7); color:#fff; box-shadow:0 1px 6px rgba(247,147,26,.3); }
-  .hgrid { display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:8px; margin-top:14px; }
-  .h-card { background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:14px; transition:transform .25s, border-color .25s, box-shadow .25s; }
-  .h-card:hover { transform:translateY(-3px); border-color:rgba(247,147,26,.18); box-shadow:0 8px 24px rgba(0,0,0,.25); }
-  .h-top  { display:flex; justify-content:space-between; align-items:flex-start; gap:6px; margin-bottom:3px; }
-  .h-sym  { font-size:.88rem; font-weight:700; color:var(--t1); }
-  .h-cls  { font-size:.48rem; font-weight:600; padding:2px 6px; border-radius:999px; text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; flex-shrink:0; margin-top:2px; display:inline-block; }
-  .h-pct  { font-size:.68rem; font-weight:600; white-space:nowrap; }
-  .h-name { font-size:.6rem; color:var(--t2); margin-bottom:0; }
-  .h-foot { display:flex; justify-content:space-between; font-size:.62rem; color:var(--t2); }
 
   /* ── GHOSTFOLIO SUMMARY STRIP ────────────────────────────── */
   .gf-summary { display:flex; flex-wrap:wrap; gap:12px; margin:0 0 16px; border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:14px 16px; background:rgba(255,255,255,.02); }
@@ -1314,14 +1248,16 @@
   .alloc-pct { font-size:.6rem; font-weight:700; color:var(--t1); }
   :global(html.light) .alloc-wrap { border-top-color:rgba(0,0,0,.06); }
   :global(html.light) .alloc-bar { background:rgba(0,0,0,.04); }
-  :global(html.light) .sort-btns { background:rgba(0,0,0,.06); }
   @media (max-width:600px) {
     .gf-nw { font-size:2.4rem; }
     .gf-perf { border-left:none; padding-left:0; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; width:100%; }
     .gfp-v { font-size:1rem; }
-    .bench-c { padding:10px 12px; min-width:70px; }
-    .bench-v { font-size:1rem; }
   }
+
+  /* ── PORTFOLIO PERFORMANCE CHART ────────────────────────── */
+  .perf-chart-wrap { margin-top:16px; padding-top:16px; border-top:1px solid rgba(255,255,255,.05); }
+  .perf-chart-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; flex-wrap:wrap; gap:6px; }
+  :global(html.light) .perf-chart-wrap { border-top-color:rgba(0,0,0,.06); }
 
   /* ── INTEL TOGGLE — Apple-style ────────────────────────── */
   .intel-toggle-wrap { display:flex; align-items:center; gap:8px; margin-left:auto; }
@@ -1533,9 +1469,4 @@
   :global(html.light) .ap { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
   :global(html.light) .ap:hover { border-color:rgba(0,0,0,.12); }
   :global(html.light) .gf-perf { border-left-color:rgba(0,0,0,.08); }
-  :global(html.light) .bench { border-color:rgba(0,0,0,.08); background:rgba(0,0,0,.02); }
-  :global(html.light) .bench-c { border-right-color:rgba(0,0,0,.06); }
-  :global(html.light) .h-card { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
-  :global(html.light) .h-card:hover { border-color:rgba(247,147,26,.2); }
-  :global(html.light) .holdings-wrap { border-top-color:rgba(0,0,0,.06); }
 </style>

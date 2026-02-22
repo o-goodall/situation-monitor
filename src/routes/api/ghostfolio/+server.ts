@@ -26,12 +26,13 @@ export async function GET({ url }) {
 
   const headers = { Authorization: `Bearer ${bearer}` };
 
-  const [perfMaxRes, perfYtdRes, perf1dRes, holdingsRes, summaryRes] = await Promise.allSettled([
+  const [perfMaxRes, perfYtdRes, perf1dRes, holdingsRes, summaryRes, chartRes] = await Promise.allSettled([
     fetch(`${GF_BASE}/api/v2/portfolio/performance?range=max`, { headers }),
     fetch(`${GF_BASE}/api/v2/portfolio/performance?range=ytd`, { headers }),
     fetch(`${GF_BASE}/api/v2/portfolio/performance?range=1d`, { headers }),
     fetch(`${GF_BASE}/api/v1/portfolio/holdings`, { headers }),
     fetch(`${GF_BASE}/api/v1/portfolio/summary`, { headers }),
+    fetch(`${GF_BASE}/api/v2/portfolio/chart?range=max`, { headers }),
   ]);
 
   let netWorth: number | null = null;
@@ -118,5 +119,19 @@ export async function GET({ url }) {
     }
   }
 
-  return json({ netWorth, totalInvested, netGain, netGainPct, netGainYtdPct, todayChangePct, holdings, dividendTotal, dividendYtd, cash, annualizedPerformancePct, firstOrderDate, ordersCount });
+  let portfolioChart: { t: number; p: number }[] = [];
+  if (chartRes.status === 'fulfilled' && chartRes.value.ok) {
+    const d = await chartRes.value.json();
+    interface ChartEntry { date?: string; netPerformanceInPercentageWithCurrencyEffect?: number; netPerformanceInPercentage?: number; }
+    const entries: ChartEntry[] = d?.chart ?? [];
+    portfolioChart = entries
+      .map((e) => {
+        const netPerformancePct = e.netPerformanceInPercentageWithCurrencyEffect ?? e.netPerformanceInPercentage ?? null;
+        if (netPerformancePct === null || !e.date) return null;
+        return { t: new Date(e.date).getTime(), p: netPerformancePct * 100 };
+      })
+      .filter((e): e is { t: number; p: number } => e !== null && !isNaN(e.t));
+  }
+
+  return json({ netWorth, totalInvested, netGain, netGainPct, netGainYtdPct, todayChangePct, holdings, dividendTotal, dividendYtd, cash, annualizedPerformancePct, firstOrderDate, ordersCount, portfolioChart });
 }
