@@ -926,8 +926,8 @@
     .mobile-only  { display:flex !important; }
     .brand { margin-right:0; }
     .brand-name { display:none; }
-    .eye-wrap { width:34px; height:34px; }
-    .mobile-logo-4 { display:flex; }
+    .eye-wrap { width:50px; height:20px; }
+    .mobile-logo-4 { display:flex; font-size:0.9rem; }
     .mobile-section-nav { display:flex; }
     .mobile-hdr-right { display:flex; }
     /* Uniform button size for all header controls on mobile */
