@@ -510,16 +510,16 @@
           <p class="err-msg">{$gfError} — check token in Settings.</p>
         {:else}
           <div class="gf-hero">
-            <div>
+            <div class="gf-nw-block">
               <p class="eyebrow">Net Worth</p>
               <p class="gf-nw">{$gfNetWorth!==null?'$'+n($gfNetWorth,0):'—'}</p>
               <p class="eyebrow" style="margin-top:4px;">{$settings.ghostfolio.currency||'AUD'}</p>
             </div>
             <div class="gf-perf">
-              <div class="gfp"><p class="eyebrow">Today</p><p class="gfp-v" style="color:{sc($gfTodayChangePct)};">{pct($gfTodayChangePct)}</p></div>
+              <div class="gfp"><p class="eyebrow">Today's Increase</p><p class="gfp-v" style="color:{sc($gfTodayChangePct)};">{pct($gfTodayChangePct)}</p></div>
               <div class="gfp" title="Portfolio YTD performance from Ghostfolio"><p class="eyebrow">YTD <span style="font-size:.45rem;opacity:.6;">via GF</span></p><p class="gfp-v" style="color:{sc($gfNetGainYtdPct)};">{pct($gfNetGainYtdPct)}</p></div>
               <div class="gfp" title="Total return since portfolio inception (from Ghostfolio data)">
-                <p class="eyebrow">All-time</p><p class="gfp-v" style="color:{sc($gfNetGainPct)};">{pct($gfNetGainPct)}</p>
+                <p class="eyebrow">All-Time</p><p class="gfp-v" style="color:{sc($gfNetGainPct)};">{pct($gfNetGainPct)}</p>
               </div>
               <div class="gfp"><p class="eyebrow">Invested</p><p class="gfp-v">{$gfTotalInvested!==null?'$'+n($gfTotalInvested,0):'—'}</p></div>
             </div>
@@ -707,13 +707,7 @@
               <span class="pm-tag pm-news-src">{item.source}</span>
               <span class="pm-tag">{ago(item.pubDate)} ago</span>
             </div>
-            {#if item.image}
-              <div class="news-card-img" style="background-image:url('{item.image}');"></div>
-            {/if}
             <p class="pm-card-q">{item.title}</p>
-            {#if item.description}
-              <p class="news-card-desc">{item.description.length > 100 ? item.description.slice(0, 100) + '…' : item.description}</p>
-            {/if}
           </a>
         {/each}
       </div>
@@ -1163,11 +1157,11 @@
   @keyframes apPulse { 0%,100%{opacity:.4} 50%{opacity:.8} }
   @media (max-width:400px) { .asset-panels { grid-template-columns:1fr; } .ap-pct { font-size:1.5rem; } }
 
-  .gf-hero { display:flex; align-items:flex-end; gap:20px; flex-wrap:wrap; margin-bottom:18px; }
+  .gf-hero { display:flex; flex-direction:column; gap:16px; margin-bottom:18px; }
   .gf-nw   { font-size:4.2rem; font-weight:700; letter-spacing:-.045em; line-height:1; color:var(--t1); }
-  .gf-perf { display:flex; align-items:flex-end; gap:18px; flex-wrap:wrap; flex:1; border-left:1px solid rgba(255,255,255,.06); padding-left:20px; min-width:0; }
-  .gfp     { display:flex; flex-direction:column; gap:6px; }
-  .gfp-v   { font-size:1.2rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
+  .gf-perf { display:grid; grid-template-columns:repeat(2,1fr); gap:12px; padding-top:16px; border-top:1px solid rgba(255,255,255,.06); }
+  .gfp     { display:flex; flex-direction:column; gap:6px; padding:14px 16px; background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06); border-radius:8px; }
+  .gfp-v   { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1; }
   /* Live indicator dot (used in portfolio and loading states) */
   .live-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--up); flex-shrink:0; }
 
@@ -1191,8 +1185,8 @@
 
   @media (max-width:600px) {
     .gf-nw { font-size:2.8rem; }
-    .gf-perf { border-left:none; padding-left:0; border-top:1px solid rgba(255,255,255,.06); padding-top:14px; width:100%; }
-    .gfp-v { font-size:1rem; }
+    .gf-perf { grid-template-columns:repeat(2,1fr); padding-top:12px; }
+    .gfp-v { font-size:1.1rem; }
   }
 
   /* ── PORTFOLIO PERFORMANCE CHART ────────────────────────── */
@@ -1280,31 +1274,6 @@
   :global(html.light) .pm-bar { background:rgba(0,0,0,.05); }
   :global(html.light) .pm-fill-rest { background:rgba(0,0,0,.04); }
 
-  /* ── NEWS CARD (Classic view — matches Polymarket card style) ─── */
-  .news-card-img {
-    width:100%; height:112px; border-radius:6px; overflow:hidden;
-    background-size:cover; background-position:center;
-    flex-shrink:0;
-    position:relative;
-    margin-bottom:4px;
-  }
-  /* Frosted blur: blurred image layer behind orange tint.
-     inset:-8px extends beyond bounds to prevent blur edge artifacts at the rounded corners. */
-  .news-card-img::before {
-    content:''; position:absolute; inset:-8px;
-    background:inherit; background-size:cover; background-position:center;
-    filter:blur(12px) saturate(80%) brightness(0.82);
-    transform:scale(1.1);
-    z-index:1;
-  }
-  /* Orange tint + bottom gradient overlay for a polished blended look */
-  .news-card-img::after {
-    content:''; position:absolute; inset:0;
-    background:linear-gradient(180deg, rgba(247,147,26,.18) 0%, rgba(247,147,26,.28) 60%, rgba(10,6,2,.45) 100%);
-    z-index:2;
-  }
-  .news-card-desc { font-size:.68rem; color:var(--t2); line-height:1.55; opacity:.75; }
-  :global(html.light) .news-card-desc { color:rgba(0,0,0,.45); }
   :global(html.light) .pm-news-src { background:rgba(247,147,26,.08); border-color:rgba(247,147,26,.25); color:#c77a10; }
 
   /* ── MOBILE NEWS CAROUSEL ────────────────────────────────── */
@@ -1312,8 +1281,8 @@
     .news-pm-grid {
       display:flex; flex-direction:column;
       overflow-y:auto; scroll-snap-type:y mandatory;
-      /* Show ~2 articles at a time: 2 × card height (200px) + gap (12px) */
-      max-height:calc(2 * 200px + 12px);
+      /* Show ~3 headline-only cards at a time */
+      max-height:calc(3 * 90px + 2 * 12px);
       -webkit-overflow-scrolling:touch;
       scrollbar-width:none;
     }
@@ -1445,5 +1414,6 @@
   :global(html.light) .btc-pill { background:rgba(247,147,26,.04); border-color:rgba(247,147,26,.15); }
   :global(html.light) .ap { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
   :global(html.light) .ap:hover { border-color:rgba(0,0,0,.12); }
-  :global(html.light) .gf-perf { border-left-color:rgba(0,0,0,.08); }
+  :global(html.light) .gf-perf { border-top-color:rgba(0,0,0,.08); }
+  :global(html.light) .gfp { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
 </style>
