@@ -512,12 +512,12 @@
         <!-- Eye background -->
         <path d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="#040201"/>
         <!-- Top eyelid arc -->
-        <path d="M6,12 C18,3.5 42,3.5 54,12" fill="none" stroke="rgba(247,147,26,0.55)" stroke-width="0.7" stroke-linecap="round"/>
+        <path class="eye-lid-top" d="M6,12 C18,3.5 42,3.5 54,12" fill="none" stroke="rgba(247,147,26,0.55)" stroke-width="0.7" stroke-linecap="round"/>
         <!-- Full eye outline with soft glow -->
         <path class="eye-outline" filter="url(#outlineGlow)" d="M30,3.5 C18,3.5 6,12 6,12 C6,12 18,20.5 30,20.5 C42,20.5 54,12 54,12 C54,12 42,3.5 30,3.5 Z" fill="none" stroke="#f7931a" stroke-width="0.85" opacity="0.78"/>
         <!-- Corner accent dots -->
-        <circle cx="6"  cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
-        <circle cx="54" cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
+        <circle class="eye-corner" cx="6"  cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
+        <circle class="eye-corner" cx="54" cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
         <!-- Eyelid cover — slides up on load to reveal GL4NCE text (once, on page load) -->
         <g clip-path="url(#eyeClip)">
           <rect class="eye-lid-reveal" x="6" y="3.5" width="48" height="17" fill="#040201">
@@ -839,31 +839,58 @@
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
 
   /* ── CYBERPUNK EYE ───────────────────────────────────────── */
-  .eye-wrap { width:96px; height:38px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
+  .eye-wrap { width:108px; height:44px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
   .eye-svg { width:100%; height:100%; overflow:visible; }
 
-  /* Outline subtle pulse */
+  /* Outline subtle pulse then fades to silver after reveal */
   @keyframes eyeOutlinePulse { 0%,100%{opacity:.78} 50%{opacity:.96} }
-  .eye-outline { animation:eyeOutlinePulse 3s ease-in-out infinite; }
+  @keyframes eyeOutlineToSilver { from{stroke:#f7931a} to{stroke:#c8c8c8} }
+  @keyframes eyeCornerToSilver { from{fill:rgba(247,147,26,0.6)} to{fill:rgba(200,200,200,0.3)} }
+  @keyframes eyeLidTopToSilver { from{stroke:rgba(247,147,26,0.55)} to{stroke:rgba(200,200,200,0.3)} }
+  .eye-outline { animation:eyeOutlinePulse 3s ease-in-out infinite, eyeOutlineToSilver 2s ease-out 3.5s forwards; }
+  .eye-corner  { animation:eyeCornerToSilver 2s ease-out 3.5s forwards; }
+  .eye-lid-top { animation:eyeLidTopToSilver 2s ease-out 3.5s forwards; }
 
   /* Eyelid reveal: hidden once open (SMIL animate handles the motion in SVG) */
   .eye-lid-reveal { transform-box:fill-box; }
 
   @media (prefers-reduced-motion:reduce) {
     .eye-outline { animation:none; }
+    .eye-corner  { animation:none; }
+    .eye-lid-top { animation:none; }
     .eye-lid-reveal { display:none; }
     .brand-name { animation:none !important; opacity:1 !important; }
   }
 
   @media (max-width:768px) {
-    .eye-wrap { width:80px; height:32px; }
+    .eye-wrap { width:90px; height:36px; }
   }
 
   /* ── WORDMARK ────────────────────────────────────────────── */
   /* Eyelid finishes at begin(0.4s) + dur(2.4s) = 2.8s; text reveal starts at 2.2s for synchronized overlap */
-  .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.92rem; letter-spacing:.12em; line-height:1; pointer-events:none; color:#eaeaea; text-transform:uppercase; animation:brandReveal 1.0s ease-out 2.2s both; }
+  .brand-name { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.92rem; letter-spacing:.12em; line-height:1; pointer-events:none; color:#eaeaea; text-transform:uppercase; overflow:hidden; isolation:isolate; animation:brandReveal 1.0s ease-out 2.2s both; }
   @keyframes brandReveal { from{opacity:0} to{opacity:1} }
-  .b-4 { color:var(--orange); }
+  /* Foil glimmer sweeps across GL4NCE every ~9s */
+  .brand-name::after {
+    content:''; position:absolute; inset:-4px;
+    background:linear-gradient(105deg, transparent 30%, rgba(255,255,255,0.6) 50%, transparent 70%);
+    transform:translateX(-250%);
+    pointer-events:none;
+    mix-blend-mode:screen;
+    animation:brandFoilSweep 9s ease-in-out 4s infinite;
+  }
+  @keyframes brandFoilSweep {
+    0%   { transform:translateX(-250%); opacity:0; }
+    2%   { transform:translateX(-200%); opacity:1; }
+    10%  { transform:translateX(200%);  opacity:0; }
+    100% { transform:translateX(-250%); opacity:0; }
+  }
+  /* "4" Bitcoin orange glow — hums continuously */
+  @keyframes b4Hum {
+    0%,100% { text-shadow:0 0 6px rgba(247,147,26,0.45), 0 0 12px rgba(247,147,26,0.18); }
+    50%     { text-shadow:0 0 10px rgba(247,147,26,0.9), 0 0 22px rgba(247,147,26,0.5), 0 0 40px rgba(247,147,26,0.2); }
+  }
+  .b-4 { color:var(--orange); animation:b4Hum 3s ease-in-out infinite; }
 
   /* ── BURGER (mobile only) ────────────────────────────────── */
   .burger {
@@ -892,7 +919,7 @@
     .mobile-only  { display:flex !important; }
     .brand { margin-right:auto; }
     .brand-name { font-size:.86rem; }
-    .eye-wrap { width:80px; height:32px; }
+    .eye-wrap { width:90px; height:36px; }
   }
 
   /* ── MOBILE FULL-SCREEN MENU ─────────────────────────────── */
