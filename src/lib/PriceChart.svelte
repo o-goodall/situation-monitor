@@ -7,6 +7,7 @@
   export let formatY: ((v: number) => string) | undefined = undefined;
   export let overlays: { prices: { t: number; p: number }[]; color: string }[] = [];
   export let fillParent = false; // when true the canvas fills its CSS container height
+  export let noGlow = false;    // when true disables glow/shadow effects on lines and dots
 
   let canvas: HTMLCanvasElement;
 
@@ -131,8 +132,7 @@
     ctx.lineWidth = overlays.length > 0 ? 2 : 1.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.shadowBlur = 2;
-    ctx.shadowColor = lineColor;
+    if (!noGlow) { ctx.shadowBlur = 2; ctx.shadowColor = lineColor; }
     ctx.stroke();
     ctx.shadowBlur = 0;
 
@@ -150,8 +150,7 @@
       ctx.lineWidth = 1.5;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
-      ctx.shadowBlur = 2;
-      ctx.shadowColor = overlay.color;
+      if (!noGlow) { ctx.shadowBlur = 2; ctx.shadowColor = overlay.color; }
       ctx.stroke();
       ctx.shadowBlur = 0;
       // Dot at end of overlay line
@@ -170,8 +169,7 @@
     ctx.beginPath();
     ctx.arc(lx, ly, 3, 0, Math.PI * 2);
     ctx.fillStyle = lineColor;
-    ctx.shadowBlur = 4;
-    ctx.shadowColor = lineColor;
+    if (!noGlow) { ctx.shadowBlur = 4; ctx.shadowColor = lineColor; }
     ctx.fill();
     ctx.shadowBlur = 0;
   }

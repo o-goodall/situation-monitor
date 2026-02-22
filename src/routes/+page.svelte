@@ -307,15 +307,19 @@
 
     <div class="stat-tile halving-tile stat-tile--static" data-tooltip="Estimated blocks remaining until next Bitcoin halving">
       {#if $halvingDays > 0}
-        <div class="price-pair" aria-live="polite" aria-atomic="true">
-          <span class="stat-n halving-n">{$halvingDays.toLocaleString()}</span>
-          {#if $halvingProgress > 0}
-            <span class="price-sep">|</span>
-            <span class="price-alt">{$halvingProgress.toFixed(1)}%</span>
-          {/if}
-        </div>
+        <span class="stat-n halving-n" aria-live="polite" aria-atomic="true">{$halvingDays.toLocaleString()}</span>
         <span class="stat-l">Days to Halving</span>
-        {#if $halvingDate}<span class="halving-date halving-date--glow">{$halvingDate}</span>{/if}
+        {#if $halvingProgress > 0}
+          <div class="halving-bar-wrap">
+            <div class="pbar halving-pbar">
+              <div class="pfill" style="width:{$halvingProgress.toFixed(1)}%;background:var(--orange);"></div>
+            </div>
+            <div class="halving-meta">
+              <span class="halving-pct">{$halvingProgress.toFixed(1)}% through epoch</span>
+              {#if $halvingDate}<span class="halving-date">~{$halvingDate}</span>{/if}
+            </div>
+          </div>
+        {/if}
       {:else}
         <span class="stat-n muted">—</span>
         <span class="stat-l">Days to Halving</span>
@@ -550,7 +554,7 @@
         {#if hashrateLoading}
           <div class="skeleton" style="height:100%;min-height:160px;border-radius:6px;"></div>
         {:else if hashrateData.length >= 2}
-          <PriceChart prices={hashrateData} fillParent={true} range={hashrateChartRange === 'All' ? 'max' : hashrateChartRange === '2Y' ? '5y' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
+          <PriceChart prices={hashrateData} fillParent={true} range={hashrateChartRange === 'All' ? 'max' : hashrateChartRange === '2Y' ? '5y' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} noGlow={true} />
         {:else}
           <p class="dim" style="text-align:center;padding:40px 0;">Loading hashrate data…</p>
         {/if}
@@ -1007,25 +1011,13 @@
   .halving-n { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; }
 
   /* Projected halving date label */
-  .halving-date { font-size:.58rem; color:var(--orange); margin-top:4px; font-variant-numeric:tabular-nums; letter-spacing:.03em; position:relative; display:inline-block; }
+  .halving-date { font-size:.58rem; color:var(--orange); font-variant-numeric:tabular-nums; letter-spacing:.03em; }
 
-  /* Subtle foil sweep — fires once every ~10 s, single pass */
-  @keyframes halvingFoil {
-    0%   { background-position: -200% center; }
-    15%  { background-position: 200% center; }
-    100% { background-position: 200% center; }
-  }
-  .halving-date--glow {
-    background: linear-gradient(105deg, var(--orange) 30%, #ffe0a0 50%, var(--orange) 70%);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: halvingFoil 10s linear infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .halving-date--glow { animation: none; -webkit-text-fill-color: var(--orange); color: var(--orange); }
-  }
+  /* Epoch progress bar wrapper */
+  .halving-bar-wrap { margin-top:8px; }
+  .halving-pbar { height:3px; margin-bottom:5px; }
+  .halving-meta { display:flex; justify-content:space-between; align-items:center; gap:4px; }
+  .halving-pct { font-size:.58rem; color:var(--t2); text-transform:uppercase; letter-spacing:.08em; }
 
   /* Static stat tile — no hover lift or underline animation */
   .stat-tile--static { cursor:default; }
