@@ -32,7 +32,9 @@
 
   async function setBtcChartRange(r: '1D' | '7D' | '1M') {
     btcChartRange = r;
+    compGoldData = []; compSP500Data = [];
     await fetchBtcChart(r);
+    if (showGold || showSP500) await fetchOverlayData(btcApiRange(r));
   }
 
   // Keep last chart price point in sync with live WebSocket price.
@@ -175,7 +177,58 @@
     catch{$gfError='Connection failed';}finally{$gfLoading=false;}
   }
 
-  onMount(() => { fetchHashrateChart(); });
+  // Overlay toggles for Portfolio comparison chart
+  let showGold  = false;
+  let showSP500 = false;
+  let compGoldData:  { t: number; p: number }[] = [];
+  let compSP500Data: { t: number; p: number }[] = [];
+  let compLoading = false;
+
+  function normalizeToPercent(data: { t: number; p: number }[]): { t: number; p: number }[] {
+    if (!data.length) return [];
+    const base = data[0].p;
+    if (!base) return data;
+    return data.map(d => ({ t: d.t, p: ((d.p - base) / base) * 100 }));
+  }
+
+  $: inOverlayMode = showGold || showSP500;
+  $: chartDisplayData  = inOverlayMode && btcChartData.length  > 0 ? normalizeToPercent(btcChartData)  : btcChartData;
+  $: normGold  = inOverlayMode && compGoldData.length  > 0 ? normalizeToPercent(compGoldData)  : [];
+  $: normSP500 = inOverlayMode && compSP500Data.length > 0 ? normalizeToPercent(compSP500Data) : [];
+  $: chartOverlays = [
+    ...(showGold  && normGold.length  >= 2 ? [{ prices: normGold,  color: '#c9a84c' }] : []),
+    ...(showSP500 && normSP500.length >= 2 ? [{ prices: normSP500, color: '#6366f1' }] : []),
+  ];
+
+  async function fetchOverlayData(apiRange: string) {
+    const assets = [showGold && 'gold', showSP500 && 'sp500'].filter(Boolean) as string[];
+    if (!assets.length) return;
+    compLoading = true;
+    try {
+      const d = await fetch(`/api/assets/history?range=${apiRange}&assets=${assets.join(',')}`).then(r => r.json());
+      if (showGold  && d.gold?.length)  compGoldData  = d.gold;
+      if (showSP500 && d.sp500?.length) compSP500Data = d.sp500;
+    } catch {}
+    finally { compLoading = false; }
+  }
+
+  function btcApiRange(r = btcChartRange): string {
+    return r === '1D' ? '1d' : r === '7D' ? '7d' : '30d';
+  }
+
+  async function toggleGold() {
+    showGold = !showGold;
+    if (showGold && !compGoldData.length) await fetchOverlayData(btcApiRange());
+    if (!showGold) compGoldData = [];
+  }
+
+  async function toggleSP500() {
+    showSP500 = !showSP500;
+    if (showSP500 && !compSP500Data.length) await fetchOverlayData(btcApiRange());
+    if (!showSP500) compSP500Data = [];
+  }
+
+  onMount(() => { fetchBtcChart(); fetchHashrateChart(); });
 </script>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -241,16 +294,16 @@
     <div class="chart-header">
       <p class="gc-title">Bitcoin Hashrate</p>
       <div class="chart-range-btns" role="group" aria-label="Chart time range">
-        <button class="crb" class:crb--active={chartRange==='3M'} on:click={() => setChartRange('3M')}>3M</button>
-        <button class="crb" class:crb--active={chartRange==='6M'} on:click={() => setChartRange('6M')}>6M</button>
-        <button class="crb" class:crb--active={chartRange==='1Y'} on:click={() => setChartRange('1Y')}>1Y</button>
+        <button class="crb" class:crb--active={hashrateChartRange==='3M'} on:click={() => setHashrateChartRange('3M')}>3M</button>
+        <button class="crb" class:crb--active={hashrateChartRange==='6M'} on:click={() => setHashrateChartRange('6M')}>6M</button>
+        <button class="crb" class:crb--active={hashrateChartRange==='1Y'} on:click={() => setHashrateChartRange('1Y')}>1Y</button>
       </div>
     </div>
     <div class="chart-container">
-      {#if chartLoading}
+      {#if hashrateLoading}
         <div class="skeleton" style="height:110px;border-radius:6px;"></div>
       {:else if hashrateData.length >= 2}
-        <PriceChart prices={hashrateData} height={110} range={chartRange === '3M' ? '7d' : chartRange === '6M' ? '30d' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
+        <PriceChart prices={hashrateData} height={110} range={hashrateChartRange === '3M' ? '7d' : hashrateChartRange === '6M' ? '30d' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
       {:else}
         <p class="dim" style="text-align:center;padding:40px 0;">Loading hashrate data…</p>
       {/if}
@@ -431,42 +484,29 @@
 
     </div>
 
-    <!-- MY STACK -->
+    <!-- BITCOIN HASHRATE — replaces My Stack -->
     <div class="gc">
-      <div class="gc-head">
-        <p class="gc-title">My Stack</p>
-        <span class="dim">${s.dailyAmount}/day · {dcaDays}d</span>
-      </div>
-      <div class="met3" style="margin-bottom:18px;">
-        <div class="met"><p class="eyebrow">Invested</p><p class="met-n">${n(invested)}</p></div>
-        <div class="met"><p class="eyebrow">Value</p><p class="met-n" style="color:{perf>=0?'var(--up)':'var(--dn)'};">{$btcPrice>0?'$'+n(currentVal):'—'}</p></div>
-        <div class="met"><p class="eyebrow">Return</p><p class="met-n" style="color:{perf>=0?'var(--up)':'var(--dn)'};">{$btcPrice>0?(perf>=0?'+':'')+perf.toFixed(1)+'%':'—'}</p></div>
-      </div>
-      <div class="btc-pill">
-        <span style="color:var(--orange);font-weight:700;font-size:.92rem;">{s.btcHeld.toFixed(8)}</span>
-        <span style="color:var(--t2);margin:0 6px;">BTC</span>
-        <span style="color:var(--t3);font-size:.72rem;">{n(satsHeld)} sats</span>
-      </div>
-      <div><div class="goal-head"><p class="eyebrow">Goal · {s.goalBtc} BTC</p><p class="eyebrow orange">{goalPct.toFixed(1)}%</p></div>
-        <div class="pbar"><div class="pfill" style="width:{goalPct}%;background:linear-gradient(90deg,rgba(247,147,26,.6),var(--orange));"></div></div>
-        <p class="dim" style="text-align:right;margin-top:4px;">{n(satsLeft)} sats remaining</p>
-      </div>
-
-      <!-- Price Prediction Scenarios -->
-      {#if s.btcHeld > 0}
-      <div class="price-scen">
-        <p class="eyebrow" style="margin-bottom:10px;">Price Scenarios</p>
-        <div class="scen-grid">
-          {#each [100000, 200000, 500000, 1000000] as target}
-            {@const scenVal = s.btcHeld * target}
-            {@const scenGain = invested > 0 ? ((scenVal - invested) / invested) * 100 : 0}
-            <div class="scen-item">
-              <span class="scen-price">${(target/1000).toFixed(0)}K</span>
-              <span class="scen-val" style="color:{scenGain>=0?'var(--up)':'var(--dn)'};">${n(scenVal,0)}</span>
-              <span class="scen-pct" style="color:{scenGain>=0?'var(--up)':'var(--dn)'};">{scenGain>=0?'+':''}{scenGain.toFixed(0)}%</span>
-            </div>
-          {/each}
+      <div class="chart-header" style="margin-bottom:12px;">
+        <p class="gc-title">Bitcoin Hashrate</p>
+        <div class="chart-range-btns" role="group" aria-label="Hashrate chart range">
+          <button class="crb" class:crb--active={hashrateChartRange==='3M'} on:click={() => setHashrateChartRange('3M')}>3M</button>
+          <button class="crb" class:crb--active={hashrateChartRange==='6M'} on:click={() => setHashrateChartRange('6M')}>6M</button>
+          <button class="crb" class:crb--active={hashrateChartRange==='1Y'} on:click={() => setHashrateChartRange('1Y')}>1Y</button>
         </div>
+      </div>
+      <div class="chart-container">
+        {#if hashrateLoading}
+          <div class="skeleton" style="height:160px;border-radius:6px;"></div>
+        {:else if hashrateData.length >= 2}
+          <PriceChart prices={hashrateData} height={160} range={hashrateChartRange === '3M' ? '7d' : hashrateChartRange === '6M' ? '30d' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
+        {:else}
+          <p class="dim" style="text-align:center;padding:40px 0;">Loading hashrate data…</p>
+        {/if}
+      </div>
+      {#if $btcHashrate !== null}
+      <div class="hash-row">
+        <span class="eyebrow">Current Hash Rate</span>
+        <span class="hash-val">{$btcHashrate.toFixed(1)}<span class="met-u"> EH/s</span></span>
       </div>
       {/if}
     </div>
@@ -668,6 +708,57 @@
     </div>
 
   </div>
+
+  <!-- BITCOIN PRICE COMPARISON CHART — full width below the two tiles -->
+  <div class="gc btc-chart-card" style="margin-top:14px;">
+    <div class="chart-header">
+      <p class="gc-title">Bitcoin Price{#if inOverlayMode} vs Comparison{/if}</p>
+      <div class="chart-controls">
+        <!-- Overlay toggles -->
+        <div class="overlay-btns" role="group" aria-label="Overlay assets">
+          <button class="crb" class:crb--active={showGold}  on:click={toggleGold}  aria-pressed={showGold}>
+            <span class="crb-dot" style="background:#c9a84c;"></span>Gold
+          </button>
+          <button class="crb" class:crb--active={showSP500} on:click={toggleSP500} aria-pressed={showSP500}>
+            <span class="crb-dot" style="background:#6366f1;"></span>S&amp;P
+          </button>
+        </div>
+        <!-- Range buttons -->
+        <div class="chart-range-btns" role="group" aria-label="Chart time range">
+          <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
+          <button class="crb" class:crb--active={btcChartRange==='7D'} on:click={() => setBtcChartRange('7D')}>7D</button>
+          <button class="crb" class:crb--active={btcChartRange==='1M'} on:click={() => setBtcChartRange('1M')}>1M</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend (only when overlays are active) -->
+    {#if inOverlayMode}
+    <div class="comp-legend" aria-label="Chart legend">
+      <span class="comp-item"><span class="comp-dot" style="background:#f7931a;"></span>BTC</span>
+      {#if showGold} <span class="comp-item"><span class="comp-dot" style="background:#c9a84c;"></span>Gold</span>{/if}
+      {#if showSP500}<span class="comp-item"><span class="comp-dot" style="background:#6366f1;"></span>S&amp;P 500</span>{/if}
+      <span class="comp-note">% return from period start</span>
+    </div>
+    {/if}
+
+    <div class="chart-container">
+      {#if btcChartLoading || compLoading}
+        <div class="skeleton" style="height:160px;border-radius:6px;"></div>
+      {:else if chartDisplayData.length >= 2}
+        <PriceChart
+          prices={chartDisplayData}
+          height={160}
+          range={btcChartRange === '1D' ? '1d' : btcChartRange === '7D' ? '7d' : '30d'}
+          formatY={inOverlayMode ? (v) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%' : undefined}
+          overlays={chartOverlays}
+        />
+      {:else}
+        <p class="dim" style="text-align:center;padding:60px 0;">Loading chart data…</p>
+      {/if}
+    </div>
+  </div>
+
 </section>
 
 <!-- ══════════════════════════════════════════════════════════
@@ -877,10 +968,15 @@
 
   /* ── BTC PRICE CHART CARD ───────────────────────────────── */
   .btc-chart-card { padding:16px 18px; margin-bottom:14px; }
-  .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+  .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
+  .chart-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .overlay-btns { display:flex; gap:4px; }
   .chart-container { width:100%; }
   .chart-range-btns { display:flex; gap:4px; }
+  /* Small colour dot inside overlay toggle buttons */
+  .crb-dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:middle; flex-shrink:0; }
   .crb {
+    display:inline-flex; align-items:center;
     padding:4px 12px; font-size:.62rem; font-weight:700; letter-spacing:.06em;
     text-transform:uppercase; font-family:'Poison',monospace;
     background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
@@ -892,6 +988,14 @@
   :global(html.light) .crb:hover { color:rgba(0,0,0,.8); }
   :global(html.light) .crb--active { background:rgba(247,147,26,.1); border-color:rgba(247,147,26,.4); color:#c77a10; }
   @media (max-width:500px) { .btc-chart-card { padding:12px 12px; } }
+
+  /* Comparison chart legend */
+  .comp-legend { display:flex; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:10px; padding:8px 10px; background:rgba(255,255,255,.03); border-radius:6px; border:1px solid rgba(255,255,255,.06); }
+  .comp-item { display:flex; align-items:center; gap:6px; font-size:.65rem; font-weight:600; color:var(--t2); text-transform:uppercase; letter-spacing:.06em; }
+  .comp-dot { display:inline-block; width:10px; height:3px; border-radius:2px; flex-shrink:0; }
+  .comp-note { font-size:.58rem; color:var(--t3); margin-left:auto; font-style:italic; text-transform:none; letter-spacing:0; }
+  :global(html.light) .comp-legend { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
+  :global(html.light) .comp-item { color:rgba(0,0,0,.5); }
 
   /* ── SIGNAL GRID ────────────────────────────────────────── */
   .signal-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }

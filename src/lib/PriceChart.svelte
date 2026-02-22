@@ -5,6 +5,7 @@
   export let height = 110;
   export let range: string = '1d';
   export let formatY: ((v: number) => string) | undefined = undefined;
+  export let overlays: { prices: { t: number; p: number }[]; color: string }[] = [];
 
   let canvas: HTMLCanvasElement;
 
@@ -33,8 +34,11 @@
     ctx.clearRect(0, 0, W, H);
 
     const ps = prices.map(({ p }) => p);
-    const minRaw = Math.min(...ps);
-    const maxRaw = Math.max(...ps);
+
+    // Compute Y range across main series + all overlays
+    const allValues = [...ps, ...overlays.flatMap(o => o.prices.map(d => d.p))];
+    const minRaw = Math.min(...allValues);
+    const maxRaw = Math.max(...allValues);
     const padding = (maxRaw - minRaw) * 0.05 || 1;
     const min = minRaw - padding;
     const max = maxRaw + padding;
@@ -48,7 +52,7 @@
     const dW = W - PAD_L - PAD_R;
     const dH = H - PAD_T - PAD_B;
 
-    const toX = (i: number) => PAD_L + (i / (prices.length - 1)) * dW;
+    const toX = (i: number, len: number) => PAD_L + (i / (len - 1)) * dW;
     const toY = (p: number) => PAD_T + (1 - (p - min) / rng) * dH;
 
     // Subtle horizontal grid lines
@@ -60,6 +64,21 @@
       ctx.moveTo(PAD_L, y);
       ctx.lineTo(W - PAD_R, y);
       ctx.stroke();
+    }
+
+    // Zero line when overlays are active (% comparison mode)
+    if (overlays.length > 0 && min < 0 && max > 0) {
+      const zy = toY(0);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(PAD_L, zy);
+      ctx.lineTo(W - PAD_R, zy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.restore();
     }
 
     // Y-axis price labels — scale font down on narrow charts (below MIN_LABEL_WIDTH px)
@@ -79,29 +98,29 @@
     ctx.fillText(fmtLabel(prices[Math.floor(prices.length / 2)].t), PAD_L + dW / 2, H - 5);
     ctx.fillText('Now', W - PAD_R, H - 5);
 
-    // Gradient fill under line
+    // Gradient fill under main line
     ctx.beginPath();
     prices.forEach(({ p }, i) => {
-      const x = toX(i), y = toY(p);
+      const x = toX(i, prices.length), y = toY(p);
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
-    ctx.lineTo(toX(prices.length - 1), PAD_T + dH);
+    ctx.lineTo(toX(prices.length - 1, prices.length), PAD_T + dH);
     ctx.lineTo(PAD_L, PAD_T + dH);
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, PAD_T, 0, PAD_T + dH);
-    grad.addColorStop(0, fillColor + '0.22)');
+    grad.addColorStop(0, fillColor + (overlays.length > 0 ? '0.12)' : '0.22)'));
     grad.addColorStop(1, fillColor + '0.01)');
     ctx.fillStyle = grad;
     ctx.fill();
 
-    // Price line
+    // Main price line
     ctx.beginPath();
     prices.forEach(({ p }, i) => {
-      const x = toX(i), y = toY(p);
+      const x = toX(i, prices.length), y = toY(p);
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.strokeStyle = lineColor;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = overlays.length > 0 ? 2 : 1.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.shadowBlur = 5;
@@ -109,8 +128,34 @@
     ctx.stroke();
     ctx.shadowBlur = 0;
 
-    // Dot at latest price
-    const lx = toX(prices.length - 1);
+    // Overlay series lines (no fill)
+    for (const overlay of overlays) {
+      if (overlay.prices.length < 2) continue;
+      ctx.beginPath();
+      overlay.prices.forEach(({ p }, i) => {
+        const x = toX(i, overlay.prices.length), y = toY(p);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.strokeStyle = overlay.color;
+      ctx.lineWidth = 1.5;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+      ctx.shadowBlur = 4;
+      ctx.shadowColor = overlay.color;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      // Dot at end of overlay line
+      const last = overlay.prices[overlay.prices.length - 1];
+      const ox = toX(overlay.prices.length - 1, overlay.prices.length);
+      const oy = toY(last.p);
+      ctx.beginPath();
+      ctx.arc(ox, oy, 3, 0, Math.PI * 2);
+      ctx.fillStyle = overlay.color;
+      ctx.fill();
+    }
+
+    // Dot at latest price (main series — drawn on top)
+    const lx = toX(prices.length - 1, prices.length);
     const ly = toY(ps[ps.length - 1]);
     ctx.beginPath();
     ctx.arc(lx, ly, 3, 0, Math.PI * 2);
