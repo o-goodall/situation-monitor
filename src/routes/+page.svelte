@@ -95,6 +95,8 @@
   // DCA zone background GIF: red=low(cheap/fear), amber=mid, green=high(expensive/greed)
   $: dcaZoneGif = $btcPrice <= 0 ? '' : $btcPrice <= (low+third) ? '/dca-red.gif' : $btcPrice <= (low+2*third) ? '/dca-amber.gif' : '/dca-green.gif';
 
+  let dcaFlipped = false; // flip state for DCA formula back-face
+
   $: s        = $settings.dca;
   $: dcaDays  = Math.max(0,Math.floor((Date.now()-new Date(s.startDate).getTime())/86400000));
   $: invested = dcaDays*s.dailyAmount;
@@ -283,6 +285,7 @@
           {/if}
         </div>
         <span class="stat-l">Days to Halving</span>
+        {#if $halvingDate}<span class="halving-date">{$halvingDate}</span>{/if}
       {:else}
         <span class="stat-n muted">—</span>
         <span class="stat-l">Days to Halving</span>
@@ -294,7 +297,10 @@
   <div class="signal-grid">
 
     <!-- DCA SIGNAL CARD — simplified -->
-    <div class="gc signal-card" style="--ac:{$accentColor};">
+    <div class="gc signal-card"
+      class:signal-zone--red={dcaZoneGif.includes('red')}
+      class:signal-zone--green={dcaZoneGif.includes('green')}
+      style="--ac:{$accentColor};">
       <div class="signal-bar" style="background:linear-gradient(90deg,{$accentColor}33,{$accentColor},{$accentColor}33);"></div>
 
       <!-- Zone background GIF — behind frosted glass -->
@@ -305,75 +311,113 @@
           </div>
         {/key}
       {/if}
+      <!-- Full-tile zone colour tint -->
+      {#if dcaZoneGif}
+        <div class="zone-tint" class:zone-tint--red={dcaZoneGif.includes('red')} class:zone-tint--green={dcaZoneGif.includes('green')}></div>
+      {/if}
       <div class="zone-glass"></div>
 
-      <div class="gc-head">
-        <div>
-          <p class="eyebrow orange">DCA Signal</p>
-          <p class="dim" style="margin-top:3px;">{freqHint}</p>
-        </div>
-        <span class="ts">{$dcaUpdated||'—'}</span>
-      </div>
-
-      <div class="dca-hero" aria-live="polite" aria-atomic="true">
-        {#if !$dca}
-          <span class="dca-n muted">—</span>
-        {:else if $dca.finalAud===0}
-          <span class="dca-n" style="color:var(--dn);text-shadow:0 0 60px rgba(239,68,68,.3);">PASS</span>
-          <p class="dca-sub">Price too high — skip this {freqLabel}</p>
-        {:else}
-          <span class="dca-n" style="color:{$accentColor};text-shadow:0 0 70px {$accentColor}30;">${$dca.finalAud.toLocaleString()}</span>
-          <p class="dca-sub">AUD · {freqDesc}</p>
-        {/if}
-      </div>
-
-      <!-- Price zone bar -->
-      {#if $btcPrice>0}
-      <div class="vband">
-        <div class="vband-row">
-          <span class="vband-l up">Low Zone</span>
-          <span class="vband-l" style="color:var(--orange);">Mid Zone</span>
-          <span class="vband-l dn">High Zone</span>
-        </div>
-        <div class="vband-track">
-          <div class="vband-zones">
-            <div class="vzone vzone--low"></div>
-            <div class="vzone vzone--mid"></div>
-            <div class="vzone vzone--high"></div>
-          </div>
-          {#if $btcPrice<=low}
-            <div class="vband-dot" style="left:2%;"></div>
-          {:else if $btcPrice>=high}
-            <div class="vband-dot" style="left:98%;"></div>
-          {:else}
-            <div class="vband-dot" style="left:{(($btcPrice-low)/range)*100}%;"></div>
-          {/if}
-        </div>
-        <div class="vband-labels">
-          <span>${(low/1000).toFixed(0)}K</span><span>${((low+high)/2/1000).toFixed(0)}K</span><span>${(high/1000).toFixed(0)}K</span>
-        </div>
-      </div>
-      {/if}
-
-      <!-- Signal conditions — compact -->
-      {#if $dca}
-      <div class="sigs">
-        {#each $dca.signals as sig}
-          <div class="sig" class:sig--on={sig.active} title={sig.description}>
-            <div class="pip-wrap">
-              <div class="pip" class:pip--on={sig.active}></div>
-              {#if sig.active}<div class="pip-ring"></div>{/if}
+      <!-- Flip container -->
+      <div class="dca-flip-scene">
+        {#if !dcaFlipped}
+          <!-- FRONT FACE — signal view -->
+          <div class="dca-face">
+            <div class="gc-head">
+              <div>
+                <p class="eyebrow orange">DCA Signal</p>
+                <p class="dim" style="margin-top:3px;">{freqHint}</p>
+              </div>
+              <span class="ts">{$dcaUpdated||'—'}</span>
             </div>
-            <div class="sig-body">
-              <span class="sig-label">{sig.name}</span>
-              {#if sig.value && sig.value !== 'Inactive'}
-                <span class="sig-val">{sig.value}</span>
+
+            <div class="dca-hero" aria-live="polite" aria-atomic="true">
+              {#if !$dca}
+                <span class="dca-n muted">—</span>
+              {:else if $dca.finalAud===0}
+                <span class="dca-n" style="color:var(--dn);text-shadow:0 0 60px rgba(239,68,68,.3);">PASS</span>
+                <p class="dca-sub">Price too high — skip this {freqLabel}</p>
+              {:else}
+                <span class="dca-n" style="color:{$accentColor};text-shadow:0 0 70px {$accentColor}30;">${$dca.finalAud.toLocaleString()}</span>
+                <p class="dca-sub">AUD · {freqDesc}</p>
               {/if}
             </div>
+
+            <!-- Price zone bar -->
+            {#if $btcPrice>0}
+            <div class="vband">
+              <div class="vband-row">
+                <span class="vband-l up">Low Zone</span>
+                <span class="vband-l" style="color:var(--orange);">Mid Zone</span>
+                <span class="vband-l dn">High Zone</span>
+              </div>
+              <div class="vband-track">
+                <div class="vband-zones">
+                  <div class="vzone vzone--low"></div>
+                  <div class="vzone vzone--mid"></div>
+                  <div class="vzone vzone--high"></div>
+                </div>
+                {#if $btcPrice<=low}
+                  <div class="vband-dot" style="left:2%;"></div>
+                {:else if $btcPrice>=high}
+                  <div class="vband-dot" style="left:98%;"></div>
+                {:else}
+                  <div class="vband-dot" style="left:{(($btcPrice-low)/range)*100}%;"></div>
+                {/if}
+              </div>
+              <div class="vband-labels">
+                <span>${(low/1000).toFixed(0)}K</span><span>${((low+high)/2/1000).toFixed(0)}K</span><span>${(high/1000).toFixed(0)}K</span>
+              </div>
+            </div>
+            {/if}
+
+            <!-- Signal conditions — compact -->
+            {#if $dca}
+            <div class="sigs">
+              {#each $dca.signals as sig}
+                <div class="sig" class:sig--on={sig.active} title={sig.description}>
+                  <div class="pip-wrap">
+                    <div class="pip" class:pip--on={sig.active}></div>
+                    {#if sig.active}<div class="pip-ring"></div>{/if}
+                  </div>
+                  <div class="sig-body">
+                    <span class="sig-label">{sig.name}</span>
+                    {#if sig.value && sig.value !== 'Inactive'}
+                      <span class="sig-val">{sig.value}</span>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            </div>
+            {/if}
+
+            <button class="dca-flip-btn" on:click={() => dcaFlipped = true} aria-label="Show DCA formula">
+              <span class="dca-flip-shimmer" aria-hidden="true"></span>✦ How it works
+            </button>
           </div>
-        {/each}
+
+        {:else}
+          <!-- BACK FACE — formula explanation -->
+          <div class="dca-face">
+            <div class="dca-formula-head">
+              <p class="eyebrow orange">The Formula</p>
+              <button class="btn-ghost" on:click={() => dcaFlipped = false} aria-label="Back to signal view">↩ Back</button>
+            </div>
+            <ol class="formula-steps">
+              <li><strong>Price position</strong> — 100% allocation at your low price target, tapering linearly to 0% at high.</li>
+              <li><strong>Signal boosts</strong> increase allocation when conditions are favourable:
+                <ul>
+                  <li>Fear &amp; Greed ≤ 40 → <span class="formula-boost">+10%</span> <span class="dim">(extreme ≤ 20 → +20%)</span></li>
+                  <li>Mining difficulty drop &gt; 5% → <span class="formula-boost">+10%</span></li>
+                  <li>Futures funding rate negative → <span class="formula-boost">+10%</span></li>
+                  <li>Within 365 days of halving → <span class="formula-boost">+10%</span></li>
+                </ul>
+              </li>
+              <li><strong>Final amount</strong> = Max DCA × price% × (1 + total boosts%). Rounded to nearest $50 AUD.</li>
+              <li>Price above your high target → <strong class="dn">PASS</strong> — skip this period entirely.</li>
+            </ol>
+          </div>
+        {/if}
       </div>
-      {/if}
     </div>
 
     <!-- BITCOIN NETWORK — expanded with mempool data -->
@@ -509,22 +553,21 @@
       <div class="gc-head">
         <p class="gc-title">Asset Comparison</p>
         <div style="display:flex;align-items:center;gap:8px;">
-            <span class="live-dot" class:blink={$btcWsConnected} title="{$btcWsConnected?'BTC price live via WebSocket':'BTC price polling'}"></span>
             <p class="dim" title="Year-to-date performance in USD via Yahoo Finance">YTD (USD)</p>
           </div>
       </div>
       <div class="asset-panels">
         {#each [
-          {ticker:'BTC', name:'Bitcoin',  icon:'₿', pct:$btcYtdPct,   color:'#f7931a', sub:$btcPrice?'$'+n($btcPrice):'—', live:$btcWsConnected},
-          {ticker:'XAU', name:'Gold',     icon:'◈', pct:$goldYtdPct,  color:'#c9a84c', sub:$goldPriceUsd?'$'+n($goldPriceUsd,0)+' USD/oz':'—', live:false},
-          {ticker:'SPX', name:'S&P 500',  icon:'↗', pct:$sp500YtdPct, color:'#888',    sub:$sp500Price?'$'+n($sp500Price,0):'—', live:false},
-          {ticker:'CPI', name:'Inflation',icon:'↓', pct:$cpiAnnual,   color:'#ef4444', sub:'Annual rate', live:false},
+          {ticker:'BTC', name:'Bitcoin',  icon:'₿', pct:$btcYtdPct,   color:'#f7931a', sub:$btcPrice?'$'+n($btcPrice):'—'},
+          {ticker:'XAU', name:'Gold',     icon:'◈', pct:$goldYtdPct,  color:'#c9a84c', sub:$goldPriceUsd?'$'+n($goldPriceUsd,0)+' USD/oz':'—'},
+          {ticker:'SPX', name:'S&P 500',  icon:'↗', pct:$sp500YtdPct, color:'#888',    sub:$sp500Price?'$'+n($sp500Price,0):'—'},
+          {ticker:'CPI', name:'Inflation',icon:'↓', pct:$cpiAnnual,   color:'#ef4444', sub:'Annual rate'},
         ] as a}
           <div class="ap" style="--pc:{a.color};">
             <div class="ap-top">
               <span class="ap-icon" style="color:{a.color};">{a.icon}</span>
               <div>
-                <p class="ap-ticker" style="color:{a.color};">{a.ticker}{#if a.live}<span class="ap-live">●</span>{/if}</p>
+                <p class="ap-ticker" style="color:{a.color};">{a.ticker}</p>
                 <p class="ap-name">{a.name}</p>
               </div>
             </div>
@@ -547,7 +590,7 @@
         <p class="dim" style="line-height:1.6;">Your token is stored locally in your browser only.</p>
       {:else}
         <div class="gc-head" style="margin-bottom:20px;">
-          <div style="display:flex;align-items:center;gap:10px;"><p class="gc-title">Portfolio</p><span class="dim">via Ghostfolio</span></div>
+          <p class="gc-title">Portfolio</p>
           <div style="display:flex;align-items:center;gap:10px;">
             {#if $gfLoading}<span class="live-dot blink" aria-label="Loading portfolio data" role="status"></span>{/if}
             {#if $gfUpdated&&!$gfLoading}<span class="dim" aria-label="Last updated at {$gfUpdated}">{$gfUpdated}</span>{/if}
@@ -932,8 +975,11 @@
   .stat-n { display:block; font-size:1.4rem; font-weight:700; letter-spacing:-.025em; margin-bottom:6px; line-height:1.1; color:var(--t1); }
   .stat-l { font-size:.58rem; color:var(--t2); text-transform:uppercase; letter-spacing:.1em; }
 
-  /* Halving number — clean, readable */
-  .halving-n { font-size:1.2rem; font-weight:700; letter-spacing:.02em; }
+  /* Halving number — same size as price-alt for uniformity */
+  .halving-n { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; }
+
+  /* Projected halving date label */
+  .halving-date { font-size:.58rem; color:var(--t3); margin-top:4px; font-variant-numeric:tabular-nums; letter-spacing:.03em; }
 
   /* Static stat tile — no hover lift or underline animation */
   .stat-tile--static { cursor:default; }
@@ -1019,8 +1065,20 @@
 
   /* ── SIGNAL CARD ────────────────────────────────────────── */
   .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.08) 0%,var(--glass-bg) 80px); position:relative; overflow:hidden; }
+  /* Zone-specific top gradient + border tint */
+  .signal-zone--red   { background:linear-gradient(180deg,rgba(239,68,68,.09) 0%,var(--glass-bg) 80px) !important; border-color:rgba(239,68,68,.22) !important; }
+  .signal-zone--green { background:linear-gradient(180deg,rgba(34,197,94,.09) 0%,var(--glass-bg) 80px) !important; border-color:rgba(34,197,94,.22) !important; }
   .signal-card .gc-head { position:relative; z-index:2; }
   .signal-bar  { position:absolute; top:0; left:0; right:0; height:2px; border-radius:6px 6px 0 0; z-index:3; }
+
+  /* Full-tile zone colour tint (absolute overlay, behind glass) */
+  .zone-tint {
+    position:absolute; inset:0; z-index:0; pointer-events:none;
+    background:linear-gradient(180deg,rgba(247,147,26,.05) 0%,rgba(247,147,26,.01) 100%);
+    transition:background .7s ease;
+  }
+  .zone-tint--red   { background:linear-gradient(180deg,rgba(239,68,68,.06) 0%,rgba(239,68,68,.015) 100%); }
+  .zone-tint--green { background:linear-gradient(180deg,rgba(34,197,94,.06) 0%,rgba(34,197,94,.015) 100%); }
 
   /* Zone background GIF layer */
   .zone-bg {
@@ -1086,6 +1144,62 @@
     .dca-n    { font-size:clamp(1.8rem,8vw,2.8rem); }
     .dca-sub  { margin-top:5px; }
   }
+
+  /* ── DCA FLIP SCENE ─────────────────────────────────────── */
+  .dca-flip-scene { perspective:900px; position:relative; z-index:2; }
+  .dca-face { animation:dcaFaceIn .38s cubic-bezier(.25,.46,.45,.94) both; }
+  @keyframes dcaFaceIn {
+    from { opacity:0; transform:rotateY(72deg) scale(.97); }
+    to   { opacity:1; transform:rotateY(0deg)  scale(1);   }
+  }
+  @media (prefers-reduced-motion:reduce) { .dca-face { animation:none; } }
+
+  /* Glimmer "How it works" button */
+  .dca-flip-btn {
+    position:relative; overflow:hidden; width:100%;
+    margin-top:16px; padding:8px 16px;
+    background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1);
+    border-radius:6px; color:var(--t2); font-size:.6rem; font-weight:600;
+    text-transform:uppercase; letter-spacing:.1em; cursor:pointer;
+    transition:border-color .25s, color .25s, background .25s;
+  }
+  .dca-flip-btn:hover { border-color:rgba(247,147,26,.35); color:var(--orange); background:rgba(247,147,26,.06); }
+  .dca-flip-shimmer {
+    position:absolute; inset:0; pointer-events:none;
+    background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.32) 50%,transparent 75%);
+    transform:translateX(-100%);
+    animation:shimmerSlide 2.8s ease-in-out infinite;
+  }
+  @keyframes shimmerSlide {
+    0%,40%  { transform:translateX(-120%); }
+    70%,100%{ transform:translateX(140%); }
+  }
+
+  /* Formula back face */
+  .dca-formula-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+  .formula-steps {
+    list-style:none; counter-reset:step; padding:0; margin:0;
+    display:flex; flex-direction:column; gap:11px;
+  }
+  .formula-steps > li {
+    position:relative; padding-left:22px; font-size:.66rem; color:var(--t2); line-height:1.65; counter-increment:step;
+  }
+  .formula-steps > li::before {
+    content:counter(step); position:absolute; left:0; top:1px;
+    width:14px; height:14px; border-radius:50%;
+    background:rgba(247,147,26,.18); color:var(--orange);
+    font-size:.5rem; font-weight:700; display:flex; align-items:center; justify-content:center;
+  }
+  .formula-steps strong { color:var(--t1); }
+  .formula-steps ul { margin:5px 0 0; padding-left:10px; border-left:1px solid rgba(255,255,255,.1); display:flex; flex-direction:column; gap:3px; }
+  .formula-steps ul li { font-size:.63rem; color:var(--t2); line-height:1.55; }
+  .formula-boost { color:var(--up); font-weight:700; }
+  :global(html.light) .dca-flip-btn { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.45); }
+  :global(html.light) .dca-flip-btn:hover { border-color:rgba(247,147,26,.3); color:#c77a10; }
+  :global(html.light) .formula-steps ul { border-left-color:rgba(0,0,0,.1); }
+  :global(html.light) .formula-steps > li::before { background:rgba(199,122,16,.15); color:#c77a10; }
+  :global(html.light) .signal-zone--red   { background:linear-gradient(180deg,rgba(239,68,68,.06) 0%,rgba(255,255,255,.72) 80px) !important; }
+  :global(html.light) .signal-zone--green { background:linear-gradient(180deg,rgba(34,197,94,.06) 0%,rgba(255,255,255,.72) 80px) !important; }
 
   /* Zone bar — redesigned with visual zones */
   .vband       { margin-bottom:18px; position:relative; z-index:2; }
