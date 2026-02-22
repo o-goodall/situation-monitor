@@ -702,6 +702,17 @@
               </div>
               <!-- Question -->
               <p class="pm-card-q" style="position:relative;z-index:1;">{m.question}</p>
+              <!-- Top outcomes list for multi-outcome markets (e.g. FIFA, elections) -->
+              {#if m.outcomes.length > 2}
+                <ul class="pm-outcomes" style="position:relative;z-index:1;" aria-label="Top contenders">
+                  {#each m.outcomes.slice(0, 4) as o}
+                    <li class="pm-outcome-row">
+                      <span class="pm-outcome-name">{o.name}</span>
+                      <span class="pm-outcome-pct" style="color:{pc(o.probability)};">{o.probability}%</span>
+                    </li>
+                  {/each}
+                </ul>
+              {/if}
               <!-- Enhanced data row -->
               <div class="pm-card-data" style="position:relative;z-index:1;">
                 <span class="pm-data-vol" title="Total volume">{fmtVol(m.volume)}</span>
@@ -774,10 +785,6 @@
     .section { padding:20px 12px 0; min-height: 100svh; }
     .section-header {
       margin-bottom:16px;
-      position:sticky; top:54px; z-index:10;
-      background:rgba(14,14,14,0.90); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
-      margin-left:-12px; margin-right:-12px;
-      padding-left:12px; padding-right:12px; padding-top:6px; padding-bottom:6px;
     }
     .section-divider { margin-top:24px; }
   }
@@ -1305,6 +1312,24 @@
   }
   :global(html.light) .pm-card-topic-icon { opacity:.06; }
 
+  /* ── POLYMARKET OUTCOMES LIST (multi-outcome markets) ──────── */
+  .pm-outcomes {
+    list-style:none; margin:0; padding:0;
+    display:flex; flex-direction:column; gap:3px;
+    margin-top:2px;
+  }
+  .pm-outcome-row {
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:.72rem; line-height:1.3;
+  }
+  .pm-outcome-name {
+    color:var(--t2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;
+  }
+  .pm-outcome-pct {
+    font-weight:700; font-size:.72rem; flex-shrink:0;
+  }
+  :global(html.light) .pm-outcome-name { color:rgba(0,0,0,.55); }
+
   /* ── POLYMARKET DATA ROW ───────────────────────────────── */
   .pm-card-data {
     display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:auto;
@@ -1395,10 +1420,10 @@
   /* ── MOBILE NEWS/MARKET CAROUSEL ────────────────────────────── */
   /* (scroll-snap applied to all .pm-grid on mobile in the block above) */
 
-  /* Intel section: no forced full-height — content determines height */
-  #intel.section { min-height: auto; padding-bottom: 80px; }
+  /* Intel section: full viewport height on mobile for scroll-snap */
+  #intel.section { padding-bottom: 80px; }
   @media (max-width:700px) {
-    #intel.section { padding-top: 20px; padding-bottom: 88px; }
+    #intel.section { min-height: 100svh; padding-top: 20px; padding-bottom: 88px; }
   }
 
   /* ── FEED CAROUSEL ───────────────────────────────────────── */
@@ -1517,7 +1542,4 @@
   :global(html.light) .ap:hover { border-color:rgba(0,0,0,.12); }
   :global(html.light) .gf-perf { border-top-color:rgba(0,0,0,.08); }
   :global(html.light) .gfp { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
-  @media (max-width:700px) {
-    :global(html.light) .section-header { background:rgba(255,255,255,0.92); }
-  }
 </style>
