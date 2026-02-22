@@ -526,7 +526,6 @@
         </g>
       </svg>
       <span class="brand-name">GL<span class="b-4">4</span>NCE</span>
-      <span class="mobile-logo-4"><span class="b-4">4</span></span>
     </div>
   </a>
 
@@ -892,7 +891,6 @@
     50%     { text-shadow:0 0 10px rgba(247,147,26,0.9), 0 0 22px rgba(247,147,26,0.5), 0 0 40px rgba(247,147,26,0.2); }
   }
   .b-4 { color:var(--orange); animation:b4Hum 3s ease-in-out infinite; }
-  .mobile-logo-4 { display:none; position:absolute; inset:0; align-items:center; justify-content:center; font-family:'Turbo Driver','Gardion','Nyxerin',monospace; font-weight:900; font-size:0.85rem; pointer-events:none; z-index:1; }
 
   /* ── RESPONSIVE VISIBILITY ───────────────────────────────── */
   .desktop-only { display:flex; }
@@ -920,14 +918,13 @@
   .mobile-hdr-right { display:none; align-items:center; gap:6px; }
 
   @media (max-width:768px) {
-    .hdr { height:54px; padding:0 16px; }
-    .hdr--scrolled { height:46px; }
+    .hdr { position:relative; height:54px; padding:0 16px; }
+    .hdr--scrolled { height:54px; }
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:0; }
-    .brand-name { display:none; }
-    .eye-wrap { width:50px; height:20px; }
-    .mobile-logo-4 { display:flex; font-size:0.9rem; }
+    .brand-name { font-size:0.76rem; }
+    .eye-wrap { width:90px; height:38px; }
     .mobile-section-nav { display:flex; }
     .mobile-hdr-right { display:flex; }
     /* Uniform button size for all header controls on mobile */
@@ -984,7 +981,7 @@
 
   /* ── PAGE WRAP ───────────────────────────────────────────── */
   .page-wrap { padding-top:64px; min-height:100vh; }
-  @media (max-width:768px) { .page-wrap { padding-top:54px; } }
+  @media (max-width:768px) { .page-wrap { padding-top:0; } }
   @media (max-width:700px) {
     .page-wrap { display:flex; flex-direction:column; }
   }

@@ -202,29 +202,6 @@
   onMount(() => {
     fetchBtcChart();
     fetchHashrateChart();
-
-    // Auto-advance the Intel carousel on mobile
-    const mq = window.matchMedia('(max-width:700px)');
-    let autoTimer: ReturnType<typeof setInterval> | null = null;
-
-    function carouselTick() {
-      if (!mq.matches) return;
-      if (intelView === 'cutting-edge' && mktCarouselTrack) {
-        const n = Math.min(mktCarouselTrack.children.length, MOBILE_CAROUSEL_LIMIT);
-        if (n > 1) { mktCarouselPage = (mktCarouselPage + 1) % n; carouselGo(mktCarouselTrack, mktCarouselPage); }
-      } else if (intelView === 'classic' && newsCarouselTrack) {
-        const n = Math.min(newsCarouselTrack.children.length, MOBILE_CAROUSEL_LIMIT);
-        if (n > 1) { newsCarouselPage = (newsCarouselPage + 1) % n; carouselGo(newsCarouselTrack, newsCarouselPage); }
-      }
-    }
-    function startAutoAdvance() {
-      if (autoTimer) clearInterval(autoTimer);
-      if (mq.matches) autoTimer = setInterval(carouselTick, CAROUSEL_AUTO_ADVANCE_MS);
-    }
-    startAutoAdvance();
-    mq.addEventListener('change', startAutoAdvance);
-
-    return () => { if (autoTimer) clearInterval(autoTimer); mq.removeEventListener('change', startAutoAdvance); };
   });
 </script>
 
@@ -1495,37 +1472,27 @@
   .carousel-nav { display:none; }
 
   @media (max-width:700px) {
-    /* Remove the old max-height overflow constraint — vertical carousel replaces it */
+    /* Remove the old max-height overflow constraint */
     .intel-gc { max-height:unset; overflow-y:visible; }
 
-    /* Vertical scroll carousel track.
-       max-height: ~2.5 cards visible at once, prompting the user to scroll for more. */
+    /* Vertical list — no scroll constraint, all items visible */
     .pm-carousel {
       display:flex !important;
       flex-direction:column !important;
-      overflow-y:auto;
-      overflow-x:hidden;
-      max-height:480px;
-      scroll-snap-type:y mandatory;
-      -webkit-overflow-scrolling:touch;
-      scrollbar-width:none;
+      overflow:visible;
       gap:10px;
-      padding-bottom:4px;
     }
-    .pm-carousel::-webkit-scrollbar { display:none; }
 
     /* Each card fills full width */
     .pm-carousel .pm-card {
       flex:none !important;
       width:100% !important;
-      scroll-snap-align:start;
       min-height:auto;
     }
 
-    /* Hide items beyond MOBILE_CAROUSEL_LIMIT (6) on mobile — update if MOBILE_CAROUSEL_LIMIT changes */
-    .pm-carousel .pm-card:nth-child(n+7) { display:none !important; }
+    /* Show all cards on mobile (no item limit) */
 
-    /* Vertical scroll is intuitive — hide prev/next nav, keep dots as scroll indicator */
+    /* Hide carousel navigation entirely */
     .carousel-nav { display:none; }
   }
   :global(html.light) .carousel-btn { background:rgba(0,0,0,.05); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.7); }
