@@ -525,6 +525,9 @@
             <animate attributeName="y" from="3.5" to="-17" dur="2.4s" begin="0.4s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.42 0 0.18 1"/>
           </rect>
         </g>
+        <!-- Iris and pupil — revealed on hover/tap -->
+        <circle class="eye-iris"  cx="30" cy="12" r="5"   fill="rgba(247,147,26,0.06)" stroke="rgba(247,147,26,0.55)" stroke-width="0.55"/>
+        <circle class="eye-pupil" cx="30" cy="12" r="2.2" fill="rgba(14,2,1,0.92)"     stroke="rgba(247,147,26,0.28)" stroke-width="0.3"/>
       </svg>
       <span class="brand-name">GL<span class="b-4">4</span>NCE</span>
     </div>
@@ -872,6 +875,8 @@
   .mode-toggle { padding:7px 10px; display:flex; align-items:center; justify-content:center; }
   .settings-btn { padding:7px 11px; }
   .settings-btn--on { border-color:rgba(247,147,26,.4)!important; color:var(--orange)!important; }
+  /* Desktop: make ws-badge (polling dot) exactly the same size as settings-btn */
+  .hdr-right .ws-badge, .hdr-right .settings-btn { width:32px; height:32px; padding:0; justify-content:center; }
 
   /* ── CYBERPUNK EYE ───────────────────────────────────────── */
   .eye-wrap { width:136px; height:58px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
@@ -888,6 +893,22 @@
 
   /* Eyelid reveal: hidden once open (SMIL animate handles the motion in SVG) */
   .eye-lid-reveal { transform-box:fill-box; }
+
+  /* ── PUPIL & IRIS — hover/tap interactive effect ────────── */
+  .eye-iris, .eye-pupil { opacity:0; transition:opacity .3s ease; }
+  .brand:hover .eye-iris, .brand:focus-within .eye-iris,
+  .brand:hover .eye-pupil, .brand:focus-within .eye-pupil { opacity:1; }
+  /* Shimmer sweep on brand hover — same as btn-ghost shimmer */
+  .eye-wrap::after {
+    content:''; position:absolute; inset:0; pointer-events:none; z-index:2;
+    background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.45) 50%,transparent 75%);
+    background-size:200% 100%; background-position:-200% center;
+    transition:background-position .4s ease, opacity .2s ease;
+    opacity:0;
+  }
+  .brand:hover .eye-wrap::after, .brand:focus-within .eye-wrap::after {
+    background-position:200% center; opacity:1;
+  }
 
   @media (prefers-reduced-motion:reduce) {
     .eye-outline { animation:none; }
@@ -921,8 +942,8 @@
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:0; }
-    .brand-name { font-size:0.76rem; }
-    .eye-wrap { width:90px; height:38px; }
+    .brand-name { font-size:0.82rem; }
+    .eye-wrap { width:104px; height:44px; }
     .mobile-hdr-right { display:flex; }
     /* Uniform button size for all header controls on mobile */
     .mobile-hdr-right .btn-ghost,
