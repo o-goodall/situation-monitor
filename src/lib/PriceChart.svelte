@@ -5,8 +5,9 @@
   export let height = 110;
   export let range: string = '1d';
   export let formatY: ((v: number) => string) | undefined = undefined;
-  export let overlays: { prices: { t: number; p: number }[]; color: string }[] = [];
+  export let overlays: { prices: { t: number; p: number }[]; color: string; label?: string }[] = [];
   export let fillParent = false; // when true the canvas fills its CSS container height
+  export let lineColor: string | null = null; // override auto green/red line color; must be #RRGGBB format
 
   let canvas: HTMLCanvasElement;
 
@@ -47,8 +48,14 @@
     const rng = max - min;
 
     const isUp = ps[ps.length - 1] >= ps[0];
-    const lineColor = isUp ? '#22c55e' : '#ef4444';
-    const fillColor = isUp ? 'rgba(34,197,94,' : 'rgba(239,68,68,';
+    const autoLineColor = isUp ? '#22c55e' : '#ef4444';
+    const resolvedLineColor = lineColor ?? autoLineColor;
+    const autoFillBase = isUp ? 'rgba(34,197,94,' : 'rgba(239,68,68,';
+    // If lineColor overridden, derive fill from it (expects #RRGGBB format)
+    const resolvedFillBase = lineColor ? lineColor.replace(/^#/, '') : null;
+    const fillBase = resolvedFillBase && resolvedFillBase.length === 6
+      ? `rgba(${parseInt(resolvedFillBase.slice(0,2),16)},${parseInt(resolvedFillBase.slice(2,4),16)},${parseInt(resolvedFillBase.slice(4,6),16)},`
+      : autoFillBase;
 
     const PAD_L = formatY ? 58 : 48, PAD_R = 10, PAD_T = 10, PAD_B = 22;
     const dW = W - PAD_L - PAD_R;
@@ -66,7 +73,7 @@
     // Subtle horizontal grid lines
     ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
-    for (const frac of [0, 0.5, 1]) {
+    for (const frac of [0, 0.25, 0.5, 0.75, 1]) {
       const y = PAD_T + frac * dH;
       ctx.beginPath();
       ctx.moveTo(PAD_L, y);
@@ -96,9 +103,11 @@
     ctx.textAlign = 'right';
     const defaultFormatter = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : `$${v.toFixed(0)}`;
     const fmtPrice = formatY ?? defaultFormatter;
-    ctx.fillText(fmtPrice(maxRaw), PAD_L - 4, PAD_T + 5);
-    ctx.fillText(fmtPrice((maxRaw + minRaw) / 2), PAD_L - 4, PAD_T + dH / 2 + 4);
-    ctx.fillText(fmtPrice(minRaw), PAD_L - 4, PAD_T + dH + 4);
+    for (const frac of [0, 0.25, 0.5, 0.75, 1]) {
+      const v = maxRaw - frac * (maxRaw - minRaw);
+      const y = PAD_T + frac * dH + (frac === 0 ? 5 : frac === 1 ? 4 : 4);
+      ctx.fillText(fmtPrice(v), PAD_L - 4, y);
+    }
 
     // X-axis time labels
     ctx.textAlign = 'center';
@@ -116,8 +125,8 @@
     ctx.lineTo(PAD_L, PAD_T + dH);
     ctx.closePath();
     const grad = ctx.createLinearGradient(0, PAD_T, 0, PAD_T + dH);
-    grad.addColorStop(0, fillColor + (overlays.length > 0 ? '0.12)' : '0.22)'));
-    grad.addColorStop(1, fillColor + '0.01)');
+    grad.addColorStop(0, fillBase + (overlays.length > 0 ? '0.12)' : '0.22)'));
+    grad.addColorStop(1, fillBase + '0.01)');
     ctx.fillStyle = grad;
     ctx.fill();
 
@@ -127,12 +136,12 @@
       const x = toX(i, prices.length), y = toY(p);
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
-    ctx.strokeStyle = lineColor;
+    ctx.strokeStyle = resolvedLineColor;
     ctx.lineWidth = overlays.length > 0 ? 2 : 1.5;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.shadowBlur = 2;
-    ctx.shadowColor = lineColor;
+    ctx.shadowColor = resolvedLineColor;
     ctx.stroke();
     ctx.shadowBlur = 0;
 
@@ -154,24 +163,16 @@
       ctx.shadowColor = overlay.color;
       ctx.stroke();
       ctx.shadowBlur = 0;
-      // Dot at end of overlay line
-      const last = overlay.prices[overlay.prices.length - 1];
-      const ox = toXt(last.t);
-      const oy = toY(last.p);
-      ctx.beginPath();
-      ctx.arc(ox, oy, 3, 0, Math.PI * 2);
-      ctx.fillStyle = overlay.color;
-      ctx.fill();
     }
 
     // Dot at latest price (main series — drawn on top)
-    const lx = toX(prices.length - 1, prices.length);
-    const ly = toY(ps[ps.length - 1]);
+    const lx2 = toX(prices.length - 1, prices.length);
+    const ly2 = toY(ps[ps.length - 1]);
     ctx.beginPath();
-    ctx.arc(lx, ly, 3, 0, Math.PI * 2);
-    ctx.fillStyle = lineColor;
+    ctx.arc(lx2, ly2, 3, 0, Math.PI * 2);
+    ctx.fillStyle = resolvedLineColor;
     ctx.shadowBlur = 4;
-    ctx.shadowColor = lineColor;
+    ctx.shadowColor = resolvedLineColor;
     ctx.fill();
     ctx.shadowBlur = 0;
   }

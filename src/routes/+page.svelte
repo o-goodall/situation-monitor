@@ -65,6 +65,19 @@
     await fetchHashrateChart(r);
   }
 
+  function computeMA(data: { t: number; p: number }[], window: number): { t: number; p: number }[] {
+    const result: { t: number; p: number }[] = [];
+    for (let i = window - 1; i < data.length; i++) {
+      const slice = data.slice(i - window + 1, i + 1);
+      const avg = slice.reduce((s, d) => s + d.p, 0) / slice.length;
+      result.push({ t: data[i].t, p: parseFloat(avg.toFixed(2)) });
+    }
+    return result;
+  }
+
+  $: hashrateMA7  = hashrateData.length >= 7  ? computeMA(hashrateData, 7)  : [];
+  $: hashrateMA30 = hashrateData.length >= 30 ? computeMA(hashrateData, 30) : [];
+
   let intelView: 'cutting-edge'|'classic' = 'classic';
   let intelTransitioning = false;
   const BLUR_DURATION_MS = 400;   // blur phase before content swap
@@ -194,7 +207,7 @@
       <div class="price-pair" aria-live="polite" aria-atomic="true">
         <span class="price-usd" style="color:{$priceColor};transition:color .5s;">{$btcPrice>0?'$'+n($btcPrice):'—'}</span>
         {#if $btcDisplayPrice !== null && displayCur !== 'USD'}
-          <span class="price-sep">|</span>
+          <span class="price-sep">·</span>
           <span class="price-alt" style="color:{$priceColor};transition:color .5s;">${n($btcDisplayPrice,0)}</span>
         {/if}
       </div>
@@ -202,7 +215,7 @@
         <span class="stat-l">
           <span class="price-label-usd">USD</span>
           {#if $btcDisplayPrice !== null && displayCur !== 'USD'}
-            <span class="price-label-sep"> | </span><span class="price-label-cur">{displayCur}</span>
+            <span class="price-label-sep"> · </span><span class="price-label-cur">{displayCur}</span>
           {/if}
         </span>
       </div>
@@ -213,7 +226,7 @@
       <div class="sats-display">
         <span class="sats-cur">{$satsPerAud !== null ? $satsPerAud.toLocaleString() : '—'}</span>
       </div>
-      <span class="stat-l"><span style="color:var(--orange);">SATS</span> · <span class="price-label-cur">{displayCur}</span></span>
+      <span class="stat-l"><span class="sats-label-sats">SATS</span> · <span class="sats-label-cur">{displayCur}</span></span>
     </div>
 
     <div class="stat-tile halving-tile stat-tile--static" data-tooltip="Estimated blocks remaining until next Bitcoin halving">
@@ -266,7 +279,6 @@
             <div class="gc-head">
               <div>
                 <p class="eyebrow orange">DCA Signal</p>
-                <p class="dim" style="margin-top:3px;">{freqHint}</p>
               </div>
               <span class="ts">{$dcaUpdated||'—'}</span>
             </div>
@@ -452,19 +464,37 @@
 
     <!-- BITCOIN HASHRATE — replaces My Stack -->
     <div class="gc gc--hashrate btc-hashrate-card">
-      <div class="chart-header" style="margin-bottom:12px;">
+      <div class="chart-header" style="margin-bottom:8px;">
         <p class="gc-title">Bitcoin Hashrate</p>
         <div class="chart-range-btns" role="group" aria-label="Hashrate chart range">
+          <button class="crb" class:crb--active={hashrateChartRange==='3M'} on:click={() => setHashrateChartRange('3M')}>3M</button>
+          <button class="crb" class:crb--active={hashrateChartRange==='6M'} on:click={() => setHashrateChartRange('6M')}>6M</button>
           <button class="crb" class:crb--active={hashrateChartRange==='1Y'} on:click={() => setHashrateChartRange('1Y')}>1Y</button>
           <button class="crb" class:crb--active={hashrateChartRange==='2Y'} on:click={() => setHashrateChartRange('2Y')}>2Y</button>
           <button class="crb" class:crb--active={hashrateChartRange==='All'} on:click={() => setHashrateChartRange('All')}>All</button>
         </div>
       </div>
+      <!-- MA legend -->
+      <div class="hashrate-legend">
+        <span class="hr-leg" style="--c:#f7931a;">● Hashrate</span>
+        {#if hashrateMA7.length > 0}<span class="hr-leg" style="--c:#fbbf24;">● 7D MA</span>{/if}
+        {#if hashrateMA30.length > 0}<span class="hr-leg" style="--c:#60a5fa;">● 30D MA</span>{/if}
+      </div>
       <div class="chart-container">
         {#if hashrateLoading}
-          <div class="skeleton" style="height:100%;min-height:160px;border-radius:6px;"></div>
+          <div class="skeleton" style="height:100%;min-height:200px;border-radius:6px;"></div>
         {:else if hashrateData.length >= 2}
-          <PriceChart prices={hashrateData} fillParent={true} range={hashrateChartRange === 'All' ? 'max' : hashrateChartRange === '2Y' ? '5y' : '1y'} formatY={(v) => `${v.toFixed(0)} EH/s`} />
+          <PriceChart
+            prices={hashrateData}
+            fillParent={true}
+            range={hashrateChartRange === 'All' ? 'max' : hashrateChartRange === '2Y' ? '5y' : '1y'}
+            formatY={(v) => `${v.toFixed(0)} EH/s`}
+            lineColor="#f7931a"
+            overlays={[
+              ...(hashrateMA7.length > 0  ? [{ prices: hashrateMA7,  color: '#fbbf24', label: '7D MA'  }] : []),
+              ...(hashrateMA30.length > 0 ? [{ prices: hashrateMA30, color: '#60a5fa', label: '30D MA' }] : []),
+            ]}
+          />
         {:else}
           <p class="dim" style="text-align:center;padding:40px 0;">Loading hashrate data…</p>
         {/if}
@@ -472,7 +502,7 @@
       {#if $btcHashrate !== null}
       <div class="hash-row">
         <span class="eyebrow">Current Hash Rate</span>
-        <span class="hash-val">{$btcHashrate.toFixed(1)}<span class="met-u"> EH/s</span></span>
+        <span class="hash-val" style="color:#f7931a;">{$btcHashrate.toFixed(1)}<span class="met-u"> EH/s</span></span>
       </div>
       {/if}
     </div>
@@ -814,7 +844,7 @@
   .price-alt { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; }
   .price-label-usd { color:rgba(255,255,255,.55); font-weight:700; }
   .price-label-sep { color:var(--t3); }
-  .price-label-cur { color:var(--orange); font-weight:700; }
+  .price-label-cur { color:#22c55e; font-weight:700; }
   @media (max-width:500px) {
     .price-usd { font-size:1.2rem; }
     .price-alt { font-size:1.2rem; }
@@ -824,6 +854,8 @@
   /* Sats per currency — large SATS display */
   .sats-display { display:flex; align-items:baseline; gap:6px; justify-content:center; margin-bottom:4px; }
   .sats-cur { font-size:1.4rem; font-weight:700; color:#e2e2e8; letter-spacing:-.025em; line-height:1.1; }
+  .sats-label-sats { color:var(--orange); font-weight:700; }
+  .sats-label-cur  { color:#22c55e; font-weight:700; }
   @media (max-width:500px) {
     .sats-cur { font-size:1.15rem; }
   }
@@ -843,7 +875,7 @@
     15%  { background-position: 200% center; }
     100% { background-position: 200% center; }
   }
-  .halving-date--glow {
+  .halving-date--glow, .btc-glimmer, .eyebrow.orange, .sats-label-sats {
     background: linear-gradient(105deg, var(--orange) 30%, #ffe0a0 50%, var(--orange) 70%);
     background-size: 200% auto;
     -webkit-background-clip: text;
@@ -852,7 +884,7 @@
     animation: halvingFoil 10s linear infinite;
   }
   @media (prefers-reduced-motion: reduce) {
-    .halving-date--glow { animation: none; -webkit-text-fill-color: var(--orange); color: var(--orange); }
+    .halving-date--glow, .btc-glimmer, .eyebrow.orange, .sats-label-sats { animation: none; -webkit-text-fill-color: var(--orange); color: var(--orange); }
   }
 
   /* Static stat tile — no interactive cursor */
@@ -935,8 +967,10 @@
 
   /* Hashrate tile — flex column so the chart fills remaining tile height */
   .gc--hashrate { display:flex; flex-direction:column; }
-  .gc--hashrate .chart-container { flex:1; min-height:160px; }
+  .gc--hashrate .chart-container { flex:1; min-height:200px; }
   .gc--hashrate .hash-row { margin-top:auto; padding-top:10px; }
+  .hashrate-legend { display:flex; gap:10px; margin-bottom:6px; }
+  .hr-leg { font-size:.6rem; color:var(--c,#f7931a); font-weight:600; letter-spacing:.03em; opacity:.85; }
 
   /* ── MOBILE: hide supplementary sections, limit intel stories ── */
   @media (max-width:768px) {
@@ -1498,6 +1532,9 @@
   /* ── LIGHT MODE OVERRIDES (page-level) ────────────────── */
   :global(html.light) .price-label-usd { color:rgba(0,0,0,.45); }
   :global(html.light) .sats-cur { color:#111; }
+  :global(html.light) .sats-label-sats { -webkit-text-fill-color:unset; background:none; color:#c77a10; animation:none; }
+  :global(html.light) .sats-label-cur  { color:#16a34a; }
+  :global(html.light) .eyebrow.orange  { -webkit-text-fill-color:unset; background:none; color:#c77a10; animation:none; }
   :global(html.light) .pbar { background:rgba(0,0,0,.06); }
   :global(html.light) .vband-track { background:rgba(0,0,0,.04); }
   :global(html.light) .vband-dot { background:#fff; border-color:var(--orange); }
