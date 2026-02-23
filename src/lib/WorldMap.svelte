@@ -1,5 +1,7 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { settings } from '$lib/store';
+  import type { Threat } from '$lib/settings';
 
   let mapContainer: HTMLDivElement;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,6 +27,7 @@
 
   let mapLoading = true;
   let mapError = '';
+  let threatsUpdatedAt = '';
 
   // ── THREAT LEVELS ────────────────────────────────────────────
   const THREAT_COLORS: Record<string, string> = {
@@ -36,41 +39,6 @@
   };
 
   const CONFLICT_COUNTRY_FILL = 'rgba(255,68,68,0.28)';
-
-  // ── CONFLICT COUNTRY IDs (ISO 3166-1 numeric, from world-atlas) ──
-  const CONFLICT_COUNTRY_IDS = new Set([
-    '804', // Ukraine
-    '729', // Sudan
-    '104', // Myanmar
-    '364', // Iran
-    '408', // North Korea
-    '887', // Yemen
-    '466', // Mali
-    '854', // Burkina Faso
-    '562', // Niger
-    '231', // Ethiopia
-    '332', // Haiti
-    '760', // Syria
-    '275', // Palestine / Gaza
-  ]);
-
-  // ── HARDCODED GLOBAL HOTSPOTS ────────────────────────────────
-  const HOTSPOTS = [
-    // ── ACTIVE CONFLICTS ────────────────────────────────────────
-    { name: 'Ukraine', lat: 49.0, lon: 31.5, level: 'critical', desc: '⚔️ Russia–Ukraine War — Active conflict' },
-    { name: 'Gaza', lat: 31.5, lon: 34.5, level: 'critical', desc: '⚔️ Gaza — Israel–Hamas conflict' },
-    { name: 'Sudan', lat: 15.5, lon: 30.0, level: 'high', desc: '⚔️ Sudan — Civil war, humanitarian crisis' },
-    { name: 'Myanmar', lat: 19.7, lon: 96.1, level: 'high', desc: '⚔️ Myanmar — Civil war & junta resistance' },
-    { name: 'Taiwan Strait', lat: 24.0, lon: 120.0, level: 'elevated', desc: '⚠️ Taiwan Strait — China military pressure' },
-    { name: 'Iran', lat: 32.0, lon: 53.0, level: 'high', desc: '⚔️ Iran — Nuclear program, regional proxy conflict & Israel strikes' },
-    { name: 'North Korea', lat: 40.0, lon: 127.0, level: 'elevated', desc: '⚠️ North Korea — Nuclear & missile program' },
-    { name: 'Yemen', lat: 15.3, lon: 44.2, level: 'high', desc: '⚔️ Yemen — Houthi conflict & Red Sea attacks' },
-    { name: 'Sahel', lat: 14.0, lon: 0.0, level: 'high', desc: '⚔️ Sahel — Mali, Burkina Faso, Niger coups & insurgency' },
-    { name: 'Ethiopia', lat: 9.1, lon: 40.5, level: 'elevated', desc: '⚠️ Ethiopia — Amhara conflict & ongoing instability' },
-    { name: 'Haiti', lat: 18.9, lon: -72.3, level: 'high', desc: '⚔️ Haiti — Gang violence & state collapse' },
-    { name: 'South China Sea', lat: 12.0, lon: 114.0, level: 'elevated', desc: '⚠️ South China Sea — Territorial disputes' },
-    { name: 'Syria', lat: 34.8, lon: 38.5, level: 'elevated', desc: '⚠️ Syria — Post-Assad transition, HTS rule & fragile stability' },
-  ];
 
   function showTip(e: MouseEvent, title: string, color: string, lines: string[] = []) {
     if (!mapContainer) return;
@@ -92,19 +60,41 @@
   function zoomOut()   { if (svg && zoom) svg.transition().duration(280).call(zoom.scaleBy, 1/1.5); }
   function resetZoom() { if (svg && zoom && d3Module) svg.transition().duration(280).call(zoom.transform, d3Module.zoomIdentity); }
 
+  /** Fetch threats from the API, passing user overrides from settings */
+  async function fetchThreats(): Promise<{ threats: Threat[]; conflictCountryIds: string[]; updatedAt: string }> {
+    const disabledIds = $settings.threats?.disabledIds ?? [];
+    const customThreats = $settings.threats?.customThreats ?? [];
+
+    const params = new URLSearchParams();
+    if (disabledIds.length)    params.set('disabled', encodeURIComponent(JSON.stringify(disabledIds)));
+    if (customThreats.length)  params.set('custom',   encodeURIComponent(JSON.stringify(customThreats)));
+
+    const res = await fetch(`/api/threats${params.toString() ? '?' + params.toString() : ''}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
   // ── MAIN INITIALISATION ──────────────────────────────────────
   async function initMap() {
     mapLoading = true;
     mapError   = '';
+
     try {
-      const [d3, topojson] = await Promise.all([
-        import('d3'),
-        import('topojson-client'),
+      const [[d3, topojson], threatData] = await Promise.all([
+        Promise.all([import('d3'), import('topojson-client')]),
+        fetchThreats(),
       ]);
       d3Module = d3;
 
+      const { threats, conflictCountryIds, updatedAt } = threatData;
+      const conflictIds = new Set(conflictCountryIds);
+      threatsUpdatedAt = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
       const svgEl = mapContainer?.querySelector('svg');
       if (!svgEl) return;
+
+      // Clear any previous render only after successful data fetch
+      svgEl.innerHTML = '';
 
       svg = d3.select(svgEl).attr('viewBox', `0 0 ${WIDTH} ${HEIGHT}`);
       mapGroup = svg.append('g').attr('id', 'wm-group');
@@ -149,7 +139,7 @@
         .attr('class', 'wm-country')
         .attr('d', path as unknown as string)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .attr('fill', (d: any) => CONFLICT_COUNTRY_IDS.has(String(d.id)) ? CONFLICT_COUNTRY_FILL : '#1e3248')
+        .attr('fill', (d: any) => conflictIds.has(String(d.id)) ? CONFLICT_COUNTRY_FILL : '#1e3248')
         .attr('stroke', 'none');
 
       // Country borders
@@ -180,8 +170,8 @@
           .attr('stroke', 'none');
       }
 
-      // Hotspots
-      for (const h of HOTSPOTS) {
+      // Hotspots — sourced dynamically from /api/threats
+      for (const h of threats) {
         const pos = projection([h.lon, h.lat]);
         if (!pos) continue;
         const [x, y] = pos;
@@ -275,6 +265,7 @@
     <button class="wm-zbtn" on:click={zoomIn}  title="Zoom in">+</button>
     <button class="wm-zbtn" on:click={zoomOut} title="Zoom out">−</button>
     <button class="wm-zbtn" on:click={resetZoom} title="Reset view">⟲</button>
+    <button class="wm-zbtn" on:click={initMap} title="Refresh threats" disabled={mapLoading}>↺</button>
   </div>
 
   <div class="wm-legend">
@@ -283,6 +274,10 @@
     <div class="wm-leg-row"><span class="wm-dot" style="background:#ff8800;"></span>High</div>
     <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span>Elevated</div>
     <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
+    {#if threatsUpdatedAt}
+      <div class="wm-leg-sep"></div>
+      <div class="wm-leg-ts">Updated {threatsUpdatedAt}</div>
+    {/if}
   </div>
 </div>
 
@@ -331,6 +326,7 @@
     color: #6b8f9f; font-size: .9rem; cursor: pointer; transition: color .15s, border-color .15s;
   }
   .wm-zbtn:hover { color: #fff; border-color: rgba(0,200,255,0.6); }
+  .wm-zbtn:disabled { opacity: .4; cursor: default; }
 
   .wm-legend {
     position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column;
@@ -341,6 +337,7 @@
   .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .56rem; color: #8ab; font-family: monospace; }
   .wm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.15); margin: 3px 0; }
+  .wm-leg-ts { font-size: .48rem; color: var(--t3); font-family: monospace; }
 
   :global(.wm-pulse) { animation: wm-pulse 2.2s ease-in-out infinite; }
   @keyframes wm-pulse {

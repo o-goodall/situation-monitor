@@ -1,5 +1,18 @@
 export type FeedCategory = 'global' | 'business' | 'tech' | 'security' | 'crypto';
 
+export type ThreatLevel = 'critical' | 'high' | 'elevated' | 'low' | 'info';
+
+export interface Threat {
+  id: string;
+  name: string;
+  lat: number;
+  lon: number;
+  level: ThreatLevel;
+  desc: string;
+  /** ISO 3166-1 numeric country ID for conflict shading on the map (optional) */
+  countryId?: string;
+}
+
 export interface RssFeed {
   url: string;
   name: string;
@@ -8,6 +21,24 @@ export interface RssFeed {
 }
 
 export type DcaFrequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly';
+
+// ── DEFAULT GLOBAL THREAT HOTSPOTS ───────────────────────────
+export const DEFAULT_THREATS: Threat[] = [
+  // ── Active Conflicts ────────────────────────────────────────
+  { id: 'ukraine',       name: 'Ukraine',        lat: 49.0, lon:  31.5, level: 'critical', desc: '⚔️ Russia–Ukraine War — Active conflict',                          countryId: '804' },
+  { id: 'gaza',          name: 'Gaza',            lat: 31.5, lon:  34.5, level: 'critical', desc: '⚔️ Gaza — Israel–Hamas conflict',                                  countryId: '275' },
+  { id: 'sudan',         name: 'Sudan',           lat: 15.5, lon:  30.0, level: 'high',     desc: '⚔️ Sudan — Civil war, humanitarian crisis',                        countryId: '729' },
+  { id: 'myanmar',       name: 'Myanmar',         lat: 19.7, lon:  96.1, level: 'high',     desc: '⚔️ Myanmar — Civil war & junta resistance',                        countryId: '104' },
+  { id: 'iran',          name: 'Iran',            lat: 32.0, lon:  53.0, level: 'high',     desc: '⚔️ Iran — Nuclear program, regional proxy conflict & Israel strikes', countryId: '364' },
+  { id: 'yemen',         name: 'Yemen',           lat: 15.3, lon:  44.2, level: 'high',     desc: '⚔️ Yemen — Houthi conflict & Red Sea attacks',                      countryId: '887' },
+  { id: 'sahel',         name: 'Sahel',           lat: 14.0, lon:   0.0, level: 'high',     desc: '⚔️ Sahel — Mali, Burkina Faso, Niger coups & insurgency' },
+  { id: 'haiti',         name: 'Haiti',           lat: 18.9, lon: -72.3, level: 'high',     desc: '⚔️ Haiti — Gang violence & state collapse',                        countryId: '332' },
+  { id: 'ethiopia',      name: 'Ethiopia',        lat:  9.1, lon:  40.5, level: 'elevated', desc: '⚠️ Ethiopia — Amhara conflict & ongoing instability',               countryId: '231' },
+  { id: 'taiwan',        name: 'Taiwan Strait',   lat: 24.0, lon: 120.0, level: 'elevated', desc: '⚠️ Taiwan Strait — China military pressure' },
+  { id: 'north-korea',   name: 'North Korea',     lat: 40.0, lon: 127.0, level: 'elevated', desc: '⚠️ North Korea — Nuclear & missile program',                       countryId: '408' },
+  { id: 'south-china-sea', name: 'South China Sea', lat: 12.0, lon: 114.0, level: 'elevated', desc: '⚠️ South China Sea — Territorial disputes' },
+  { id: 'syria',         name: 'Syria',           lat: 34.8, lon:  38.5, level: 'elevated', desc: '⚠️ Syria — Post-Assad transition, HTS rule & fragile stability',   countryId: '760' },
+];
 
 export interface Settings {
   dca: {
@@ -24,6 +55,12 @@ export interface Settings {
   news: {
     defaultFeeds: RssFeed[];   // Pre-selected feeds (toggleable)
     customFeeds: RssFeed[];    // User-added feeds (toggleable)
+  };
+  threats: {
+    /** User-added threat hotspots */
+    customThreats: Threat[];
+    /** IDs of default threats the user has hidden */
+    disabledIds: string[];
   };
   ghostfolio: { token: string; currency: string };
   displayCurrency: string;   // User's preferred display currency (e.g. AUD, EUR, GBP)
@@ -66,6 +103,10 @@ export const DEFAULT_SETTINGS: Settings = {
     defaultFeeds: DEFAULT_RSS_FEEDS.map(f => ({...f})),
     customFeeds: [],
   },
+  threats: {
+    customThreats: [],
+    disabledIds: [],
+  },
   ghostfolio: { token: '', currency: 'AUD' },
   displayCurrency: 'AUD',
 };
@@ -106,6 +147,10 @@ export function loadSettings(): Settings {
         for (const f of parsed.news.customFeeds) {
           if (!f.category) f.category = 'global';
         }
+      }
+      // Backfill threats section for users who saved settings before this field existed
+      if (!parsed.threats) {
+        parsed.threats = { customThreats: [], disabledIds: [] };
       }
       return { ...DEFAULT_SETTINGS, ...parsed, dca: { ...DEFAULT_SETTINGS.dca, ...parsed.dca, dcaFrequency: parsed.dca?.dcaFrequency ?? 'fortnightly' }, displayCurrency: parsed.displayCurrency ?? DEFAULT_SETTINGS.displayCurrency };
     }
