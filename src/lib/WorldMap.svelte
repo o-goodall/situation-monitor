@@ -120,6 +120,8 @@
 
   // Named type for geo-located news event
   interface GeoEvent { lat: number; lon: number; title: string; source: string; pubDate: string; link: string }
+  // Group of news events at the same location
+  interface GeoEventGroup { lat: number; lon: number; items: GeoEvent[]; hasBreaking: boolean; }
 
   // Map news items to geo-coordinates — only major events are plotted
   function newsToGeoEvents(items: NewsItem[]): GeoEvent[] {
@@ -129,10 +131,7 @@
       const text = item.title + ' ' + (item.description ?? '');
       for (const [re, [lat, lon]] of GEO_MAP) {
         if (re.test(text)) {
-          // slight jitter so overlapping events don't stack exactly
-          const jLat = lat + (Math.random() - 0.5) * 1.5;
-          const jLon = lon + (Math.random() - 0.5) * 1.5;
-          events.push({ lat: jLat, lon: jLon, title: item.title, source: item.source, pubDate: item.pubDate, link: item.link });
+          events.push({ lat, lon, title: item.title, source: item.source, pubDate: item.pubDate, link: item.link });
           break;
         }
       }
@@ -207,7 +206,7 @@
       mapGroup.append('path')
         .datum({ type: 'Sphere' })
         .attr('d', path as unknown as string)
-        .attr('fill', '#0c2a1e')
+        .attr('fill', '#0d1b2a')
         .attr('stroke', 'none');
 
       // Countries
@@ -216,7 +215,7 @@
         .enter().append('path')
         .attr('class', 'wm-country')
         .attr('d', path as unknown as string)
-        .attr('fill', '#163d2c')
+        .attr('fill', '#1e3248')
         .attr('stroke', 'none');
 
       // Country borders
@@ -224,7 +223,7 @@
         .datum(borders)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', '#236050')
+        .attr('stroke', 'rgba(0,200,255,0.35)')
         .attr('stroke-width', 0.4);
 
       // Graticule
@@ -233,7 +232,7 @@
         .datum(grat)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', '#183828')
+        .attr('stroke', 'rgba(0,200,255,0.12)')
         .attr('stroke-width', 0.3)
         .attr('stroke-dasharray', '2,2');
 
@@ -295,28 +294,55 @@
     newsLayer = mapGroup.append('g').attr('id', 'wm-news');
 
     const events = newsToGeoEvents(items);
+
+    // Group events by location key so overlapping stories stack on one dot
+    const groups = new Map<string, GeoEventGroup>();
     for (const ev of events) {
-      const pos = projection([ev.lon, ev.lat]);
+      const key = `${ev.lat},${ev.lon}`;
+      if (!groups.has(key)) {
+        groups.set(key, { lat: ev.lat, lon: ev.lon, items: [], hasBreaking: false });
+      }
+      const g = groups.get(key)!;
+      g.items.push(ev);
+      if (breakingLinks.has(ev.link)) g.hasBreaking = true;
+    }
+
+    for (const group of groups.values()) {
+      const pos = projection([group.lon, group.lat]);
       if (!pos) continue;
       const [x, y] = pos;
-      const isBreaking = breakingLinks.has(ev.link);
-      const col = isBreaking ? '#ffe033' : '#00ccff';
+      const col = group.hasBreaking ? '#ffe033' : '#00ccff';
+      const count = group.items.length;
+      const r = count > 1 ? 4 : 2.8;
 
-      if (isBreaking) {
-        // Outer expanding ping ring for breaking news
+      if (group.hasBreaking) {
         newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 10)
           .attr('fill', 'none').attr('stroke', col).attr('stroke-width', 1.2)
           .attr('stroke-opacity', 0.7).attr('class', 'wm-breaking-ring');
       }
-      newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', isBreaking ? 3.5 : 2.8)
-        .attr('fill', col).attr('fill-opacity', isBreaking ? 1 : 0.7);
-      newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 8)
+      newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
+        .attr('fill', col).attr('fill-opacity', group.hasBreaking ? 1 : 0.7);
+
+      // Count badge for multiple stories at the same location
+      if (count > 1) {
+        newsLayer.append('text')
+          .attr('x', x + r + 1).attr('y', y - r)
+          .attr('fill', col).attr('font-size', '7px').attr('font-family', 'monospace')
+          .attr('font-weight', 'bold').attr('pointer-events', 'none')
+          .text(count);
+      }
+
+      newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 10)
         .attr('fill', 'transparent').attr('class', 'wm-hit')
         .on('mouseenter', (e: MouseEvent) => {
-          const lines = isBreaking
-            ? ['🔴 BREAKING', `📰 ${ev.source}`, timeAgo(ev.pubDate)]
-            : [`📰 ${ev.source}`, timeAgo(ev.pubDate)];
-          showTip(e, ev.title, col, lines);
+          const lines: string[] = [];
+          if (group.hasBreaking) lines.push('🔴 BREAKING');
+          for (const ev of group.items.slice(0, 3)) {
+            lines.push(`📰 ${ev.source} — ${timeAgo(ev.pubDate)}`);
+          }
+          if (count > 3) lines.push(`+${count - 3} more`);
+          const title = count > 1 ? `${count} stories — ${group.items[0].title}` : group.items[0].title;
+          showTip(e, title, col, lines);
         })
         .on('mousemove', moveTip)
         .on('mouseleave', hideTip);
@@ -414,9 +440,8 @@
   .wm-wrap {
     position: relative;
     width: 100%;
-    aspect-ratio: 2 / 1;
-    min-height: 300px;
-    background: #0c2a1e;
+    height: 340px;
+    background: #0d1b2a;
     border-radius: 10px;
     overflow: hidden;
   }
@@ -425,7 +450,7 @@
   .wm-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 12px; z-index: 5;
-    background: #0c2a1e;
+    background: #0d1b2a;
   }
   .wm-state--error { color: #f43f5e; font-size: .75rem; }
   .wm-state-text { font-size: .72rem; color: var(--t3); }
@@ -437,7 +462,7 @@
   @keyframes wm-spin { to { transform: rotate(360deg); } }
 
   .wm-tooltip {
-    position: absolute; background: rgba(6,10,8,.95); border: 1px solid #1a5040;
+    position: absolute; background: rgba(8,18,32,.97); border: 1px solid rgba(0,200,255,0.3);
     border-radius: 6px; padding: 6px 9px; font-size: .65rem; color: #ddd;
     max-width: 260px; pointer-events: none; z-index: 100;
     line-height: 1.5;
@@ -450,20 +475,20 @@
   }
   .wm-zbtn {
     width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-    background: rgba(6,26,20,.9); border: 1px solid #1a5040; border-radius: 5px;
-    color: #6b8f80; font-size: .9rem; cursor: pointer; transition: color .15s, border-color .15s;
+    background: rgba(8,18,32,.9); border: 1px solid rgba(0,200,255,0.25); border-radius: 5px;
+    color: #6b8f9f; font-size: .9rem; cursor: pointer; transition: color .15s, border-color .15s;
   }
-  .wm-zbtn:hover { color: #fff; border-color: #2a8060; }
+  .wm-zbtn:hover { color: #fff; border-color: rgba(0,200,255,0.6); }
 
   .wm-legend {
     position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column;
-    gap: 3px; background: rgba(6,26,20,.88); padding: 6px 9px; border-radius: 6px;
-    border: 1px solid #1a4030;
+    gap: 3px; background: rgba(8,18,32,.88); padding: 6px 9px; border-radius: 6px;
+    border: 1px solid rgba(0,200,255,0.18);
   }
   .wm-leg-title { font-size: .52rem; color: var(--t3); letter-spacing: .08em; margin-bottom: 2px; }
   .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .56rem; color: #8ab; font-family: monospace; }
   .wm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-  .wm-leg-sep { height: 1px; background: #1a4030; margin: 3px 0; }
+  .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.15); margin: 3px 0; }
 
   :global(.wm-pulse) { animation: wm-pulse 2.2s ease-in-out infinite; }
   @keyframes wm-pulse {
