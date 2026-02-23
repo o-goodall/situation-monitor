@@ -1,8 +1,8 @@
 <script lang="ts">
   import '../app.css';
   import { onMount, onDestroy } from 'svelte';
-  import { loadSettings, getEnabledFeedUrls, DEFAULT_THREATS } from '$lib/settings';
-  import type { FeedCategory, Threat } from '$lib/settings';
+  import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
+  import type { FeedCategory } from '$lib/settings';
   import {
     settings, showSettings, saved, time, lightMode, activeSection,
     btcPrice, prevPrice, priceFlash, priceHistory, btcBlock, btcFees,
@@ -259,40 +259,6 @@
   function removeSource(i:number) { $settings.news.customFeeds = $settings.news.customFeeds.filter((_,j)=>j!==i); }
   function toggleDefaultFeed(i:number) { $settings.news.defaultFeeds[i].enabled = !$settings.news.defaultFeeds[i].enabled; $settings.news.defaultFeeds = [...$settings.news.defaultFeeds]; }
   function toggleCustomFeed(i:number) { $settings.news.customFeeds[i].enabled = !$settings.news.customFeeds[i].enabled; $settings.news.customFeeds = [...$settings.news.customFeeds]; }
-
-  // ── THREAT MANAGEMENT ─────────────────────────────────────────
-  let newThreat: Partial<Threat> = { level: 'elevated' };
-  let showAddThreat = false;
-
-  function toggleDefaultThreat(id: string) {
-    const disabled = $settings.threats.disabledIds;
-    if (disabled.includes(id)) {
-      $settings.threats.disabledIds = disabled.filter(d => d !== id);
-    } else {
-      $settings.threats.disabledIds = [...disabled, id];
-    }
-  }
-
-  function addCustomThreat() {
-    if (!newThreat.name?.trim() || newThreat.lat === undefined || newThreat.lon === undefined) return;
-    const id = `custom-${Date.now()}`;
-    const threat: Threat = {
-      id,
-      name: newThreat.name.trim(),
-      lat: Number(newThreat.lat),
-      lon: Number(newThreat.lon),
-      level: newThreat.level ?? 'elevated',
-      desc: newThreat.desc?.trim() ?? newThreat.name.trim(),
-      countryId: newThreat.countryId?.trim() || undefined,
-    };
-    $settings.threats.customThreats = [...$settings.threats.customThreats, threat];
-    newThreat = { level: 'elevated' };
-    showAddThreat = false;
-  }
-
-  function removeCustomThreat(id: string) {
-    $settings.threats.customThreats = $settings.threats.customThreats.filter(t => t.id !== id);
-  }
 
   function handleScroll() { scrolled = window.scrollY > 40; }
   function toggleMobileMenu() { mobileMenuOpen = !mobileMenuOpen; if (mobileMenuOpen) $showSettings = false; }
@@ -760,58 +726,6 @@
       <p class="dlbl" style="margin:12px 0 6px;">Add Custom Feed</p>
       <div class="dinp-row"><input type="url" bind:value={newSource} on:keydown={(e)=>e.key==='Enter'&&handleAddSource()} placeholder="https://example.com/feed.xml" class="dinp" style="flex:2;"/><input bind:value={newSourceName} placeholder="Feed name (optional)" class="dinp" style="flex:1;"/><button on:click={handleAddSource} class="btn-ghost" style="white-space:nowrap;">Add</button></div>
     </div>
-    <div class="dg"><p class="dg-hd">Global Threats <span class="dhint">globe tab · toggle or add custom hotspots</span></p>
-      <p class="dlbl feed-cat-lbl" style="margin-bottom:4px;">Default Threats <span class="dhint">uncheck to hide from map</span></p>
-      <div class="feed-list" style="margin-bottom:10px;">
-        {#each DEFAULT_THREATS as t}
-          <label class="feed-toggle">
-            <input type="checkbox" checked={!$settings.threats.disabledIds.includes(t.id)} on:change={() => toggleDefaultThreat(t.id)} />
-            <span class="feed-name">
-              <span class="threat-level threat-level--{t.level}"></span>
-              {t.name}
-            </span>
-          </label>
-        {/each}
-      </div>
-      {#if $settings.threats.customThreats.length > 0}
-      <p class="dlbl" style="margin:12px 0 6px;">Custom Threats</p>
-      <div class="feed-list">
-        {#each $settings.threats.customThreats as t}
-          <div class="feed-custom">
-            <span class="feed-name">
-              <span class="threat-level threat-level--{t.level}"></span>
-              {t.name} <span class="dhint">{t.lat.toFixed(1)}°, {t.lon.toFixed(1)}°</span>
-            </span>
-            <button on:click={() => removeCustomThreat(t.id)} class="dtag-x" title="Remove">×</button>
-          </div>
-        {/each}
-      </div>
-      {/if}
-      <button on:click={() => { showAddThreat = !showAddThreat; }} class="btn-ghost" style="margin-top:10px;font-size:.65rem;">
-        {showAddThreat ? '− Cancel' : '+ Add Custom Threat'}
-      </button>
-      {#if showAddThreat}
-      <div class="threat-form">
-        <div class="dfields" style="margin-top:8px;gap:6px;">
-          <label class="df"><span class="dlbl">Name *</span><input bind:value={newThreat.name} placeholder="e.g. Kashmir" class="dinp"/></label>
-          <label class="df"><span class="dlbl">Description</span><input bind:value={newThreat.desc} placeholder="Brief description" class="dinp"/></label>
-          <label class="df"><span class="dlbl">Latitude *</span><input type="number" step="0.1" bind:value={newThreat.lat} placeholder="e.g. 34.0" class="dinp"/></label>
-          <label class="df"><span class="dlbl">Longitude *</span><input type="number" step="0.1" bind:value={newThreat.lon} placeholder="e.g. 74.0" class="dinp"/></label>
-          <label class="df"><span class="dlbl">Level</span>
-            <select bind:value={newThreat.level} class="dinp">
-              <option value="critical">Critical</option>
-              <option value="high">High</option>
-              <option value="elevated">Elevated</option>
-              <option value="low">Low / Monitored</option>
-              <option value="info">Info</option>
-            </select>
-          </label>
-          <label class="df"><span class="dlbl">Country ID <span class="dhint">ISO numeric (optional)</span></span><input bind:value={newThreat.countryId} placeholder="e.g. 356" class="dinp" style="max-width:90px;"/></label>
-        </div>
-        <button on:click={addCustomThreat} class="btn-ghost" style="margin-top:6px;font-size:.65rem;">Add Threat</button>
-      </div>
-      {/if}
-    </div>
     <div class="dg"><p class="dg-hd">Ghostfolio <span class="dhint">token stored locally</span></p>
       <div class="dfields" style="max-width:500px;">
         <label class="df" style="flex:3;"><span class="dlbl">Security token</span><input type="password" bind:value={$settings.ghostfolio.token} placeholder="your-security-token" class="dinp"/></label>
@@ -1239,13 +1153,6 @@
   .feed-name { font-size:.65rem; font-weight:500; transition:color .2s; display:flex; align-items:center; gap:5px; }
   .feed-custom { display:flex; align-items:center; gap:4px; }
   .feed-cat-lbl { font-size:.65rem; font-weight:700; color:var(--t2); margin-top:10px; letter-spacing:.03em; }
-  .threat-level { width:7px; height:7px; border-radius:50%; flex-shrink:0; display:inline-block; }
-  .threat-level--critical { background:#ff4444; }
-  .threat-level--high     { background:#ff8800; }
-  .threat-level--elevated { background:#ffcc00; }
-  .threat-level--low      { background:#00ff88; }
-  .threat-level--info     { background:#00ccff; }
-  .threat-form { border:1px solid rgba(0,200,255,0.12); border-radius:6px; padding:10px; margin-top:6px; background:rgba(0,200,255,0.03); }
   :global(html.light) .feed-toggle { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.08); }
   :global(html.light) .feed-toggle:hover { border-color:rgba(247,147,26,.3); }
 

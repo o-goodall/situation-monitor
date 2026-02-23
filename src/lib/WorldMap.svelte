@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { settings } from '$lib/store';
   import type { Threat } from '$lib/settings';
 
   let mapContainer: HTMLDivElement;
@@ -60,16 +59,9 @@
   function zoomOut()   { if (svg && zoom) svg.transition().duration(280).call(zoom.scaleBy, 1/1.5); }
   function resetZoom() { if (svg && zoom && d3Module) svg.transition().duration(280).call(zoom.transform, d3Module.zoomIdentity); }
 
-  /** Fetch threats from the API, passing user overrides from settings */
+  /** Fetch threats from the API */
   async function fetchThreats(): Promise<{ threats: Threat[]; conflictCountryIds: string[]; updatedAt: string }> {
-    const disabledIds = $settings.threats?.disabledIds ?? [];
-    const customThreats = $settings.threats?.customThreats ?? [];
-
-    const params = new URLSearchParams();
-    if (disabledIds.length)    params.set('disabled', encodeURIComponent(JSON.stringify(disabledIds)));
-    if (customThreats.length)  params.set('custom',   encodeURIComponent(JSON.stringify(customThreats)));
-
-    const res = await fetch(`/api/threats${params.toString() ? '?' + params.toString() : ''}`);
+    const res = await fetch('/api/threats');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
