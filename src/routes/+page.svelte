@@ -769,7 +769,7 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:700px) {
-    .section { padding:20px 14px 0; min-height:auto; scroll-snap-align:none; }
+    .section { padding:20px 14px 0; min-height:auto; scroll-snap-align:none; width:100%; }
     .section-header {
       margin-bottom:16px;
     }
