@@ -1,34 +1,17 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
   import type { Threat } from '$lib/settings';
+  import type { ThreatEvent } from '../routes/api/events/+server';
 
   let mapContainer: HTMLDivElement;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let d3Module: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let svg: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mapGroup: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let projection: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let path: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let zoom: any = null;
-
-  const WIDTH = 900;
-  const HEIGHT = 460;
-
-  let tooltipContent: { title: string; color: string; lines: string[] } | null = null;
-  let tooltipLeft = 0;
-  let tooltipTop  = 0;
-  let tooltipVisible = false;
 
   let mapLoading = true;
   let mapError = '';
   let threatsUpdatedAt = '';
 
-  // ── THREAT LEVELS ────────────────────────────────────────────
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let leafletMap: any = null;
+
   const THREAT_COLORS: Record<string, string> = {
     critical: '#ff4444',
     high:     '#ff8800',
@@ -37,157 +20,108 @@
     info:     '#00ccff',
   };
 
-  const CONFLICT_COUNTRY_FILL = 'rgba(255,68,68,0.28)';
-
-  function showTip(e: MouseEvent, title: string, color: string, lines: string[] = []) {
-    if (!mapContainer) return;
-    const rect = mapContainer.getBoundingClientRect();
-    tooltipContent = { title, color, lines };
-    tooltipLeft = e.clientX - rect.left + 14;
-    tooltipTop  = e.clientY - rect.top  - 10;
-    tooltipVisible = true;
-  }
-  function moveTip(e: MouseEvent) {
-    if (!mapContainer) return;
-    const rect = mapContainer.getBoundingClientRect();
-    tooltipLeft = e.clientX - rect.left + 14;
-    tooltipTop  = e.clientY - rect.top  - 10;
-  }
-  function hideTip() { tooltipVisible = false; tooltipContent = null; }
-
-  function zoomIn()    { if (svg && zoom) svg.transition().duration(280).call(zoom.scaleBy, 1.5); }
-  function zoomOut()   { if (svg && zoom) svg.transition().duration(280).call(zoom.scaleBy, 1/1.5); }
-  function resetZoom() { if (svg && zoom && d3Module) svg.transition().duration(280).call(zoom.transform, d3Module.zoomIdentity); }
-
-  /** Fetch threats from the API */
-  async function fetchThreats(): Promise<{ threats: Threat[]; conflictCountryIds: string[]; updatedAt: string }> {
+  /** Fetch static threat hotspots */
+  async function fetchThreats(): Promise<{ threats: Threat[]; updatedAt: string }> {
     const res = await fetch('/api/threats');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
 
-  // ── MAIN INITIALISATION ──────────────────────────────────────
+  /** Fetch live RSS-sourced events */
+  async function fetchEvents(): Promise<{ events: ThreatEvent[]; updatedAt: string }> {
+    const res = await fetch('/api/events');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
   async function initMap() {
     mapLoading = true;
     mapError   = '';
 
     try {
-      const [[d3, topojson], threatData] = await Promise.all([
-        Promise.all([import('d3'), import('topojson-client')]),
-        fetchThreats(),
+      // Dynamic imports — Leaflet is browser-only
+      const [L, heatPlugin] = await Promise.all([
+        import('leaflet'),
+        import('leaflet.heat'),
       ]);
-      d3Module = d3;
+      // leaflet.heat attaches itself to the global L; ensure it's registered
+      void heatPlugin;
 
-      const { threats, conflictCountryIds, updatedAt } = threatData;
-      const conflictIds = new Set(conflictCountryIds);
-      threatsUpdatedAt = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+      // Fetch both data sources in parallel
+      const [threatData, eventData] = await Promise.all([
+        fetchThreats(),
+        fetchEvents(),
+      ]);
 
-      const svgEl = mapContainer?.querySelector('svg');
-      if (!svgEl) return;
+      threatsUpdatedAt = threatData.updatedAt
+        ? new Date(threatData.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : '';
 
-      // Clear any previous render only after successful data fetch
-      svgEl.innerHTML = '';
-
-      svg = d3.select(svgEl).attr('viewBox', `0 0 ${WIDTH} ${HEIGHT}`);
-      mapGroup = svg.append('g').attr('id', 'wm-group');
-
-      // Zoom/pan — no scroll-wheel zoom, allow touch pinch
-      zoom = d3.zoom<SVGSVGElement, unknown>()
-        .scaleExtent([1, 8])
-        .filter((event: Event) => {
-          if (event.type === 'wheel')   return false;
-          if (event.type === 'dblclick') return false;
-          return true;
-        })
-        .on('zoom', (event: { transform: { toString(): string } }) => {
-          mapGroup.attr('transform', event.transform.toString());
-        });
-      svg.call(zoom);
-
-      // Projection — natural earth for nice aesthetics
-      projection = d3.geoNaturalEarth1()
-        .scale(165)
-        .translate([WIDTH / 2, HEIGHT / 2 + 20]);
-      path = d3.geoPath().projection(projection);
-
-      // World atlas from CDN
-      const world = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(r => r.json());
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const countries = topojson.feature(world, world.objects.countries as any) as unknown as GeoJSON.FeatureCollection;
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const borders   = topojson.mesh(world, world.objects.countries as any, (a: any, b: any) => a !== b);
-
-      // Ocean background
-      mapGroup.append('path')
-        .datum({ type: 'Sphere' })
-        .attr('d', path as unknown as string)
-        .attr('fill', '#0d1b2a')
-        .attr('stroke', 'none');
-
-      // Countries
-      mapGroup.selectAll('path.wm-country')
-        .data(countries.features)
-        .enter().append('path')
-        .attr('class', 'wm-country')
-        .attr('d', path as unknown as string)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .attr('fill', (d: any) => conflictIds.has(String(d.id)) ? CONFLICT_COUNTRY_FILL : '#1e3248')
-        .attr('stroke', 'none');
-
-      // Country borders
-      mapGroup.append('path')
-        .datum(borders)
-        .attr('d', path as unknown as string)
-        .attr('fill', 'none')
-        .attr('stroke', 'rgba(0,200,255,0.35)')
-        .attr('stroke-width', 0.4);
-
-      // Graticule
-      const grat = d3.geoGraticule().step([30, 30]);
-      mapGroup.append('path')
-        .datum(grat)
-        .attr('d', path as unknown as string)
-        .attr('fill', 'none')
-        .attr('stroke', 'rgba(0,200,255,0.12)')
-        .attr('stroke-width', 0.3)
-        .attr('stroke-dasharray', '2,2');
-
-      // Day/night terminator (approximate)
-      const terminatorPts = calcTerminator();
-      if (terminatorPts.length > 0) {
-        mapGroup.append('path')
-          .datum({ type: 'Polygon', coordinates: [terminatorPts] } as GeoJSON.Polygon)
-          .attr('d', path as unknown as string)
-          .attr('fill', 'rgba(0,0,0,0.28)')
-          .attr('stroke', 'none');
+      // Destroy previous map instance if re-initialising
+      if (leafletMap) {
+        leafletMap.remove();
+        leafletMap = null;
       }
 
-      // Hotspots — sourced dynamically from /api/threats
-      for (const h of threats) {
-        const pos = projection([h.lon, h.lat]);
-        if (!pos) continue;
-        const [x, y] = pos;
+      leafletMap = L.map(mapContainer, {
+        center:            [20, 0],
+        zoom:              2,
+        minZoom:           2,
+        maxZoom:           10,
+        scrollWheelZoom:   false,
+        zoomControl:       false,
+        attributionControl: false,
+      });
+
+      // Dark tile layer — CartoDB Dark Matter (free, no API key)
+      L.tileLayer(
+        'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+        {
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+          subdomains:  'abcd',
+          maxZoom:     19,
+        }
+      ).addTo(leafletMap);
+
+      // ── Heatmap layer from live RSS events ─────────────────────
+      const heatPoints: [number, number, number][] = eventData.events.map(e => [
+        e.lat,
+        e.lon,
+        Math.min(1, e.score * 2),   // intensity 0–1
+      ]);
+
+      if (heatPoints.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        (L as any).heatLayer(heatPoints, {
+          radius:    25,
+          blur:      20,
+          maxZoom:   10,
+          gradient:  { 0.4: '#0088ff', 0.65: '#ff8800', 1.0: '#ff2200' },
+        }).addTo(leafletMap);
+      }
+
+      // ── Static threat markers ───────────────────────────────────
+      for (const h of threatData.threats) {
         const col = THREAT_COLORS[h.level] ?? '#aaa';
 
-        // pulse ring
-        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 7)
-          .attr('fill', col).attr('fill-opacity', 0.18).attr('class', 'wm-pulse')
-          .attr('stroke', col).attr('stroke-width', 0.8).attr('stroke-opacity', 0.5);
-        // inner dot
-        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 3.5)
-          .attr('fill', col);
-        // label
-        mapGroup.append('text')
-          .attr('x', x + 6).attr('y', y + 4)
-          .attr('fill', col).attr('font-size', '7.5px').attr('font-family', 'monospace')
-          .attr('pointer-events', 'none')
-          .text(h.name);
-        // hit area
-        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 12)
-          .attr('fill', 'transparent').attr('class', 'wm-hit')
-          .on('mouseenter', (e: MouseEvent) => showTip(e, h.desc, col))
-          .on('mousemove', moveTip)
-          .on('mouseleave', hideTip);
+        const icon = L.divIcon({
+          className: '',
+          html: `<span style="
+            display:block;width:10px;height:10px;border-radius:50%;
+            background:${col};
+            box-shadow:0 0 6px 2px ${col}88;
+            animation:wm-pulse 2.2s ease-in-out infinite;
+          "></span>`,
+          iconSize: [10, 10],
+          iconAnchor: [5, 5],
+        });
+
+        L.marker([h.lat, h.lon], { icon })
+          .bindTooltip(
+            `<strong style="color:${col}">${h.name}</strong><br/><span style="font-size:.75em;opacity:.8">${h.desc}</span>`,
+            { className: 'wm-leaflet-tip', direction: 'top', offset: [0, -6] }
+          )
+          .addTo(leafletMap);
       }
 
       mapLoading = false;
@@ -198,38 +132,12 @@
     }
   }
 
-  function calcTerminator(): [number, number][] {
-    const now = new Date();
-    // Day of year (1-based): Jan 1 = 1, Dec 31 = 365/366
-    const yearStart = new Date(now.getFullYear(), 0, 1);
-    const doy = Math.floor((now.getTime() - yearStart.getTime()) / 86400000) + 1;
-    // Solar declination angle (degrees): approx formula, ±23.45° range
-    const dec = -23.45 * Math.cos(((360 / 365) * (doy + 10) * Math.PI) / 180);
-    // Hour angle at UTC midnight shifted to [−180, 180] longitude
-    const ha  = (now.getUTCHours() + now.getUTCMinutes() / 60) * 15 - 180;
-    const pts: [number, number][] = [];
-    // Forward pass: compute sunrise longitude for each latitude
-    for (let lat = -89; lat <= 89; lat += 2) {
-      const td = Math.tan((dec * Math.PI) / 180);
-      const tl = Math.tan((lat * Math.PI) / 180);
-      const acos = -td * tl;
-      // acos outside [−1,1] means polar day or polar night — push to edge
-      if (acos < -1 || acos > 1) { pts.push([lat * dec > 0 ? -ha + 180 : -ha, lat]); continue; }
-      pts.push([-ha + (Math.acos(acos) * 180) / Math.PI, lat]);
-    }
-    // Reverse pass: compute sunset longitude (closes the polygon)
-    for (let lat = 89; lat >= -89; lat -= 2) {
-      const td = Math.tan((dec * Math.PI) / 180);
-      const tl = Math.tan((lat * Math.PI) / 180);
-      const acos = -td * tl;
-      if (acos < -1 || acos > 1) { pts.push([lat * dec > 0 ? -ha - 180 : -ha, lat]); continue; }
-      pts.push([-ha - (Math.acos(acos) * 180) / Math.PI, lat]);
-    }
-    return pts;
-  }
+  function zoomIn()    { leafletMap?.zoomIn(); }
+  function zoomOut()   { leafletMap?.zoomOut(); }
+  function resetZoom() { leafletMap?.setView([20, 0], 2); }
 
   onMount(() => { initMap(); });
-  onDestroy(() => { /* cleanup handled by DOM removal */ });
+  onDestroy(() => { leafletMap?.remove(); leafletMap = null; });
 </script>
 
 <div class="wm-wrap" bind:this={mapContainer}>
@@ -240,17 +148,6 @@
     </div>
   {:else if mapError}
     <div class="wm-state wm-state--error">{mapError}</div>
-  {/if}
-
-  <svg class="wm-svg"></svg>
-
-  {#if tooltipVisible && tooltipContent}
-    <div class="wm-tooltip" style="left:{tooltipLeft}px;top:{tooltipTop}px;">
-      <strong style="color:{tooltipContent.color};">{tooltipContent.title}</strong>
-      {#each tooltipContent.lines as line}
-        <br /><span class="wm-tip-line">{line}</span>
-      {/each}
-    </div>
   {/if}
 
   <div class="wm-zoom">
@@ -266,6 +163,8 @@
     <div class="wm-leg-row"><span class="wm-dot" style="background:#ff8800;"></span>High</div>
     <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span>Elevated</div>
     <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
+    <div class="wm-leg-sep"></div>
+    <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
     {#if threatsUpdatedAt}
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-ts">Updated {threatsUpdatedAt}</div>
@@ -274,21 +173,37 @@
 </div>
 
 <style>
+  :global(.leaflet-container) {
+    background: #0d1b2a !important;
+    font-family: inherit;
+  }
+  :global(.wm-leaflet-tip) {
+    background: rgba(8,18,32,.97) !important;
+    border: 1px solid rgba(0,200,255,0.3) !important;
+    border-radius: 6px !important;
+    padding: 5px 8px !important;
+    font-size: .65rem !important;
+    color: #ddd !important;
+    box-shadow: none !important;
+  }
+  :global(.wm-leaflet-tip::before) { display: none !important; }
+  :global(.leaflet-tooltip-top::before) {
+    border-top-color: rgba(0,200,255,0.3) !important;
+  }
+
   .wm-wrap {
     position: relative;
     width: 100%;
-    /* 300px = section top padding (48px) + section header (~80px) + tile padding (40px) + tile header (~60px) + footer gap (72px) */
     height: calc(100vh - 300px);
     min-height: 460px;
     background: #0d1b2a;
     border-radius: 10px;
     overflow: hidden;
   }
-  .wm-svg { width: 100%; height: 100%; display: block; }
 
   .wm-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 12px; z-index: 5;
+    align-items: center; justify-content: center; gap: 12px; z-index: 500;
     background: #0d1b2a;
   }
   .wm-state--error { color: #f43f5e; font-size: .75rem; }
@@ -300,17 +215,9 @@
   }
   @keyframes wm-spin { to { transform: rotate(360deg); } }
 
-  .wm-tooltip {
-    position: absolute; background: rgba(8,18,32,.97); border: 1px solid rgba(0,200,255,0.3);
-    border-radius: 6px; padding: 6px 9px; font-size: .65rem; color: #ddd;
-    max-width: 260px; pointer-events: none; z-index: 100;
-    line-height: 1.5;
-  }
-  .wm-tip-line { opacity: .75; }
-
   .wm-zoom {
     position: absolute; bottom: 10px; right: 10px;
-    display: flex; flex-direction: column; gap: 4px;
+    display: flex; flex-direction: column; gap: 4px; z-index: 500;
   }
   .wm-zbtn {
     width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
@@ -323,7 +230,7 @@
   .wm-legend {
     position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column;
     gap: 3px; background: rgba(8,18,32,.88); padding: 6px 9px; border-radius: 6px;
-    border: 1px solid rgba(0,200,255,0.18);
+    border: 1px solid rgba(0,200,255,0.18); z-index: 500;
   }
   .wm-leg-title { font-size: .52rem; color: var(--t3); letter-spacing: .08em; margin-bottom: 2px; }
   .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .56rem; color: #8ab; font-family: monospace; }
@@ -336,7 +243,6 @@
     0%, 100% { opacity: .25; }
     50%       { opacity: .65; }
   }
-  :global(.wm-hit) { cursor: pointer; }
 
   @media (max-width: 768px) {
     .wm-wrap { height: 400px; min-height: 400px; }
