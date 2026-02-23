@@ -14,7 +14,7 @@
   function fmtLabel(ts: number): string {
     const d = new Date(ts);
     if (range === '1d') return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    if (range === '5y' || range === 'max') return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    if (range === '5y' || range === 'max' || range === '1y') return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 
@@ -70,6 +70,9 @@
     const tRng = tMax - tMin || 1;
     const toXt = (t: number) => PAD_L + Math.max(0, Math.min(1, (t - tMin) / tRng)) * dW;
 
+    // Adaptive X-axis tick count based on range and chart width
+    const xCount = range === '1d' ? (W >= 400 ? 5 : 4) : (W >= 400 ? 7 : 5);
+
     // Subtle horizontal grid lines
     ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
@@ -78,6 +81,18 @@
       ctx.beginPath();
       ctx.moveTo(PAD_L, y);
       ctx.lineTo(W - PAD_R, y);
+      ctx.stroke();
+    }
+
+    // Subtle vertical grid lines at X tick positions (skip first and last)
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    for (let i = 1; i < xCount - 1; i++) {
+      const frac = i / (xCount - 1);
+      const x = PAD_L + frac * dW;
+      ctx.beginPath();
+      ctx.moveTo(x, PAD_T);
+      ctx.lineTo(x, PAD_T + dH);
       ctx.stroke();
     }
 
@@ -109,11 +124,18 @@
       ctx.fillText(fmtPrice(v), PAD_L - 4, y);
     }
 
-    // X-axis time labels
+    // X-axis time labels — adaptive count, edge-aligned to prevent overflow
+    ctx.font = `${9 * Math.min(1, W / MIN_LABEL_WIDTH)}px monospace`;
+    for (let i = 0; i < xCount; i++) {
+      const frac = i / (xCount - 1);
+      const dataIdx = Math.round(frac * (prices.length - 1));
+      const x = PAD_L + frac * dW;
+      const isLast = i === xCount - 1;
+      const label = isLast ? 'Now' : fmtLabel(prices[dataIdx].t);
+      ctx.textAlign = i === 0 ? 'left' : isLast ? 'right' : 'center';
+      ctx.fillText(label, x, H - 5);
+    }
     ctx.textAlign = 'center';
-    ctx.fillText(fmtLabel(prices[0].t), PAD_L, H - 5);
-    ctx.fillText(fmtLabel(prices[Math.floor(prices.length / 2)].t), PAD_L + dW / 2, H - 5);
-    ctx.fillText('Now', W - PAD_R, H - 5);
 
     // Gradient fill under main line
     ctx.beginPath();
