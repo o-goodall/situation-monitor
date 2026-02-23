@@ -14,6 +14,7 @@
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
   import PriceChart from '$lib/PriceChart.svelte';
+  import WorldMap from '$lib/WorldMap.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
   let btcChartRange: '1D' | '1W' | '1Y' = '1D';
@@ -84,14 +85,15 @@
   $: hashrateMA7  = hashrateData.length >= 7  ? computeMA(hashrateData, 7)  : [];
   $: hashrateMA30 = hashrateData.length >= 30 ? computeMA(hashrateData, 30) : [];
 
-  let intelView: 'cutting-edge'|'classic' = 'classic';
+  let intelView: 'cutting-edge'|'classic'|'globe' = 'classic';
   let intelTransitioning = false;
   const BLUR_DURATION_MS = 400;   // blur phase before content swap
   const REVEAL_DURATION_MS = 600; // reveal phase after content swap
-  function switchIntelView() {
+  function switchIntelView(target: 'cutting-edge'|'classic'|'globe') {
+    if (intelView === target) return;
     intelTransitioning = true;
     setTimeout(() => {
-      intelView = intelView === 'cutting-edge' ? 'classic' : 'cutting-edge';
+      intelView = target;
       setTimeout(() => { intelTransitioning = false; }, REVEAL_DURATION_MS);
     }, BLUR_DURATION_MS);
   }
@@ -687,10 +689,11 @@
 <section id="intel" class="section" aria-label="Intel">
   <div class="section-header">
     <h2 class="sect-title">Intel</h2>
-    <!-- Toggle: Cutting Edge / Classic — segmented buttons -->
+    <!-- Toggle: Markets / News / Globe — segmented buttons -->
     <div class="intel-toggle-wrap" role="group" aria-label="Intel view">
-      <button class="crb" class:crb--active={intelView==='cutting-edge'} on:click={() => { if (intelView !== 'cutting-edge') switchIntelView(); }} aria-pressed={intelView === 'cutting-edge'} title="Cutting Edge — prediction markets">◈ Markets</button>
-      <button class="crb" class:crb--active={intelView==='classic'} on:click={() => { if (intelView !== 'classic') switchIntelView(); }} aria-pressed={intelView === 'classic'} title="Classic — news feed">☰ News</button>
+      <button class="crb" class:crb--active={intelView==='cutting-edge'} on:click={() => switchIntelView('cutting-edge')} aria-pressed={intelView === 'cutting-edge'} title="Cutting Edge — prediction markets">◈ Markets</button>
+      <button class="crb" class:crb--active={intelView==='classic'} on:click={() => switchIntelView('classic')} aria-pressed={intelView === 'classic'} title="Classic — news feed">☰ News</button>
+      <button class="crb" class:crb--active={intelView==='globe'} on:click={() => switchIntelView('globe')} aria-pressed={intelView === 'globe'} title="Globe — live world events map">🌐 Globe</button>
     </div>
   </div>
 
@@ -765,7 +768,7 @@
       {/if}
     </div>
 
-    {:else}
+    {:else if intelView === 'classic'}
     <!-- ── CLASSIC: News RSS feeds ── -->
     <div class="gc intel-gc" style="padding:20px 18px;">
       <div class="gc-head" style="margin-bottom:16px;"><p class="gc-title">News Feed</p><span class="dim">{Math.min($newsItems.length, INTEL_TILE_LIMIT)} articles</span></div>
@@ -785,6 +788,19 @@
           {/each}
         </div>
       {/if}
+    </div>
+
+    {:else}
+    <!-- ── GLOBE: Live world events map ── -->
+    <div class="gc intel-gc globe-gc" style="padding:20px 18px;">
+      <div class="gc-head" style="margin-bottom:14px;">
+        <div>
+          <p class="gc-title">Live World Events</p>
+          <p class="dim" style="margin-top:3px;">Active conflicts · protests · elections · live news plotted by location</p>
+        </div>
+        <span class="globe-badge">LIVE</span>
+      </div>
+      <WorldMap newsItems={$newsItems} />
     </div>
     {/if}
   </div>
@@ -858,7 +874,7 @@
     -webkit-text-fill-color: transparent;
     background-clip: text;
   }
-  .price-label-sep { color:var(--t3); }
+  .price-label-sep { color:var(--t3); margin-right:3px; }
   .price-label-cur { color:#22c55e; font-weight:700; }
   .price-day-change { font-size:.6rem; font-weight:700; letter-spacing:.04em; }
   @media (max-width:500px) {
@@ -1358,6 +1374,16 @@
 
   /* ── INTEL CONSISTENT GC CONTAINER ─────────────────────── */
   .intel-gc { min-height:280px; }
+  .globe-gc { min-height:unset; }
+
+  /* ── GLOBE LIVE BADGE ───────────────────────────────────── */
+  .globe-badge {
+    font-size:.6rem; font-weight:700; letter-spacing:.1em; padding:3px 8px;
+    border-radius:4px; border:1px solid rgba(239,68,68,.4);
+    background:rgba(239,68,68,.12); color:#f87171; flex-shrink:0;
+    animation:badge-blink 2.2s ease-in-out infinite;
+  }
+  @keyframes badge-blink { 0%,100%{opacity:1;} 50%{opacity:.55;} }
 
   /* ── INTEL CARD – CONSISTENT SIZING FOR BOTH VIEWS ─────── */
   .pm-card--intel { min-height:130px; }
