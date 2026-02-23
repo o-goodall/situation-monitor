@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import {
     settings, btcPrice, priceFlash, priceHistory, btcBlock, btcFees,
     halvingBlocksLeft, halvingDays, halvingDate, halvingProgress,
@@ -87,6 +87,7 @@
 
   let intelView: 'cutting-edge'|'classic'|'globe' = 'classic';
   let intelTransitioning = false;
+  let globeExpanded = false;
   const BLUR_DURATION_MS = 400;   // blur phase before content swap
   const REVEAL_DURATION_MS = 600; // reveal phase after content swap
   function switchIntelView(target: 'cutting-edge'|'classic'|'globe') {
@@ -190,9 +191,21 @@
 
   const fmtPct = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
 
+  let _mqHandler: ((e: MediaQueryListEvent) => void) | null = null;
+  let _mq: MediaQueryList | null = null;
+
   onMount(() => {
     fetchBtcChart();
     fetchHashrateChart();
+    // Globe is desktop-only — switch back to classic if user loads on mobile
+    _mq = window.matchMedia('(max-width: 768px)');
+    if (_mq.matches && intelView === 'globe') intelView = 'classic';
+    _mqHandler = (e: MediaQueryListEvent) => { if (e.matches && intelView === 'globe') { intelView = 'classic'; globeExpanded = false; } };
+    _mq.addEventListener('change', _mqHandler);
+  });
+
+  onDestroy(() => {
+    if (_mq && _mqHandler) _mq.removeEventListener('change', _mqHandler);
   });
 </script>
 
@@ -693,7 +706,7 @@
     <div class="intel-toggle-wrap" role="group" aria-label="Intel view">
       <button class="crb" class:crb--active={intelView==='cutting-edge'} on:click={() => switchIntelView('cutting-edge')} aria-pressed={intelView === 'cutting-edge'} title="Cutting Edge — prediction markets">◈ Markets</button>
       <button class="crb" class:crb--active={intelView==='classic'} on:click={() => switchIntelView('classic')} aria-pressed={intelView === 'classic'} title="Classic — news feed">☰ News</button>
-      <button class="crb" class:crb--active={intelView==='globe'} on:click={() => switchIntelView('globe')} aria-pressed={intelView === 'globe'} title="Globe — live world events map">🌐 Globe</button>
+      <button class="crb globe-toggle-btn" class:crb--active={intelView==='globe'} on:click={() => switchIntelView('globe')} aria-pressed={intelView === 'globe'} title="Globe — live world events map (desktop only)">🌐 Globe</button>
     </div>
   </div>
 
@@ -792,17 +805,20 @@
 
     {:else}
     <!-- ── GLOBE: Live world events map ── -->
-    <div class="gc intel-gc globe-gc" style="padding:20px 18px;">
+    <div class="gc intel-gc globe-gc" class:globe-fullscreen={globeExpanded} style="padding:20px 18px;">
       <div class="gc-head" style="margin-bottom:14px;">
         <div>
           <p class="gc-title">Live World Events</p>
-          <p class="dim" style="margin-top:3px;">Active conflicts · protests · elections · live news plotted by location</p>
+          <p class="dim" style="margin-top:3px;">Active conflicts · leadership changes · tariffs · major global events</p>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           {#if $breakingNewsLinks.size > 0}
             <span class="globe-badge globe-badge--breaking" title="{$breakingNewsLinks.size} new article{$breakingNewsLinks.size > 1 ? 's' : ''}">⚡ {$breakingNewsLinks.size} BREAKING</span>
           {/if}
           <span class="globe-badge">LIVE</span>
+          <button class="wm-expand-btn" on:click={() => globeExpanded = !globeExpanded} title={globeExpanded ? 'Collapse globe' : 'Expand globe to full screen'} aria-label={globeExpanded ? 'Collapse globe' : 'Expand globe'}>
+            {globeExpanded ? '✕' : '⛶'}
+          </button>
         </div>
       </div>
       <WorldMap newsItems={$newsItems} breakingLinks={$breakingNewsLinks} />
@@ -1380,6 +1396,35 @@
   /* ── INTEL CONSISTENT GC CONTAINER ─────────────────────── */
   .intel-gc { min-height:280px; }
   .globe-gc { min-height:unset; }
+
+  /* ── GLOBE FULLSCREEN EXPAND ────────────────────────────── */
+  .globe-fullscreen {
+    position: fixed !important;
+    top: 64px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    border-radius: 0 !important;
+    overflow-y: auto;
+    max-height: none !important;
+    min-height: unset !important;
+  }
+
+  /* ── GLOBE EXPAND BUTTON ─────────────────────────────────── */
+  .wm-expand-btn {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; padding: 0;
+    background: rgba(6,26,20,.9); border: 1px solid #1a5040; border-radius: 5px;
+    color: #6b8f80; font-size: .9rem; cursor: pointer;
+    transition: color .15s, border-color .15s; flex-shrink: 0;
+  }
+  .wm-expand-btn:hover { color: #fff; border-color: #2a8060; }
+
+  /* ── GLOBE DESKTOP-ONLY ──────────────────────────────────── */
+  @media (max-width: 768px) {
+    .globe-toggle-btn { display: none; }
+  }
 
   /* ── GLOBE LIVE BADGE ───────────────────────────────────── */
   .globe-badge {

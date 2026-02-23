@@ -46,13 +46,14 @@
     { name: 'Sudan', lat: 15.5, lon: 30.0, level: 'high', desc: '⚔️ Sudan — Civil war, humanitarian crisis' },
     { name: 'Myanmar', lat: 19.7, lon: 96.1, level: 'high', desc: '⚔️ Myanmar — Civil war & junta resistance' },
     { name: 'Taiwan Strait', lat: 24.0, lon: 120.0, level: 'elevated', desc: '⚠️ Taiwan Strait — China military pressure' },
-    { name: 'Iran', lat: 32.0, lon: 53.0, level: 'elevated', desc: '⚠️ Iran — Nuclear program & regional proxy conflict' },
+    { name: 'Iran', lat: 32.0, lon: 53.0, level: 'high', desc: '⚔️ Iran — Nuclear program, regional proxy conflict & Israel strikes' },
     { name: 'North Korea', lat: 40.0, lon: 127.0, level: 'elevated', desc: '⚠️ North Korea — Nuclear & missile program' },
     { name: 'Yemen', lat: 15.3, lon: 44.2, level: 'high', desc: '⚔️ Yemen — Houthi conflict & Red Sea attacks' },
     { name: 'Sahel', lat: 14.0, lon: 0.0, level: 'high', desc: '⚔️ Sahel — Mali, Burkina Faso, Niger coups & insurgency' },
-    { name: 'Ethiopia', lat: 9.1, lon: 40.5, level: 'high', desc: '⚔️ Ethiopia — Tigray & Amhara conflicts' },
+    { name: 'Ethiopia', lat: 9.1, lon: 40.5, level: 'elevated', desc: '⚠️ Ethiopia — Amhara conflict & ongoing instability' },
     { name: 'Haiti', lat: 18.9, lon: -72.3, level: 'high', desc: '⚔️ Haiti — Gang violence & state collapse' },
     { name: 'South China Sea', lat: 12.0, lon: 114.0, level: 'elevated', desc: '⚠️ South China Sea — Territorial disputes' },
+    { name: 'Syria', lat: 34.8, lon: 38.5, level: 'elevated', desc: '⚠️ Syria — Post-Assad transition, HTS rule & fragile stability' },
   ];
 
   // ── GEOGRAPHIC KEYWORD MAP ───────────────────────────────────
@@ -107,13 +108,24 @@
     [/central african/i, [4.4, 18.6]],
   ];
 
+  // ── MAJOR EVENT FILTER ───────────────────────────────────────
+  // Only plot events on the globe if they match these significant topics:
+  // wars/conflicts, leadership changes, tariffs/sanctions, nuclear, crises
+  const GLOBE_MAJOR_KEYWORDS = /war|conflict|attack|airstrike|missile|bomb|invasion|troops|military|ceasefire|killed|killing|coup|president|prime minister|chancellor|tariff|sanction|nuclear|election|elected|leader|treaty|genocide|massacre|offensive|explosion|assassination|crisis|insurgency|hostage|siege|strike force|naval|blockade/i;
+
+  function isMajorGlobeEvent(item: NewsItem): boolean {
+    const text = item.title + ' ' + (item.description ?? '');
+    return GLOBE_MAJOR_KEYWORDS.test(text);
+  }
+
   // Named type for geo-located news event
   interface GeoEvent { lat: number; lon: number; title: string; source: string; pubDate: string; link: string }
 
-  // Map news items to geo-coordinates
+  // Map news items to geo-coordinates — only major events are plotted
   function newsToGeoEvents(items: NewsItem[]): GeoEvent[] {
     const events: GeoEvent[] = [];
     for (const item of items) {
+      if (!isMajorGlobeEvent(item)) continue;
       const text = item.title + ' ' + (item.description ?? '');
       for (const [re, [lat, lon]] of GEO_MAP) {
         if (re.test(text)) {
@@ -180,7 +192,7 @@
 
       // Projection — natural earth for nice aesthetics
       projection = d3.geoNaturalEarth1()
-        .scale(148)
+        .scale(165)
         .translate([WIDTH / 2, HEIGHT / 2 + 20]);
       path = d3.geoPath().projection(projection);
 
@@ -195,7 +207,7 @@
       mapGroup.append('path')
         .datum({ type: 'Sphere' })
         .attr('d', path as unknown as string)
-        .attr('fill', '#061a14')
+        .attr('fill', '#0c2a1e')
         .attr('stroke', 'none');
 
       // Countries
@@ -204,7 +216,7 @@
         .enter().append('path')
         .attr('class', 'wm-country')
         .attr('d', path as unknown as string)
-        .attr('fill', '#0d2e22')
+        .attr('fill', '#163d2c')
         .attr('stroke', 'none');
 
       // Country borders
@@ -212,7 +224,7 @@
         .datum(borders)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', '#1a5040')
+        .attr('stroke', '#236050')
         .attr('stroke-width', 0.4);
 
       // Graticule
@@ -221,7 +233,7 @@
         .datum(grat)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', '#132e26')
+        .attr('stroke', '#183828')
         .attr('stroke-width', 0.3)
         .attr('stroke-dasharray', '2,2');
 
@@ -404,7 +416,7 @@
     width: 100%;
     aspect-ratio: 2 / 1;
     min-height: 300px;
-    background: #061a14;
+    background: #0c2a1e;
     border-radius: 10px;
     overflow: hidden;
   }
@@ -413,7 +425,7 @@
   .wm-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 12px; z-index: 5;
-    background: #061a14;
+    background: #0c2a1e;
   }
   .wm-state--error { color: #f43f5e; font-size: .75rem; }
   .wm-state-text { font-size: .72rem; color: var(--t3); }
