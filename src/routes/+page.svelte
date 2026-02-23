@@ -808,7 +808,7 @@
       <div class="gc-head" style="margin-bottom:14px;">
         <div>
           <p class="gc-title">Global Threat Monitor</p>
-          <p class="dim" style="margin-top:3px;">Active conflicts · monetary policy · surveillance & digital control</p>
+          <p class="dim" style="margin-top:3px;">Active global conflicts · threat levels updated regularly</p>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="globe-badge">LIVE</span>
