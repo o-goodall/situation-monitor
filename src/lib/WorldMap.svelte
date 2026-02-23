@@ -35,6 +35,25 @@
     info:     '#00ccff',
   };
 
+  const CONFLICT_COUNTRY_FILL = 'rgba(255,68,68,0.28)';
+
+  // ── CONFLICT COUNTRY IDs (ISO 3166-1 numeric, from world-atlas) ──
+  const CONFLICT_COUNTRY_IDS = new Set([
+    '804', // Ukraine
+    '729', // Sudan
+    '104', // Myanmar
+    '364', // Iran
+    '408', // North Korea
+    '887', // Yemen
+    '466', // Mali
+    '854', // Burkina Faso
+    '562', // Niger
+    '231', // Ethiopia
+    '332', // Haiti
+    '760', // Syria
+    '275', // Palestine / Gaza
+  ]);
+
   // ── HARDCODED GLOBAL HOTSPOTS ────────────────────────────────
   const HOTSPOTS = [
     // ── ACTIVE CONFLICTS ────────────────────────────────────────
@@ -51,16 +70,6 @@
     { name: 'Haiti', lat: 18.9, lon: -72.3, level: 'high', desc: '⚔️ Haiti — Gang violence & state collapse' },
     { name: 'South China Sea', lat: 12.0, lon: 114.0, level: 'elevated', desc: '⚠️ South China Sea — Territorial disputes' },
     { name: 'Syria', lat: 34.8, lon: 38.5, level: 'elevated', desc: '⚠️ Syria — Post-Assad transition, HTS rule & fragile stability' },
-    // ── MONETARY POLICY / CURRENCY DEBASEMENT ───────────────────
-    { name: 'Fed / QE', lat: 38.9, lon: -77.0, level: 'elevated', desc: '💰 US Federal Reserve — Balance sheet expansion, QE risk & dollar debasement monitor' },
-    { name: 'BoJ / QE', lat: 35.7, lon: 139.7, level: 'high', desc: '💰 Bank of Japan — Yield curve control, yen debasement & aggressive QE' },
-    { name: 'ECB / QE', lat: 50.1, lon: 8.7, level: 'elevated', desc: '💰 ECB (Frankfurt) — Eurozone debt monetisation, APP/PEPP & balance sheet risk' },
-    { name: 'BoE / QE', lat: 51.5, lon: -0.1, level: 'elevated', desc: '💰 Bank of England — UK gilt purchases, QE & sterling debasement monitor' },
-    // ── SURVEILLANCE / DIGITAL CONTROL ──────────────────────────
-    { name: 'Digital Control', lat: 39.9, lon: 116.4, level: 'high', desc: '👁️ China — Social credit system, internet censorship, app bans & mass surveillance' },
-    { name: 'Online Safety', lat: 51.52, lon: -0.08, level: 'elevated', desc: '👁️ UK — Online Safety Act, age verification mandates & surveillance expansion' },
-    { name: 'Social Media Ban', lat: -35.3, lon: 149.1, level: 'elevated', desc: '👁️ Australia — Social media ban for under-16s, digital ID push & eSafety powers' },
-    { name: 'Digital ID / DSA', lat: 50.85, lon: 4.35, level: 'elevated', desc: '👁️ EU — Digital Services Act, eID wallet & online speech regulation' },
   ];
 
   function showTip(e: MouseEvent, title: string, color: string, lines: string[] = []) {
@@ -139,7 +148,8 @@
         .enter().append('path')
         .attr('class', 'wm-country')
         .attr('d', path as unknown as string)
-        .attr('fill', '#1e3248')
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        .attr('fill', (d: any) => CONFLICT_COUNTRY_IDS.has(String(d.id)) ? CONFLICT_COUNTRY_FILL : '#1e3248')
         .attr('stroke', 'none');
 
       // Country borders
@@ -280,8 +290,8 @@
   .wm-wrap {
     position: relative;
     width: 100%;
-    /* 260px = section top padding (48px) + section header (~80px) + tile padding (40px) + tile header (~60px) + footer gap (32px) */
-    height: calc(100vh - 260px);
+    /* 300px = section top padding (48px) + section header (~80px) + tile padding (40px) + tile header (~60px) + footer gap (72px) */
+    height: calc(100vh - 300px);
     min-height: 460px;
     background: #0d1b2a;
     border-radius: 10px;
