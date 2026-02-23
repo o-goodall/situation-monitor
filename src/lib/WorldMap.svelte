@@ -1,9 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import type { NewsItem } from '$lib/store';
-
-  export let newsItems: NewsItem[] = [];
-  export let breakingLinks: Set<string> = new Set();
 
   let mapContainer: HTMLDivElement;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -41,6 +37,7 @@
 
   // ── HARDCODED GLOBAL HOTSPOTS ────────────────────────────────
   const HOTSPOTS = [
+    // ── ACTIVE CONFLICTS ────────────────────────────────────────
     { name: 'Ukraine', lat: 49.0, lon: 31.5, level: 'critical', desc: '⚔️ Russia–Ukraine War — Active conflict' },
     { name: 'Gaza', lat: 31.5, lon: 34.5, level: 'critical', desc: '⚔️ Gaza — Israel–Hamas conflict' },
     { name: 'Sudan', lat: 15.5, lon: 30.0, level: 'high', desc: '⚔️ Sudan — Civil war, humanitarian crisis' },
@@ -54,90 +51,17 @@
     { name: 'Haiti', lat: 18.9, lon: -72.3, level: 'high', desc: '⚔️ Haiti — Gang violence & state collapse' },
     { name: 'South China Sea', lat: 12.0, lon: 114.0, level: 'elevated', desc: '⚠️ South China Sea — Territorial disputes' },
     { name: 'Syria', lat: 34.8, lon: 38.5, level: 'elevated', desc: '⚠️ Syria — Post-Assad transition, HTS rule & fragile stability' },
+    // ── MONETARY POLICY / CURRENCY DEBASEMENT ───────────────────
+    { name: 'Fed / QE', lat: 38.9, lon: -77.0, level: 'elevated', desc: '💰 US Federal Reserve — Balance sheet expansion, QE risk & dollar debasement monitor' },
+    { name: 'BoJ / QE', lat: 35.7, lon: 139.7, level: 'high', desc: '💰 Bank of Japan — Yield curve control, yen debasement & aggressive QE' },
+    { name: 'ECB / QE', lat: 50.1, lon: 8.7, level: 'elevated', desc: '💰 ECB (Frankfurt) — Eurozone debt monetisation, APP/PEPP & balance sheet risk' },
+    { name: 'BoE / QE', lat: 51.5, lon: -0.1, level: 'elevated', desc: '💰 Bank of England — UK gilt purchases, QE & sterling debasement monitor' },
+    // ── SURVEILLANCE / DIGITAL CONTROL ──────────────────────────
+    { name: 'Digital Control', lat: 39.9, lon: 116.4, level: 'high', desc: '👁️ China — Social credit system, internet censorship, app bans & mass surveillance' },
+    { name: 'Online Safety', lat: 51.52, lon: -0.08, level: 'elevated', desc: '👁️ UK — Online Safety Act, age verification mandates & surveillance expansion' },
+    { name: 'Social Media Ban', lat: -35.3, lon: 149.1, level: 'elevated', desc: '👁️ Australia — Social media ban for under-16s, digital ID push & eSafety powers' },
+    { name: 'Digital ID / DSA', lat: 50.85, lon: 4.35, level: 'elevated', desc: '👁️ EU — Digital Services Act, eID wallet & online speech regulation' },
   ];
-
-  // ── GEOGRAPHIC KEYWORD MAP ───────────────────────────────────
-  // Maps news title patterns to approximate [lat, lon] coordinates
-  const GEO_MAP: [RegExp, [number, number]][] = [
-    [/ukraine|kyiv|zelensky|kherson|donbas|bakhmut/i, [49.0, 31.5]],
-    [/russia|moscow|putin|kremlin|siberia/i, [55.7, 37.6]],
-    [/israel|gaza|hamas|tel aviv|jerusalem|west bank|idf/i, [31.5, 34.5]],
-    [/iran|tehran|irgc|khamenei|hezbollah/i, [35.7, 51.4]],
-    [/china|beijing|xi jinping|shanghai|hong kong/i, [39.9, 116.4]],
-    [/taiwan|taipei/i, [25.0, 121.5]],
-    [/north korea|pyongyang|kim jong/i, [39.0, 125.7]],
-    [/south korea|seoul/i, [37.6, 127.0]],
-    [/japan|tokyo|abe/i, [35.7, 139.7]],
-    [/india|modi|delhi|mumbai|new delhi/i, [28.6, 77.2]],
-    [/pakistan|islamabad|karachi/i, [33.7, 73.0]],
-    [/afghanistan|kabul|taliban/i, [34.5, 69.2]],
-    [/myanmar|burma|rangoon|naypyidaw/i, [19.7, 96.1]],
-    [/saudi|riyadh|mbs|aramco/i, [24.7, 46.7]],
-    [/yemen|houthi|sanaa/i, [15.3, 44.2]],
-    [/turkey|ankara|erdogan|istanbul/i, [39.9, 32.9]],
-    [/syria|damascus/i, [33.5, 36.3]],
-    [/iraq|baghdad/i, [33.3, 44.4]],
-    [/lebanon|beirut/i, [33.9, 35.5]],
-    [/egypt|cairo|al-sisi/i, [30.1, 31.2]],
-    [/libya|tripoli/i, [32.9, 13.2]],
-    [/sudan|khartoum/i, [15.5, 32.6]],
-    [/ethiopia|addis|tigray/i, [9.0, 38.7]],
-    [/nigeria|abuja|lagos|boko haram/i, [9.1, 7.5]],
-    [/somalia|mogadishu|al-shabaab/i, [2.0, 45.3]],
-    [/democratic republic.*congo|drc|kinshasa/i, [-4.3, 15.3]],
-    [/south africa|johannesburg|cape town/i, [-26.2, 28.1]],
-    [/kenya|nairobi/i, [-1.3, 36.8]],
-    [/mali|bamako|sahel/i, [12.7, -8.0]],
-    [/haiti|port.*prince/i, [18.5, -72.3]],
-    [/venezuela|caracas|maduro/i, [10.5, -66.9]],
-    [/colombia|bogota/i, [4.7, -74.1]],
-    [/brazil|brasilia|lula/i, [-15.8, -47.9]],
-    [/argentina|buenos aires|milei/i, [-34.6, -58.4]],
-    [/mexico|mexico city/i, [19.4, -99.1]],
-    [/usa|washington|white house|congress|trump|biden|pentagon/i, [38.9, -77.0]],
-    [/uk|britain|london|westminster/i, [51.5, -0.1]],
-    [/france|paris|macron/i, [48.9, 2.4]],
-    [/germany|berlin/i, [52.5, 13.4]],
-    [/eu|european union|brussels/i, [50.8, 4.4]],
-    [/nato|alliance/i, [50.8, 4.4]],
-    [/un|united nations|security council/i, [40.7, -74.0]],
-    [/australia|canberra|sydney/i, [-35.3, 149.1]],
-    [/greenland|nuuk/i, [64.2, -51.7]],
-    [/arctic|north pole/i, [90.0, 0.0]],
-    [/south sudan|juba/i, [4.9, 31.6]],
-    [/central african/i, [4.4, 18.6]],
-  ];
-
-  // ── MAJOR EVENT FILTER ───────────────────────────────────────
-  // Only plot events on the globe if they match these significant topics:
-  // wars/conflicts, leadership changes, tariffs/sanctions, nuclear, crises
-  const GLOBE_MAJOR_KEYWORDS = /war|conflict|attack|airstrike|missile|bomb|invasion|troops|military|ceasefire|killed|killing|coup|president|prime minister|chancellor|tariff|sanction|nuclear|election|elected|leader|treaty|genocide|massacre|offensive|explosion|assassination|crisis|insurgency|hostage|siege|strike force|naval|blockade/i;
-
-  function isMajorGlobeEvent(item: NewsItem): boolean {
-    const text = item.title + ' ' + (item.description ?? '');
-    return GLOBE_MAJOR_KEYWORDS.test(text);
-  }
-
-  // Named type for geo-located news event
-  interface GeoEvent { lat: number; lon: number; title: string; source: string; pubDate: string; link: string }
-  // Group of news events at the same location
-  interface GeoEventGroup { lat: number; lon: number; items: GeoEvent[]; hasBreaking: boolean; }
-
-  // Map news items to geo-coordinates — only major events are plotted
-  function newsToGeoEvents(items: NewsItem[]): GeoEvent[] {
-    const events: GeoEvent[] = [];
-    for (const item of items) {
-      if (!isMajorGlobeEvent(item)) continue;
-      const text = item.title + ' ' + (item.description ?? '');
-      for (const [re, [lat, lon]] of GEO_MAP) {
-        if (re.test(text)) {
-          events.push({ lat, lon, title: item.title, source: item.source, pubDate: item.pubDate, link: item.link });
-          break;
-        }
-      }
-    }
-    return events;
-  }
 
   function showTip(e: MouseEvent, title: string, color: string, lines: string[] = []) {
     if (!mapContainer) return;
@@ -274,65 +198,11 @@
           .on('mouseleave', hideTip);
       }
 
-      // Live news events
-      drawNewsEvents(newsItems);
-
       mapLoading = false;
     } catch (err) {
       console.error('WorldMap init failed', err);
       mapError = 'Failed to load world map data.';
       mapLoading = false;
-    }
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let newsLayer: any = null;
-
-  function drawNewsEvents(items: NewsItem[]) {
-    if (!mapGroup || !projection) return;
-    if (newsLayer) newsLayer.remove();
-    newsLayer = mapGroup.append('g').attr('id', 'wm-news');
-
-    const events = newsToGeoEvents(items);
-
-    // Group events by location key so overlapping stories stack on one dot
-    const groups = new Map<string, GeoEventGroup>();
-    for (const ev of events) {
-      const key = `${ev.lat},${ev.lon}`;
-      if (!groups.has(key)) {
-        groups.set(key, { lat: ev.lat, lon: ev.lon, items: [], hasBreaking: false });
-      }
-      const g = groups.get(key)!;
-      g.items.push(ev);
-      if (breakingLinks.has(ev.link)) g.hasBreaking = true;
-    }
-
-    for (const group of groups.values()) {
-      const pos = projection([group.lon, group.lat]);
-      if (!pos) continue;
-      const [x, y] = pos;
-      const col = group.hasBreaking ? '#ffe033' : '#00ccff';
-      const count = group.items.length;
-      const r = count > 1 ? 4 : 2.8;
-
-      if (group.hasBreaking) {
-        newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 10)
-          .attr('fill', 'none').attr('stroke', col).attr('stroke-width', 1.2)
-          .attr('stroke-opacity', 0.7).attr('class', 'wm-breaking-ring');
-      }
-      newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
-        .attr('fill', col).attr('fill-opacity', group.hasBreaking ? 1 : 0.7);
-
-      newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 10)
-        .attr('fill', 'transparent').attr('class', 'wm-hit')
-        .on('mouseenter', (e: MouseEvent) => {
-          const raw = group.items[0].title;
-          const shortTitle = raw.length > 72 ? raw.slice(0, 69) + '…' : raw;
-          const lines: string[] = group.hasBreaking ? ['🔴 BREAKING'] : [];
-          showTip(e, shortTitle, col, lines);
-        })
-        .on('mousemove', moveTip)
-        .on('mouseleave', hideTip);
     }
   }
 
@@ -364,11 +234,6 @@
       pts.push([-ha - (Math.acos(acos) * 180) / Math.PI, lat]);
     }
     return pts;
-  }
-
-  // Re-draw news layer when newsItems or breakingLinks prop changes
-  $: if (mapGroup && projection && (newsItems || breakingLinks)) {
-    drawNewsEvents(newsItems);
   }
 
   onMount(() => { initMap(); });
@@ -408,11 +273,6 @@
     <div class="wm-leg-row"><span class="wm-dot" style="background:#ff8800;"></span>High</div>
     <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span>Elevated</div>
     <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
-    <div class="wm-leg-sep"></div>
-    <div class="wm-leg-row"><span class="wm-dot" style="background:#00ccff;"></span>Live news</div>
-    {#if breakingLinks.size > 0}
-    <div class="wm-leg-row wm-leg-breaking"><span class="wm-dot wm-dot--breaking" style="background:#ffe033;"></span>Breaking</div>
-    {/if}
   </div>
 </div>
 
@@ -420,7 +280,9 @@
   .wm-wrap {
     position: relative;
     width: 100%;
-    height: 460px;
+    /* 260px = section top padding (48px) + section header (~80px) + tile padding (40px) + tile header (~60px) + footer gap (32px) */
+    height: calc(100vh - 260px);
+    min-height: 460px;
     background: #0d1b2a;
     border-radius: 10px;
     overflow: hidden;
@@ -477,13 +339,7 @@
   }
   :global(.wm-hit) { cursor: pointer; }
 
-  :global(.wm-breaking-ring) { animation: wm-breaking 1.4s ease-out infinite; }
-  @keyframes wm-breaking {
-    0%   { r: 5;  opacity: .9; }
-    100% { r: 18; opacity: 0; }
+  @media (max-width: 768px) {
+    .wm-wrap { height: 400px; min-height: 400px; }
   }
-  .wm-leg-breaking { animation: wm-leg-blink 1.2s step-start infinite; }
-  @keyframes wm-leg-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
-  .wm-dot--breaking { animation: wm-dot-pulse 1.2s ease-in-out infinite; box-shadow: 0 0 4px #ffe033; }
-  @keyframes wm-dot-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 </style>
