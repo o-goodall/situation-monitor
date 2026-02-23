@@ -16,7 +16,7 @@
   import PriceChart from '$lib/PriceChart.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
-  let btcChartRange: '1D' | '1W' | '1Y' | 'All' = '1D';
+  let btcChartRange: '1D' | '1W' | '1Y' = '1D';
   let btcChartData: { t: number; p: number }[] = [];
   let btcChartLoading = false;
   let btcDayOpenPrice = 0; // price at start of today for daily % change
@@ -24,7 +24,7 @@
   async function fetchBtcChart(r = btcChartRange) {
     btcChartLoading = true;
     try {
-      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', 'All':'max' };
+      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y' };
       const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
       btcChartData = d.prices ?? [];
       if (r === '1D' && btcChartData.length > 0) btcDayOpenPrice = btcChartData[0].p;
@@ -32,7 +32,7 @@
     finally { btcChartLoading = false; }
   }
 
-  async function setBtcChartRange(r: '1D' | '1W' | '1Y' | 'All') {
+  async function setBtcChartRange(r: '1D' | '1W' | '1Y') {
     btcChartRange = r;
     await fetchBtcChart(r);
   }
@@ -221,7 +221,7 @@
         <span class="stat-l">
           <span class="price-label-usd">USD</span>
           {#if $btcDisplayPrice !== null && displayCur !== 'USD'}
-            <span class="price-label-sep"> | </span><span class="price-label-cur">{displayCur}</span>
+            <span class="price-label-sep"> · </span><span class="price-label-cur">{displayCur}</span>
           {/if}
         </span>
         {#if btcDayChangePct !== null}
@@ -287,7 +287,7 @@
           <div class="dca-face">
             <div class="gc-head">
               <div>
-                <p class="eyebrow orange">DCA Signal</p>
+                <p class="gc-title">DCA Signal</p>
               </div>
               <span class="ts">{$dcaUpdated||'—'}</span>
             </div>
@@ -660,7 +660,6 @@
           <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
           <button class="crb" class:crb--active={btcChartRange==='1W'} on:click={() => setBtcChartRange('1W')}>1W</button>
           <button class="crb" class:crb--active={btcChartRange==='1Y'} on:click={() => setBtcChartRange('1Y')}>1Y</button>
-          <button class="crb" class:crb--active={btcChartRange==='All'} on:click={() => setBtcChartRange('All')}>All</button>
         </div>
       </div>
     </div>
@@ -672,7 +671,7 @@
         <PriceChart
           prices={btcChartData}
           height={160}
-          range={btcChartRange === '1D' ? '1d' : btcChartRange === '1W' ? '7d' : btcChartRange === 'All' ? 'max' : '1y'}
+          range={btcChartRange === '1D' ? '1d' : btcChartRange === '1W' ? '7d' : '1y'}
         />
       {:else}
         <p class="dim" style="text-align:center;padding:60px 0;">Loading chart data…</p>
@@ -845,7 +844,7 @@
   .stat-tile--chart::before { display:none; }
   .tile-spark { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; opacity: 0.7; pointer-events: none; }
   .stat-tile--chart .price-pair, .stat-tile--chart .stat-l, .stat-tile--chart .stat-l-row { position: relative; z-index: 1; }
-  .stat-tile--chart .stat-l-row { display: flex; justify-content: center; align-items: center; gap: 10px; padding-bottom: 56px; }
+  .stat-tile--chart .stat-l-row { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3px; padding-bottom: 56px; }
 
   /* BTC price pair — USD | Currency side by side */
   .price-pair { display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:4px; position:relative; z-index:1; margin-top:8px; }
