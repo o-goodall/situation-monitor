@@ -799,11 +799,11 @@
     box-shadow:0 0 10px rgba(247,147,26,.7);
     transition:width .3s ease;
   }
-  .stat-tile:hover { transform:translateY(-4px); border-color:var(--orange-md); box-shadow:0 12px 32px rgba(247,147,26,.12); }
-  .stat-tile:hover::before { width:100%; }
+  .stat-tile:hover { transform:translateY(-4px); border-color:rgba(255,255,255,.14); box-shadow:0 10px 28px rgba(0,0,0,.3); }
 
-  .stat-tile--chart { padding-bottom: 0; }
+  .stat-tile--chart { padding-bottom: 0; cursor:default; }
   .stat-tile--chart::before { display:none; }
+  .stat-tile--chart:hover { transform:none !important; border-color:var(--glass-bd) !important; box-shadow:none !important; }
   .tile-spark { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; opacity: 0.7; pointer-events: none; }
   .stat-tile--chart .price-pair, .stat-tile--chart .stat-l, .stat-tile--chart .stat-l-row { position: relative; z-index: 1; }
   .stat-tile--chart .stat-l-row { display: flex; justify-content: center; align-items: center; gap: 10px; padding-bottom: 56px; }
@@ -863,10 +863,11 @@
 
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(3,1fr); } }
   @media (max-width:500px) {
-    /* Single column on mobile — all stat tiles full width like portfolio cards */
-    .stat-strip{ grid-template-columns:1fr; gap:10px; }
+    /* Two-column stat strip: BTC price (stat-tile--wide) spans full width, sats + halving side by side */
+    .stat-strip { grid-template-columns:1fr 1fr; gap:8px; }
+    .stat-tile--wide { grid-column:span 2; } /* spans both columns to fill the row */
     .stat-n { font-size:1.25rem; }
-    .stat-tile { padding:16px 12px; }
+    .stat-tile { padding:14px 12px; }
     .stat-tile--chart .stat-l-row { padding-bottom:52px; }
   }
 
@@ -925,7 +926,7 @@
     transition: border-color .3s, box-shadow .3s, transform .25s; position: relative; overflow: hidden;
   }
   .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(247,147,26,.25),transparent); }
-  .gc:hover { border-color:rgba(247,147,26,.2); box-shadow:0 12px 40px rgba(0,0,0,.5),0 0 0 1px rgba(247,147,26,.06),inset 0 1px 0 rgba(255,255,255,.08); transform:translateY(-1px); }
+  .gc:hover { transform:translateY(-4px); border-color:rgba(255,255,255,.14); box-shadow:0 10px 28px rgba(0,0,0,.3); }
   .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; }
   .gc-title { font-family:'Poison',monospace; font-size:.72rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.08em; }
   @media (max-width:600px) { .gc { padding:16px 14px; border-radius:var(--r-md); } }
@@ -1531,6 +1532,7 @@
   :global(html.light) .btc-pill { background:rgba(247,147,26,.04); border-color:rgba(247,147,26,.15); }
   :global(html.light) .ap { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
   :global(html.light) .ap:hover { border-color:rgba(0,0,0,.12); }
+  :global(html.light) .gc:hover { border-color:rgba(0,0,0,.12); }
   :global(html.light) .gf-perf { border-top-color:rgba(0,0,0,.08); }
   :global(html.light) .gfp { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
 </style>
