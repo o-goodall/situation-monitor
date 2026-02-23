@@ -3,6 +3,7 @@
   import type { NewsItem } from '$lib/store';
 
   export let newsItems: NewsItem[] = [];
+  export let breakingLinks: Set<string> = new Set();
 
   let mapContainer: HTMLDivElement;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -286,13 +287,25 @@
       const pos = projection([ev.lon, ev.lat]);
       if (!pos) continue;
       const [x, y] = pos;
-      const col = '#00ccff';
+      const isBreaking = breakingLinks.has(ev.link);
+      const col = isBreaking ? '#ffe033' : '#00ccff';
 
-      newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 2.8)
-        .attr('fill', col).attr('fill-opacity', 0.7);
+      if (isBreaking) {
+        // Outer expanding ping ring for breaking news
+        newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 10)
+          .attr('fill', 'none').attr('stroke', col).attr('stroke-width', 1.2)
+          .attr('stroke-opacity', 0.7).attr('class', 'wm-breaking-ring');
+      }
+      newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', isBreaking ? 3.5 : 2.8)
+        .attr('fill', col).attr('fill-opacity', isBreaking ? 1 : 0.7);
       newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 8)
         .attr('fill', 'transparent').attr('class', 'wm-hit')
-        .on('mouseenter', (e: MouseEvent) => showTip(e, ev.title, col, [`📰 ${ev.source}`, timeAgo(ev.pubDate)]))
+        .on('mouseenter', (e: MouseEvent) => {
+          const lines = isBreaking
+            ? ['🔴 BREAKING', `📰 ${ev.source}`, timeAgo(ev.pubDate)]
+            : [`📰 ${ev.source}`, timeAgo(ev.pubDate)];
+          showTip(e, ev.title, col, lines);
+        })
         .on('mousemove', moveTip)
         .on('mouseleave', hideTip);
     }
@@ -335,8 +348,8 @@
     return pts;
   }
 
-  // Re-draw news layer when newsItems prop changes
-  $: if (mapGroup && projection && newsItems) {
+  // Re-draw news layer when newsItems or breakingLinks prop changes
+  $: if (mapGroup && projection && (newsItems || breakingLinks)) {
     drawNewsEvents(newsItems);
   }
 
@@ -379,6 +392,9 @@
     <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
     <div class="wm-leg-sep"></div>
     <div class="wm-leg-row"><span class="wm-dot" style="background:#00ccff;"></span>Live news</div>
+    {#if breakingLinks.size > 0}
+    <div class="wm-leg-row wm-leg-breaking"><span class="wm-dot wm-dot--breaking" style="background:#ffe033;"></span>Breaking</div>
+    {/if}
   </div>
 </div>
 
@@ -443,4 +459,14 @@
     50%       { opacity: .65; }
   }
   :global(.wm-hit) { cursor: pointer; }
+
+  :global(.wm-breaking-ring) { animation: wm-breaking 1.4s ease-out infinite; }
+  @keyframes wm-breaking {
+    0%   { r: 5;  opacity: .9; }
+    100% { r: 18; opacity: 0; }
+  }
+  .wm-leg-breaking { animation: wm-leg-blink 1.2s step-start infinite; }
+  @keyframes wm-leg-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+  .wm-dot--breaking { animation: wm-dot-pulse 1.2s ease-in-out infinite; box-shadow: 0 0 4px #ffe033; }
+  @keyframes wm-dot-pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 </style>

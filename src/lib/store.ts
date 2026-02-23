@@ -46,6 +46,8 @@ export type Market = { id:string; question:string; topOutcome:string; probabilit
 export const markets = writable<Market[]>([]);
 export type NewsItem = { title:string; link:string; source:string; pubDate:string; description:string; image:string };
 export const newsItems = writable<NewsItem[]>([]);
+// Links of items that arrived in the most-recent news fetch (cleared after 3 min)
+export const breakingNewsLinks = writable<Set<string>>(new Set());
 
 // ── ASSET MARKETS ─────────────────────────────────────────────
 export const goldPriceUsd  = writable<number|null>(null);
