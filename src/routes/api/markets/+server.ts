@@ -31,24 +31,28 @@ async function getYahooChart(
     }
 
     for (const queryStr of queryStrings) {
-      const urls = [
-        `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
-        `https://query2.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
-      ];
-      for (const url of urls) {
-        try {
-          const res = await fetch(url, { headers: HEADERS });
-          if (!res.ok) continue;
-          const d = await res.json();
-          const closes: number[] = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
-          const valid = closes.filter((v: any) => v !== null && !isNaN(v));
-          if (valid.length < 2) continue;
-          const current = valid[valid.length - 1];
-          const startPrice = valid[0];
-          const pctChange = ((current - startPrice) / startPrice) * 100;
-          return { current, startPrice, pctChange };
-        } catch { continue; }
-      }
+      // Race both Yahoo Finance mirror hosts for the same query; the first
+      // successful response wins, halving latency when one host is slow.
+      try {
+        const result = await Promise.any(
+          [
+            `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
+            `https://query2.finance.yahoo.com/v8/finance/chart/${encoded}?${queryStr}`,
+          ].map(async (url) => {
+            const res = await fetch(url, { headers: HEADERS });
+            if (!res.ok) throw new Error(`${res.status}`);
+            const d = await res.json();
+            const closes: number[] = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
+            const valid = closes.filter((v: any) => v !== null && !isNaN(v));
+            if (valid.length < 2) throw new Error('insufficient data');
+            const current = valid[valid.length - 1];
+            const startPrice = valid[0];
+            const pctChange = ((current - startPrice) / startPrice) * 100;
+            return { current, startPrice, pctChange };
+          })
+        );
+        return result;
+      } catch { continue; }
     }
     return null;
   } catch {
@@ -169,29 +173,31 @@ async function getSP500(sinceDate?: Date): Promise<{ current: number; pctChange:
   const chart = await getYahooChart('^GSPC', sinceDate);
   if (chart && chart.current > 100) return chart;
 
-  // Fallback 1: v7 finance/quote for current price + chart for YTD % change
-  const quoteUrls = [
-    'https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EGSPC',
-    'https://query2.finance.yahoo.com/v7/finance/quote?symbols=%5EGSPC',
-  ];
-  for (const quoteUrl of quoteUrls) {
-    try {
-      const res = await fetch(quoteUrl, { headers: HEADERS });
-      if (!res.ok) continue;
-      const d = await res.json();
-      const q = d?.quoteResponse?.result?.[0];
-      const current = q?.regularMarketPrice;
-      if (!current || current < 100) continue;
-      // ytdReturn is the preferred metric (true YTD return as a fraction, e.g. 0.05 = 5%).
-      // regularMarketChangePercent is only today's % change — a rough estimate used as a
-      // last resort when ytdReturn is unavailable (e.g. outside US market hours or
-      // if the quote response omits ytdReturn entirely).
-      const pctChange = typeof q?.ytdReturn === 'number'
-        ? q.ytdReturn * 100
-        : (q?.regularMarketChangePercent ?? 0);
-      return { current, pctChange };
-    } catch { continue; }
-  }
+  // Fallback 1: v7 finance/quote — race both Yahoo Finance mirror hosts in parallel
+  try {
+    const { current, pctChange } = await Promise.any(
+      [
+        'https://query1.finance.yahoo.com/v7/finance/quote?symbols=%5EGSPC',
+        'https://query2.finance.yahoo.com/v7/finance/quote?symbols=%5EGSPC',
+      ].map(async (quoteUrl) => {
+        const res = await fetch(quoteUrl, { headers: HEADERS });
+        if (!res.ok) throw new Error(`${res.status}`);
+        const d = await res.json();
+        const q = d?.quoteResponse?.result?.[0];
+        const current = q?.regularMarketPrice;
+        if (!current || current < 100) throw new Error('invalid price');
+        // ytdReturn is the preferred metric (true YTD return as a fraction, e.g. 0.05 = 5%).
+        // regularMarketChangePercent is only today's % change — a rough estimate used as a
+        // last resort when ytdReturn is unavailable (e.g. outside US market hours or
+        // if the quote response omits ytdReturn entirely).
+        const pctChange = typeof q?.ytdReturn === 'number'
+          ? q.ytdReturn * 100
+          : (q?.regularMarketChangePercent ?? 0);
+        return { current, pctChange };
+      })
+    );
+    return { current, pctChange };
+  } catch { /* fall through to stooq */ }
 
   // Fallback 2: stooq.com CSV — free, no auth required
   try {

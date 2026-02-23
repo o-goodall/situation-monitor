@@ -30,26 +30,38 @@ async function getMa200Binance(): Promise<number | null> {
 }
 
 // Fallback: Yahoo Finance 4-year weekly BTC-USD data
+// Both mirror hosts are tried in parallel; the first successful result wins.
 async function getMa200Yahoo(): Promise<number | null> {
   const urls = [
     'https://query1.finance.yahoo.com/v8/finance/chart/BTC-USD?range=4y&interval=1wk&includePrePost=false',
     'https://query2.finance.yahoo.com/v8/finance/chart/BTC-USD?range=4y&interval=1wk&includePrePost=false',
   ];
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, { headers: YF_HEADERS });
-      if (!res.ok) continue;
-      const d = await res.json();
-      const closes: number[] = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
-      const ma200 = computeMa200(closes);
-      if (ma200 !== null) return ma200;
-    } catch { continue; }
+  try {
+    return await Promise.any(
+      urls.map(async (url) => {
+        const res = await fetch(url, { headers: YF_HEADERS });
+        if (!res.ok) throw new Error(`${res.status}`);
+        const d = await res.json();
+        const closes: number[] = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
+        const ma200 = computeMa200(closes);
+        if (ma200 === null) throw new Error('insufficient data');
+        return ma200;
+      })
+    );
+  } catch {
+    return null;
   }
-  return null;
 }
 
 export async function GET() {
-  const ma200 = (await getMa200Binance()) ?? (await getMa200Yahoo());
+  // Fire both sources concurrently; use the first non-null result.
+  const [binanceRes, yahooRes] = await Promise.allSettled([
+    getMa200Binance(),
+    getMa200Yahoo(),
+  ]);
+  const ma200 =
+    (binanceRes.status === 'fulfilled' ? binanceRes.value : null) ??
+    (yahooRes.status === 'fulfilled' ? yahooRes.value : null);
   if (ma200 === null) return json({ ma200: null, error: 'Unable to fetch MA200 data' });
   return json({ ma200 });
 }
