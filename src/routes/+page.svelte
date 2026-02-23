@@ -807,17 +807,14 @@
     <div class="gc intel-gc globe-gc" style="padding:20px 18px;">
       <div class="gc-head" style="margin-bottom:14px;">
         <div>
-          <p class="gc-title">Live World Events</p>
-          <p class="dim" style="margin-top:3px;">Active conflicts · leadership changes · tariffs · major global events</p>
+          <p class="gc-title">Global Threat Monitor</p>
+          <p class="dim" style="margin-top:3px;">Active conflicts · monetary policy · surveillance & digital control</p>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
-          {#if $breakingNewsLinks.size > 0}
-            <span class="globe-badge globe-badge--breaking" title="{$breakingNewsLinks.size} new article{$breakingNewsLinks.size > 1 ? 's' : ''}">⚡ {$breakingNewsLinks.size} BREAKING</span>
-          {/if}
           <span class="globe-badge">LIVE</span>
         </div>
       </div>
-      <WorldMap newsItems={$newsItems} breakingLinks={$breakingNewsLinks} />
+      <WorldMap />
     </div>
     {/if}
   </div>
