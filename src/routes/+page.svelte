@@ -9,7 +9,7 @@
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfFirstOrderDate, gfOrdersCount,
-    markets, newsItems, btcDisplayPrice, btcWsConnected,
+    markets, newsItems, breakingNewsLinks, btcDisplayPrice, btcWsConnected,
     btcHashrate, gfPortfolioChart
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
@@ -798,9 +798,14 @@
           <p class="gc-title">Live World Events</p>
           <p class="dim" style="margin-top:3px;">Active conflicts · protests · elections · live news plotted by location</p>
         </div>
-        <span class="globe-badge">LIVE</span>
+        <div style="display:flex;align-items:center;gap:8px;">
+          {#if $breakingNewsLinks.size > 0}
+            <span class="globe-badge globe-badge--breaking" title="{$breakingNewsLinks.size} new article{$breakingNewsLinks.size > 1 ? 's' : ''}">⚡ {$breakingNewsLinks.size} BREAKING</span>
+          {/if}
+          <span class="globe-badge">LIVE</span>
+        </div>
       </div>
-      <WorldMap newsItems={$newsItems} />
+      <WorldMap newsItems={$newsItems} breakingLinks={$breakingNewsLinks} />
     </div>
     {/if}
   </div>
@@ -1382,6 +1387,10 @@
     border-radius:4px; border:1px solid rgba(239,68,68,.4);
     background:rgba(239,68,68,.12); color:#f87171; flex-shrink:0;
     animation:badge-blink 2.2s ease-in-out infinite;
+  }
+  .globe-badge--breaking {
+    border-color:rgba(255,224,51,.5); background:rgba(255,224,51,.12); color:#ffe033;
+    animation:badge-blink 0.9s step-start infinite;
   }
   @keyframes badge-blink { 0%,100%{opacity:1;} 50%{opacity:.55;} }
 

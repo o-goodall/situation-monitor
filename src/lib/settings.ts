@@ -1,7 +1,10 @@
+export type FeedCategory = 'global' | 'business' | 'tech' | 'security' | 'crypto';
+
 export interface RssFeed {
   url: string;
   name: string;
   enabled: boolean;
+  category: FeedCategory;
 }
 
 export type DcaFrequency = 'daily' | 'weekly' | 'fortnightly' | 'monthly';
@@ -26,16 +29,34 @@ export interface Settings {
   displayCurrency: string;   // User's preferred display currency (e.g. AUD, EUR, GBP)
 }
 
-// Default Bitcoin/crypto RSS feeds
+// Default RSS feeds — global/major news on by default, crypto/tech/security off
 export const DEFAULT_RSS_FEEDS: RssFeed[] = [
-  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',       name: 'CoinDesk',          enabled: true },
-  { url: 'https://bitcoinmagazine.com/.rss/full/',                name: 'Bitcoin Magazine',   enabled: true },
-  { url: 'https://cointelegraph.com/rss',                         name: 'CoinTelegraph',     enabled: true },
-  { url: 'https://feeds.bbci.co.uk/news/business/rss.xml',        name: 'BBC Business',      enabled: true },
-  { url: 'https://feeds.reuters.com/reuters/businessNews',         name: 'Reuters Business',  enabled: false },
-  { url: 'https://www.theblock.co/rss.xml',                       name: 'The Block',         enabled: false },
-  { url: 'https://decrypt.co/feed',                                name: 'Decrypt',           enabled: false },
-  { url: 'https://www.btctimes.com/rss',                           name: 'BTC Times',         enabled: false },
+  // ── Global / Major News (enabled by default) ────────────────
+  { url: 'https://feeds.bbci.co.uk/news/world/rss.xml',             name: 'BBC World News',        enabled: true,  category: 'global' },
+  { url: 'https://feeds.reuters.com/reuters/worldnews',              name: 'Reuters World',         enabled: true,  category: 'global' },
+  { url: 'https://www.aljazeera.com/xml/rss/all.xml',               name: 'Al Jazeera',            enabled: true,  category: 'global' },
+  { url: 'https://www.theguardian.com/world/rss',                   name: 'Guardian World',        enabled: true,  category: 'global' },
+  { url: 'https://feeds.npr.org/1001/rss.xml',                      name: 'NPR News',              enabled: true,  category: 'global' },
+  { url: 'https://www.france24.com/en/rss',                         name: 'France 24',             enabled: true,  category: 'global' },
+  { url: 'https://rss.dw.com/rdf/rss-en-all',                       name: 'DW World',              enabled: false, category: 'global' },
+  // ── Business / Markets (enabled by default) ─────────────────
+  { url: 'https://feeds.bbci.co.uk/news/business/rss.xml',          name: 'BBC Business',          enabled: true,  category: 'business' },
+  { url: 'https://feeds.reuters.com/reuters/businessNews',           name: 'Reuters Business',      enabled: false, category: 'business' },
+  // ── Technology (off by default) ─────────────────────────────
+  { url: 'https://techcrunch.com/feed/',                             name: 'TechCrunch',            enabled: false, category: 'tech' },
+  { url: 'https://feeds.arstechnica.com/arstechnica/index',          name: 'Ars Technica',          enabled: false, category: 'tech' },
+  { url: 'https://www.theverge.com/rss/index.xml',                  name: 'The Verge',             enabled: false, category: 'tech' },
+  { url: 'https://www.wired.com/feed/rss',                          name: 'Wired',                 enabled: false, category: 'tech' },
+  // ── Security / Defence (off by default) ─────────────────────
+  { url: 'https://krebsonsecurity.com/feed/',                        name: 'Krebs on Security',     enabled: false, category: 'security' },
+  { url: 'https://www.defensenews.com/rss/',                        name: 'Defense News',          enabled: false, category: 'security' },
+  // ── Crypto (off by default) ─────────────────────────────────
+  { url: 'https://www.coindesk.com/arc/outboundfeeds/rss/',         name: 'CoinDesk',              enabled: false, category: 'crypto' },
+  { url: 'https://bitcoinmagazine.com/.rss/full/',                   name: 'Bitcoin Magazine',      enabled: false, category: 'crypto' },
+  { url: 'https://cointelegraph.com/rss',                           name: 'CoinTelegraph',         enabled: false, category: 'crypto' },
+  { url: 'https://www.theblock.co/rss.xml',                         name: 'The Block',             enabled: false, category: 'crypto' },
+  { url: 'https://decrypt.co/feed',                                  name: 'Decrypt',               enabled: false, category: 'crypto' },
+  { url: 'https://www.btctimes.com/rss',                            name: 'BTC Times',             enabled: false, category: 'crypto' },
 ];
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -67,13 +88,23 @@ export function loadSettings(): Settings {
           })),
         };
       }
-      // Ensure all default feeds exist (merge new defaults)
+      // Ensure all default feeds exist (merge new defaults) and backfill missing category
       if (parsed.news?.defaultFeeds) {
         const existingUrls = new Set(parsed.news.defaultFeeds.map((f: RssFeed) => f.url));
         for (const df of DEFAULT_RSS_FEEDS) {
           if (!existingUrls.has(df.url)) {
             parsed.news.defaultFeeds.push({...df});
           }
+        }
+        // Backfill category on feeds that were saved before the category field existed
+        const categoryByUrl = new Map(DEFAULT_RSS_FEEDS.map(f => [f.url, f.category]));
+        for (const f of parsed.news.defaultFeeds) {
+          if (!f.category) f.category = categoryByUrl.get(f.url) ?? 'global';
+        }
+      }
+      if (parsed.news?.customFeeds) {
+        for (const f of parsed.news.customFeeds) {
+          if (!f.category) f.category = 'global';
         }
       }
       return { ...DEFAULT_SETTINGS, ...parsed, dca: { ...DEFAULT_SETTINGS.dca, ...parsed.dca, dcaFrequency: parsed.dca?.dcaFrequency ?? 'fortnightly' }, displayCurrency: parsed.displayCurrency ?? DEFAULT_SETTINGS.displayCurrency };

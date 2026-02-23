@@ -2,13 +2,14 @@
   import '../app.css';
   import { onMount, onDestroy } from 'svelte';
   import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
+  import type { FeedCategory } from '$lib/settings';
   import {
     settings, showSettings, saved, time, lightMode, activeSection,
     btcPrice, prevPrice, priceFlash, priceHistory, btcBlock, btcFees,
     halvingBlocksLeft, halvingDays, halvingDate, halvingProgress,
     latestBlock, mempoolStats,
     fearGreed, fearGreedLabel, difficultyChange, fundingRate, audUsd, dcaUpdated,
-    markets, newsItems,
+    markets, newsItems, breakingNewsLinks,
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
@@ -22,6 +23,16 @@
   let scrolled = false;
   let mobileMenuOpen = false;
   let sectionObserver: IntersectionObserver | null = null;
+
+  const FEED_CATEGORIES: { key: FeedCategory; label: string; hint: string }[] = [
+    { key: 'global',   label: '🌍 Global / Major News', hint: 'Breaking world events' },
+    { key: 'business', label: '📈 Business & Markets',  hint: 'Finance & economy' },
+    { key: 'tech',     label: '💻 Technology',           hint: 'Tech news & innovation' },
+    { key: 'security', label: '🛡 Security & Defence',   hint: 'Cyber & geopolitical risk' },
+    { key: 'crypto',   label: '₿ Crypto',                hint: 'Cryptocurrency news' },
+  ];
+
+  const BREAKING_NEWS_TIMEOUT_MS = 3 * 60 * 1000; // clear breaking badge after 3 minutes
 
   function navigateTo(section: 'signal' | 'portfolio' | 'intel') {
     $activeSection = section;
@@ -157,11 +168,27 @@
     } catch {}
   }
 
+  let _prevNewsLinks = new Set<string>();
+  let _breakingTimer: ReturnType<typeof setTimeout> | null = null;
+
   async function fetchNews() {
     try {
       const urls = getEnabledFeedUrls($settings.news);
       const src = encodeURIComponent(JSON.stringify(urls));
-      $newsItems = (await fetch(`/api/news?sources=${src}`).then(r=>r.json())).items ?? [];
+      const items = (await fetch(`/api/news?sources=${src}`).then(r=>r.json())).items ?? [];
+      // Detect newly-arrived links (present in new batch but not the previous one)
+      const newLinks = new Set<string>();
+      for (const item of items) {
+        if (item.link && !_prevNewsLinks.has(item.link)) newLinks.add(item.link);
+      }
+      if (newLinks.size > 0 && _prevNewsLinks.size > 0) {
+        // Only treat as breaking when we have a previous snapshot to compare against
+        $breakingNewsLinks = newLinks;
+        if (_breakingTimer) clearTimeout(_breakingTimer);
+        _breakingTimer = setTimeout(() => { $breakingNewsLinks = new Set(); _breakingTimer = null; }, BREAKING_NEWS_TIMEOUT_MS);
+      }
+      _prevNewsLinks = new Set(items.map((i: { link: string }) => i.link));
+      $newsItems = items;
     } catch {}
   }
 
@@ -663,15 +690,20 @@
       <div class="dinp-row"><input bind:value={newKeyword} on:keydown={(e)=>e.key==='Enter'&&handleAddKeyword()} placeholder="Add keyword…" class="dinp"/><button on:click={handleAddKeyword} class="btn-ghost" style="white-space:nowrap;">Add</button></div>
     </div>
     <div class="dg"><p class="dg-hd">News Feeds <span class="dhint">toggle on/off · add custom</span></p>
-      <p class="dlbl" style="margin-bottom:6px;">Default Feeds</p>
-      <div class="feed-list">
-        {#each $settings.news.defaultFeeds as feed, i}
-          <label class="feed-toggle">
-            <input type="checkbox" checked={feed.enabled} on:change={()=>toggleDefaultFeed(i)} />
-            <span class="feed-name">{feed.name}</span>
-          </label>
-        {/each}
-      </div>
+      {#each FEED_CATEGORIES as cat}
+        {@const catFeeds = $settings.news.defaultFeeds.map((f,i)=>({f,i})).filter(({f})=>f.category===cat.key)}
+        {#if catFeeds.length > 0}
+        <p class="dlbl feed-cat-lbl" style="margin-bottom:4px;">{cat.label} <span class="dhint">{cat.hint}</span></p>
+        <div class="feed-list" style="margin-bottom:10px;">
+          {#each catFeeds as {f, i}}
+            <label class="feed-toggle">
+              <input type="checkbox" checked={f.enabled} on:change={()=>toggleDefaultFeed(i)} />
+              <span class="feed-name">{f.name}</span>
+            </label>
+          {/each}
+        </div>
+        {/if}
+      {/each}
       {#if $settings.news.customFeeds.length>0}
       <p class="dlbl" style="margin:12px 0 6px;">Custom Feeds</p>
       <div class="feed-list">
@@ -730,14 +762,20 @@
         </div>
       </div>
       <div class="dg"><p class="dg-hd">News Feeds</p>
-        <div class="feed-list">
-          {#each $settings.news.defaultFeeds as feed, i}
-            <label class="feed-toggle">
-              <input type="checkbox" checked={feed.enabled} on:change={()=>toggleDefaultFeed(i)} />
-              <span class="feed-name">{feed.name}</span>
-            </label>
-          {/each}
-        </div>
+        {#each FEED_CATEGORIES as cat}
+          {@const catFeeds = $settings.news.defaultFeeds.map((f,i)=>({f,i})).filter(({f})=>f.category===cat.key)}
+          {#if catFeeds.length > 0}
+          <p class="dlbl feed-cat-lbl" style="margin-bottom:4px;">{cat.label}</p>
+          <div class="feed-list" style="margin-bottom:8px;">
+            {#each catFeeds as {f, i}}
+              <label class="feed-toggle">
+                <input type="checkbox" checked={f.enabled} on:change={()=>toggleDefaultFeed(i)} />
+                <span class="feed-name">{f.name}</span>
+              </label>
+            {/each}
+          </div>
+          {/if}
+        {/each}
         {#if $settings.news.customFeeds.length>0}
         <div class="feed-list" style="margin-top:6px;">
           {#each $settings.news.customFeeds as feed, i}
@@ -1109,6 +1147,7 @@
   .feed-toggle input[type="checkbox"]:checked + .feed-name { color:var(--t1); }
   .feed-name { font-size:.65rem; font-weight:500; transition:color .2s; }
   .feed-custom { display:flex; align-items:center; gap:4px; }
+  .feed-cat-lbl { font-size:.65rem; font-weight:700; color:var(--t2); margin-top:10px; letter-spacing:.03em; }
   :global(html.light) .feed-toggle { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.08); }
   :global(html.light) .feed-toggle:hover { border-color:rgba(247,147,26,.3); }
 
