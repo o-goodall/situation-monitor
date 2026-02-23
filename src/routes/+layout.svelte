@@ -171,15 +171,20 @@
   let _prevNewsLinks = new Set<string>();
   let _breakingTimer: ReturnType<typeof setTimeout> | null = null;
 
+  // Only mark items as breaking if they are genuinely major events
+  const BREAKING_MAJOR_KEYWORDS = /war|conflict|attack|airstrike|missile|bomb|invasion|troops|military|ceasefire|killed|killing|coup|president|prime minister|chancellor|tariff|sanction|nuclear|election|elected|leader|treaty|genocide|massacre|offensive|explosion|assassination|crisis/i;
+
   async function fetchNews() {
     try {
       const urls = getEnabledFeedUrls($settings.news);
       const src = encodeURIComponent(JSON.stringify(urls));
       const items = (await fetch(`/api/news?sources=${src}`).then(r=>r.json())).items ?? [];
-      // Detect newly-arrived links (present in new batch but not the previous one)
+      // Detect newly-arrived links for major events only
       const newLinks = new Set<string>();
       for (const item of items) {
-        if (item.link && !_prevNewsLinks.has(item.link)) newLinks.add(item.link);
+        if (!item.link || _prevNewsLinks.has(item.link)) continue;
+        const text = (item.title ?? '') + ' ' + (item.description ?? '');
+        if (BREAKING_MAJOR_KEYWORDS.test(text)) newLinks.add(item.link);
       }
       if (newLinks.size > 0 && _prevNewsLinks.size > 0) {
         // Only treat as breaking when we have a previous snapshot to compare against
