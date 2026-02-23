@@ -944,7 +944,7 @@
   .mobile-hdr-right { display:none; align-items:center; gap:6px; }
 
   @media (max-width:768px) {
-    .hdr { position:relative; height:54px; padding:0 16px; backdrop-filter:blur(12px) saturate(160%); -webkit-backdrop-filter:blur(12px) saturate(160%); transform:translateZ(0); will-change:transform; transition:background .15s, box-shadow .15s; }
+    .hdr { position:relative; height:54px; padding:0 16px; backdrop-filter:blur(12px) saturate(160%); -webkit-backdrop-filter:blur(12px) saturate(160%); }
     .hdr--scrolled { height:54px; }
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }

@@ -258,102 +258,108 @@
       {/if}
       <div class="zone-glass"></div>
 
-      <!-- Flip container — both faces always rendered; front stays in flow to lock card height -->
+      <!-- Flip container -->
       <div class="dca-flip-scene">
-        <!-- FRONT FACE — signal view; always in flow to set card height -->
-        <div class="dca-face dca-face--front" class:dca-face--hidden={dcaFlipped} aria-hidden={dcaFlipped ? 'true' : 'false'}>
-          <div class="gc-head">
-            <div>
-              <p class="eyebrow orange">DCA Signal</p>
-              <p class="dim" style="margin-top:3px;">{freqHint}</p>
-            </div>
-            <span class="ts">{$dcaUpdated||'—'}</span>
-          </div>
-
-          <div class="dca-hero" aria-live="polite" aria-atomic="true">
-            {#if !$dca}
-              <span class="dca-n muted">—</span>
-            {:else if $dca.finalAud===0}
-              <span class="dca-n" style="color:var(--dn);text-shadow:0 0 60px rgba(239,68,68,.3);">PASS</span>
-              <p class="dca-sub">Price too high — skip this {freqLabel}</p>
-            {:else}
-              <span class="dca-n" style="color:{$accentColor};text-shadow:0 0 70px {$accentColor}30;">${$dca.finalAud.toLocaleString()}</span>
-              <p class="dca-sub">AUD · {freqDesc}</p>
-            {/if}
-          </div>
-
-          <!-- Price zone bar -->
-          {#if $btcPrice>0}
-          <div class="vband">
-            <div class="vband-row">
-              <span class="vband-l up">Low Zone</span>
-              <span class="vband-l" style="color:var(--orange);">Mid Zone</span>
-              <span class="vband-l dn">High Zone</span>
-            </div>
-            <div class="vband-track">
-              <div class="vband-zones">
-                <div class="vzone vzone--low"></div>
-                <div class="vzone vzone--mid"></div>
-                <div class="vzone vzone--high"></div>
+        {#if !dcaFlipped}
+          <!-- FRONT FACE — signal view -->
+          <div class="dca-face">
+            <div class="gc-head">
+              <div>
+                <p class="eyebrow orange">DCA Signal</p>
+                <p class="dim" style="margin-top:3px;">{freqHint}</p>
               </div>
-              {#if $btcPrice<=low}
-                <div class="vband-dot" style="left:2%;"></div>
-              {:else if $btcPrice>=high}
-                <div class="vband-dot" style="left:98%;"></div>
+              <span class="ts">{$dcaUpdated||'—'}</span>
+            </div>
+
+            <div class="dca-hero" aria-live="polite" aria-atomic="true">
+              {#if !$dca}
+                <span class="dca-n muted">—</span>
+              {:else if $dca.finalAud===0}
+                <span class="dca-n" style="color:var(--dn);text-shadow:0 0 60px rgba(239,68,68,.3);">PASS</span>
+                <p class="dca-sub">Price too high — skip this {freqLabel}</p>
               {:else}
-                <div class="vband-dot" style="left:{(($btcPrice-low)/range)*100}%;"></div>
+                <span class="dca-n" style="color:{$accentColor};text-shadow:0 0 70px {$accentColor}30;">${$dca.finalAud.toLocaleString()}</span>
+                <p class="dca-sub">AUD · {freqDesc}</p>
               {/if}
             </div>
-            <div class="vband-labels">
-              <span>${(low/1000).toFixed(0)}K</span><span>${((low+high)/2/1000).toFixed(0)}K</span><span>${(high/1000).toFixed(0)}K</span>
-            </div>
-          </div>
-          {/if}
 
-          <!-- Signal conditions — compact -->
-          {#if $dca}
-          <div class="sigs">
-            {#each $dca.signals as sig}
-              <div class="sig" class:sig--on={sig.active} title={sig.description}>
-                <div class="pip-wrap">
-                  <div class="pip" class:pip--on={sig.active}></div>
-                  {#if sig.active}<div class="pip-ring"></div>{/if}
-                </div>
-                <div class="sig-body">
-                  <span class="sig-label">{sig.name}</span>
-                  {#if sig.value && sig.value !== 'Inactive'}
-                    <span class="sig-val">{sig.value}</span>
-                  {/if}
-                </div>
+            <!-- Price zone bar -->
+            {#if $btcPrice>0}
+            <div class="vband">
+              <div class="vband-row">
+                <span class="vband-l up">Low Zone</span>
+                <span class="vband-l" style="color:var(--orange);">Mid Zone</span>
+                <span class="vband-l dn">High Zone</span>
               </div>
-            {/each}
-          </div>
-          {/if}
+              <div class="vband-track">
+                <div class="vband-zones">
+                  <div class="vzone vzone--low"></div>
+                  <div class="vzone vzone--mid"></div>
+                  <div class="vzone vzone--high"></div>
+                </div>
+                {#if $btcPrice<=low}
+                  <div class="vband-dot" style="left:2%;"></div>
+                {:else if $btcPrice>=high}
+                  <div class="vband-dot" style="left:98%;"></div>
+                {:else}
+                  <div class="vband-dot" style="left:{(($btcPrice-low)/range)*100}%;"></div>
+                {/if}
+              </div>
+              <div class="vband-labels">
+                <span>${(low/1000).toFixed(0)}K</span><span>${((low+high)/2/1000).toFixed(0)}K</span><span>${(high/1000).toFixed(0)}K</span>
+              </div>
+            </div>
+            {/if}
 
-        </div>
+            <!-- Signal conditions — compact -->
+            {#if $dca}
+            <div class="sigs">
+              {#each $dca.signals as sig}
+                <div class="sig" class:sig--on={sig.active} title={sig.description}>
+                  <div class="pip-wrap">
+                    <div class="pip" class:pip--on={sig.active}></div>
+                    {#if sig.active}<div class="pip-ring"></div>{/if}
+                  </div>
+                  <div class="sig-body">
+                    <span class="sig-label">{sig.name}</span>
+                    {#if sig.value && sig.value !== 'Inactive'}
+                      <span class="sig-val">{sig.value}</span>
+                    {/if}
+                  </div>
+                </div>
+              {/each}
+            </div>
+            {/if}
 
-        <!-- BACK FACE — formula explanation; absolutely positioned so it doesn't affect card height -->
-        <div class="dca-face dca-face--back" class:dca-face--hidden={!dcaFlipped} aria-hidden={!dcaFlipped ? 'true' : 'false'}>
-          <div class="dca-formula-head">
-            <p class="eyebrow orange">The Formula</p>
           </div>
-          <ol class="formula-steps">
-            <li><strong>Price position</strong> — 100% allocation at your low price target, tapering linearly to 0% at high.</li>
-            <li><strong>Signal boosts</strong> increase allocation when conditions are favourable:
-              <ul>
-                <li>Fear &amp; Greed ≤ 40 → <span class="formula-boost">+10%</span> <span class="dim">(extreme ≤ 20 → +20%)</span></li>
-                <li>Mining difficulty drop &gt; 5% → <span class="formula-boost">+10%</span></li>
-                <li>Futures funding rate negative → <span class="formula-boost">+10%</span></li>
-                <li>Within 365 days of halving → <span class="formula-boost">+10%</span></li>
-              </ul>
-            </li>
-            <li><strong>Final amount</strong> = Max DCA × price% × (1 + total boosts%). Rounded to nearest $50 AUD.</li>
-            <li>Price above your high target → <strong class="dn">PASS</strong> — skip this period entirely.</li>
-          </ol>
-        </div>
+
+        {:else}
+          <!-- BACK FACE — formula explanation -->
+          <div class="dca-face">
+            <div class="dca-formula-head">
+              <p class="eyebrow orange">The Formula</p>
+            </div>
+            <ol class="formula-steps">
+              <li><strong>Price position</strong> — 100% allocation at your low price target, tapering linearly to 0% at high.</li>
+              <li><strong>Signal boosts</strong> increase allocation when conditions are favourable:
+                <ul>
+                  <li>Fear &amp; Greed ≤ 40 → <span class="formula-boost">+10%</span> <span class="dim">(extreme ≤ 20 → +20%)</span></li>
+                  <li>Mining difficulty drop &gt; 5% → <span class="formula-boost">+10%</span></li>
+                  <li>Futures funding rate negative → <span class="formula-boost">+10%</span></li>
+                  <li>Within 365 days of halving → <span class="formula-boost">+10%</span></li>
+                </ul>
+              </li>
+              <li><strong>Final amount</strong> = Max DCA × price% × (1 + total boosts%). Rounded to nearest $50 AUD.</li>
+              <li>Price above your high target → <strong class="dn">PASS</strong> — skip this period entirely.</li>
+            </ol>
+          </div>
+        {/if}
       </div>
-      <button class="dca-info-btn" on:click={() => dcaFlipped = !dcaFlipped}
-        aria-label={dcaFlipped ? 'Back to signal view' : 'Show DCA formula'}>{dcaFlipped ? '↩' : '?'}</button>
+      {#if !dcaFlipped}
+        <button class="dca-info-btn" on:click={() => dcaFlipped = true} aria-label="Show DCA formula">?</button>
+      {:else}
+        <button class="dca-info-btn" on:click={() => dcaFlipped = false} aria-label="Back to signal view">↩</button>
+      {/if}
     </div>
 
     <!-- BITCOIN NETWORK — expanded with mempool data -->
@@ -1038,12 +1044,6 @@
 
   /* ── DCA FLIP SCENE ─────────────────────────────────────── */
   .dca-flip-scene { position:relative; z-index:2; }
-  /* Front face stays in normal flow (sets card height); back face absolutely overlays it */
-  .dca-face--back { position:absolute; top:0; left:0; right:0; }
-  /* Front face: visibility:hidden keeps it in normal flow (preserving card height) while blocking interaction.
-     Back face: display:none is used instead because it's absolutely positioned and layout-impact doesn't matter. */
-  .dca-face--hidden { visibility:hidden; pointer-events:none; }
-  .dca-face--back.dca-face--hidden { display:none; visibility:visible; }
   .dca-face { animation:dcaFaceIn .38s cubic-bezier(.25,.46,.45,.94) both; position:relative; }
   @keyframes dcaFaceIn {
     from { opacity:0; transform:scale(.97); }
