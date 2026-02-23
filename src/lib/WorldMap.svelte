@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import type { Threat } from '$lib/settings';
   import type { ThreatEvent } from '../routes/api/events/+server';
+  import { settings } from '$lib/store';
 
   let mapContainer: HTMLDivElement;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,9 +67,18 @@
   function zoomOut()   { if (svg && zoom) svg.transition().duration(280).call(zoom.scaleBy, 1/1.5); }
   function resetZoom() { if (svg && zoom && d3Module) svg.transition().duration(280).call(zoom.transform, d3Module.zoomIdentity); }
 
-  /** Fetch static threat hotspots */
+  /** Fetch static threat hotspots, honouring the user's disabled/custom settings */
   async function fetchThreats(): Promise<{ threats: Threat[]; conflictCountryIds: string[]; updatedAt: string }> {
-    const res = await fetch('/api/threats');
+    const threatSettings = $settings.threats;
+    const params = new URLSearchParams();
+    if (threatSettings.disabledIds.length > 0) {
+      params.set('disabled', JSON.stringify(threatSettings.disabledIds));
+    }
+    if (threatSettings.customThreats.length > 0) {
+      params.set('custom', JSON.stringify(threatSettings.customThreats));
+    }
+    const query = params.toString() ? `?${params.toString()}` : '';
+    const res = await fetch(`/api/threats${query}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
@@ -177,7 +187,14 @@
       }
 
       // ── Live RSS event markers ──────────────────────────────────
+      // Skip events whose geocoded position is too close to an existing threat marker
+      // (within ~3° in both lat and lon) to avoid visual overlap.
+      const MIN_MARKER_DISTANCE_DEGREES = 3;
+      const isNearThreat = (lat: number, lon: number) =>
+        threats.some(h => Math.abs(h.lat - lat) < MIN_MARKER_DISTANCE_DEGREES && Math.abs(h.lon - lon) < MIN_MARKER_DISTANCE_DEGREES);
+
       for (const ev of eventData.events) {
+        if (isNearThreat(ev.lat, ev.lon)) continue;
         const pos = projection([ev.lon, ev.lat]);
         if (!pos) continue;
         const [x, y] = pos;
