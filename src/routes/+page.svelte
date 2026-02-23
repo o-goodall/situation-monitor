@@ -1043,11 +1043,11 @@
   }
 
   /* ── DCA FLIP SCENE ─────────────────────────────────────── */
-  .dca-flip-scene { perspective:900px; position:relative; z-index:2; }
+  .dca-flip-scene { position:relative; z-index:2; }
   .dca-face { animation:dcaFaceIn .38s cubic-bezier(.25,.46,.45,.94) both; position:relative; }
   @keyframes dcaFaceIn {
-    from { opacity:0; transform:rotateY(72deg) scale(.97); }
-    to   { opacity:1; transform:rotateY(0deg)  scale(1);   }
+    from { opacity:0; transform:scale(.97); }
+    to   { opacity:1; transform:scale(1);   }
   }
   @media (prefers-reduced-motion:reduce) { .dca-face { animation:none; } }
 

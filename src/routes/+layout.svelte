@@ -882,14 +882,9 @@
   .eye-wrap { width:136px; height:58px; position:relative; flex-shrink:0; overflow:visible; display:flex; align-items:center; justify-content:center; }
   .eye-svg { width:100%; height:100%; overflow:visible; }
 
-  /* Outline subtle pulse then fades to silver after reveal */
+  /* Outline subtle pulse — stays orange on both desktop and mobile */
   @keyframes eyeOutlinePulse { 0%,100%{opacity:.78} 50%{opacity:.96} }
-  @keyframes eyeOutlineToSilver { from{stroke:#f7931a} to{stroke:#c8c8c8} }
-  @keyframes eyeCornerToSilver { from{fill:rgba(247,147,26,0.6)} to{fill:rgba(200,200,200,0.3)} }
-  @keyframes eyeLidTopToSilver { from{stroke:rgba(247,147,26,0.55)} to{stroke:rgba(200,200,200,0.3)} }
-  .eye-outline { animation:eyeOutlinePulse 3s ease-in-out infinite, eyeOutlineToSilver 2s ease-out 3.5s forwards; }
-  .eye-corner  { animation:eyeCornerToSilver 2s ease-out 3.5s forwards; }
-  .eye-lid-top { animation:eyeLidTopToSilver 2s ease-out 3.5s forwards; }
+  .eye-outline { animation:eyeOutlinePulse 3s ease-in-out infinite; }
 
   /* Eyelid reveal — CSS animation (more reliable than SMIL across browsers) */
   @keyframes eyeLidReveal {
@@ -909,16 +904,16 @@
   .brand:hover .eye-iris, .brand:focus-within .eye-iris {
     filter: drop-shadow(0 0 2px rgba(247,147,26,0.9)) drop-shadow(0 0 5px rgba(247,147,26,0.5));
   }
-  /* Shimmer sweep on brand hover — clipped to eye shape so it doesn't spill outside.
-     Ellipse values slightly inset from the eye outline (stroke-width ~0.85 adds ~1px outside
-     the path) to keep the shimmer firmly within the visible eye border. */
+  /* Shimmer sweep on brand hover — clipped to the pupil so it stays inside the eye.
+     Pupil is at cx=30 cy=12 r=2.2 in the 60×24 SVG viewBox, which maps to ~50%/50%
+     of the eye-wrap; radii in % keep it tight to the pupil on all screen sizes. */
   .eye-wrap::after {
     content:''; position:absolute; inset:0; pointer-events:none; z-index:2;
     background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.45) 50%,transparent 75%);
     background-size:200% 100%; background-position:-200% center;
     transition:background-position .4s ease, opacity .2s ease;
     opacity:0;
-    clip-path: ellipse(38% 33% at 50% 50%);
+    clip-path: ellipse(5% 11% at 50% 50%);
   }
   .brand:hover .eye-wrap::after, .brand:focus-within .eye-wrap::after {
     background-position:200% center; opacity:1;
@@ -926,8 +921,6 @@
 
   @media (prefers-reduced-motion:reduce) {
     .eye-outline { animation:none; }
-    .eye-corner  { animation:none; }
-    .eye-lid-top { animation:none; }
     .eye-lid-reveal { display:none; animation:none; }
     .brand-name { animation:none !important; opacity:1 !important; }
   }
