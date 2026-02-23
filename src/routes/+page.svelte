@@ -803,7 +803,6 @@
 
   .stat-tile--chart { padding-bottom: 0; cursor:default; }
   .stat-tile--chart::before { display:none; }
-  .stat-tile--chart:hover { transform:none !important; border-color:var(--glass-bd) !important; box-shadow:none !important; }
   .tile-spark { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; opacity: 0.7; pointer-events: none; }
   .stat-tile--chart .price-pair, .stat-tile--chart .stat-l, .stat-tile--chart .stat-l-row { position: relative; z-index: 1; }
   .stat-tile--chart .stat-l-row { display: flex; justify-content: center; align-items: center; gap: 10px; padding-bottom: 56px; }
@@ -856,10 +855,8 @@
     .halving-date--glow { animation: none; -webkit-text-fill-color: var(--orange); color: var(--orange); }
   }
 
-  /* Static stat tile — no hover lift or underline animation */
+  /* Static stat tile — no interactive cursor */
   .stat-tile--static { cursor:default; }
-  .stat-tile--static:hover { transform:none !important; border-color:var(--glass-bd) !important; box-shadow:none !important; }
-  .stat-tile--static:hover::before { width:0 !important; }
 
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(3,1fr); } }
   @media (max-width:500px) {
@@ -1053,14 +1050,6 @@
     to   { opacity:1; transform:rotateY(0deg)  scale(1);   }
   }
   @media (prefers-reduced-motion:reduce) { .dca-face { animation:none; } }
-  /* On mobile, lock the flip-scene to a minimum height equal to the front face
-     so flipping to the back doesn't collapse the tile.
-     280px: enough to show header + hero amount + brief loading state.
-     200px: minimum for the formula back-face list items. */
-  @media (max-width:700px) {
-    .signal-card { min-height:200px; }
-    .dca-flip-scene { min-height:150px; }
-  }
 
   /* Small "?" info button — bottom-right corner of the DCA front face */
   .dca-info-btn {

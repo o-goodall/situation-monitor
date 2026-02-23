@@ -910,15 +910,15 @@
     filter: drop-shadow(0 0 2px rgba(247,147,26,0.9)) drop-shadow(0 0 5px rgba(247,147,26,0.5));
   }
   /* Shimmer sweep on brand hover — clipped to eye shape so it doesn't spill outside.
-     Ellipse values approximate the eye outline: ~80% width (10%–90% of viewBox x),
-     ~71% height (14.6%–85.4% of viewBox y), centred at 50% 50%. */
+     Ellipse values slightly inset from the eye outline (stroke-width ~0.85 adds ~1px outside
+     the path) to keep the shimmer firmly within the visible eye border. */
   .eye-wrap::after {
     content:''; position:absolute; inset:0; pointer-events:none; z-index:2;
     background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.45) 50%,transparent 75%);
     background-size:200% 100%; background-position:-200% center;
     transition:background-position .4s ease, opacity .2s ease;
     opacity:0;
-    clip-path: ellipse(40% 35% at 50% 50%);
+    clip-path: ellipse(38% 33% at 50% 50%);
   }
   .brand:hover .eye-wrap::after, .brand:focus-within .eye-wrap::after {
     background-position:200% center; opacity:1;
