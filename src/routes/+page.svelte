@@ -338,7 +338,6 @@
           <div class="dca-face">
             <div class="dca-formula-head">
               <p class="eyebrow orange">The Formula</p>
-              <button class="btn-ghost" on:click={() => dcaFlipped = false} aria-label="Back to signal view">↩ Back</button>
             </div>
             <ol class="formula-steps">
               <li><strong>Price position</strong> — 100% allocation at your low price target, tapering linearly to 0% at high.</li>
@@ -358,6 +357,8 @@
       </div>
       {#if !dcaFlipped}
         <button class="dca-info-btn" on:click={() => dcaFlipped = true} aria-label="Show DCA formula">?</button>
+      {:else}
+        <button class="dca-info-btn" on:click={() => dcaFlipped = false} aria-label="Back to signal view">↩</button>
       {/if}
     </div>
 
@@ -647,20 +648,10 @@
 <section id="intel" class="section" aria-label="Intel">
   <div class="section-header">
     <h2 class="sect-title">Intel</h2>
-    <!-- Toggle: Cutting Edge / Classic — Apple-style -->
+    <!-- Toggle: Cutting Edge / Classic — segmented buttons -->
     <div class="intel-toggle-wrap" role="group" aria-label="Intel view">
-      <span class="toggle-icon" class:toggle-icon--active={intelView==='cutting-edge'} title="Cutting Edge — prediction markets">◈</span>
-      <button
-        class="apple-toggle"
-        class:apple-toggle--classic={intelView==='classic'}
-        on:click={switchIntelView}
-        role="switch"
-        aria-checked={intelView === 'cutting-edge'}
-        aria-label="Switch intel view. Currently {intelView === 'cutting-edge' ? 'Cutting Edge' : 'Classic'}"
-      >
-        <span class="apple-knob"></span>
-      </button>
-      <span class="toggle-icon" class:toggle-icon--active={intelView==='classic'} title="Classic — news feed">☰</span>
+      <button class="crb" class:crb--active={intelView==='cutting-edge'} on:click={() => { if (intelView !== 'cutting-edge') switchIntelView(); }} aria-pressed={intelView === 'cutting-edge'} title="Cutting Edge — prediction markets">◈ Markets</button>
+      <button class="crb" class:crb--active={intelView==='classic'} on:click={() => { if (intelView !== 'classic') switchIntelView(); }} aria-pressed={intelView === 'classic'} title="Classic — news feed">☰ News</button>
     </div>
   </div>
 
@@ -872,9 +863,8 @@
 
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(3,1fr); } }
   @media (max-width:500px) {
-    /* BTC price tile spans full width; sats + halving sit side-by-side below */
-    .stat-strip{ grid-template-columns:1fr 1fr; gap:10px; }
-    .stat-tile--chart { grid-column:1 / -1; }
+    /* Single column on mobile — all stat tiles full width like portfolio cards */
+    .stat-strip{ grid-template-columns:1fr; gap:10px; }
     .stat-n { font-size:1.25rem; }
     .stat-tile { padding:16px 12px; }
     .stat-tile--chart .stat-l-row { padding-bottom:52px; }
@@ -902,10 +892,11 @@
     content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
     background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.55) 50%,transparent 75%);
     background-size:200% 100%; background-position:-200% center;
-    transition:background-position .4s ease;
+    transition:background-position .4s ease, opacity .2s ease;
+    opacity:0;
   }
   .crb:hover { color:var(--orange); border-color:rgba(247,147,26,.45); background:rgba(247,147,26,.14); box-shadow:0 0 8px rgba(247,147,26,.25); }
-  .crb:hover::after { background-position:200% center; }
+  .crb:hover::after { background-position:200% center; opacity:1; }
   .crb--active { background:rgba(247,147,26,.15); border-color:rgba(247,147,26,.5); color:var(--orange); }
   :global(html.light) .crb { background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.5); }
   :global(html.light) .crb:hover { color:#c77a10; border-color:rgba(200,120,16,.45); background:rgba(247,147,26,.1); box-shadow:0 0 8px rgba(200,120,16,.2); }
@@ -1066,14 +1057,14 @@
      280px: enough to show header + hero amount + brief loading state.
      200px: minimum for the formula back-face list items. */
   @media (max-width:700px) {
-    .signal-card { min-height:280px; }
-    .dca-flip-scene { min-height:200px; }
+    .signal-card { min-height:200px; }
+    .dca-flip-scene { min-height:150px; }
   }
 
   /* Small "?" info button — bottom-right corner of the DCA front face */
   .dca-info-btn {
     position:absolute; bottom:8px; right:8px; z-index:3;
-    width:22px; height:22px; padding:0; border-radius:50%;
+    width:28px; height:28px; padding:0; border-radius:4px;
     background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
     color:rgba(255,255,255,.38); font-size:.62rem; font-weight:700;
     line-height:1; cursor:pointer;
@@ -1082,16 +1073,17 @@
     overflow:hidden;
   }
   .dca-info-btn::after {
-    content:''; position:absolute; inset:0; border-radius:50%; pointer-events:none;
+    content:''; position:absolute; inset:0; border-radius:inherit; pointer-events:none;
     background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.55) 50%,transparent 75%);
     background-size:200% 100%; background-position:-200% center;
-    transition:background-position .4s ease;
+    transition:background-position .4s ease, opacity .2s ease;
+    opacity:0;
   }
   .dca-info-btn:hover {
     background:rgba(247,147,26,.14); border-color:rgba(247,147,26,.45);
     color:var(--orange); box-shadow:0 0 8px rgba(247,147,26,.25);
   }
-  .dca-info-btn:hover::after { background-position:200% center; }
+  .dca-info-btn:hover::after { background-position:200% center; opacity:1; }
   :global(html.light) .dca-info-btn { background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.12); color:rgba(0,0,0,.4); }
   :global(html.light) .dca-info-btn:hover { background:rgba(247,147,26,.1); border-color:rgba(247,147,26,.35); color:#c77a10; }
 
@@ -1259,10 +1251,11 @@
     content:''; position:absolute; inset:0; pointer-events:none; border-radius:inherit;
     background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.55) 50%,transparent 75%);
     background-size:200% 100%; background-position:-200% center;
-    transition:background-position .4s ease;
+    transition:background-position .4s ease, opacity .2s ease;
+    opacity:0;
   }
   .btn-icon:hover { border-color:rgba(247,147,26,.45); color:var(--orange); background:rgba(247,147,26,.14); box-shadow:0 0 8px rgba(247,147,26,.25); }
-  .btn-icon:hover::after { background-position:200% center; }
+  .btn-icon:hover::after { background-position:200% center; opacity:1; }
   :global(html.light) .btn-icon { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.12); color:rgba(0,0,0,.5); }
   :global(html.light) .btn-icon:hover { border-color:rgba(200,120,16,.45); color:#c77a10; background:rgba(247,147,26,.1); box-shadow:0 0 8px rgba(200,120,16,.2); }
 
