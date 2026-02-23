@@ -323,37 +323,17 @@
       newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
         .attr('fill', col).attr('fill-opacity', group.hasBreaking ? 1 : 0.7);
 
-      // Count badge for multiple stories at the same location
-      if (count > 1) {
-        newsLayer.append('text')
-          .attr('x', x + r + 1).attr('y', y - r)
-          .attr('fill', col).attr('font-size', '7px').attr('font-family', 'monospace')
-          .attr('font-weight', 'bold').attr('pointer-events', 'none')
-          .text(count);
-      }
-
       newsLayer.append('circle').attr('cx', x).attr('cy', y).attr('r', 10)
         .attr('fill', 'transparent').attr('class', 'wm-hit')
         .on('mouseenter', (e: MouseEvent) => {
-          const lines: string[] = [];
-          if (group.hasBreaking) lines.push('🔴 BREAKING');
-          for (const ev of group.items.slice(0, 3)) {
-            lines.push(`📰 ${ev.source} — ${timeAgo(ev.pubDate)}`);
-          }
-          if (count > 3) lines.push(`+${count - 3} more`);
-          const title = count > 1 ? `${count} stories — ${group.items[0].title}` : group.items[0].title;
-          showTip(e, title, col, lines);
+          const raw = group.items[0].title;
+          const shortTitle = raw.length > 72 ? raw.slice(0, 69) + '…' : raw;
+          const lines: string[] = group.hasBreaking ? ['🔴 BREAKING'] : [];
+          showTip(e, shortTitle, col, lines);
         })
         .on('mousemove', moveTip)
         .on('mouseleave', hideTip);
     }
-  }
-
-  function timeAgo(d: string): string {
-    try {
-      const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
-      return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.floor(m / 60)}h ago` : `${Math.floor(m / 1440)}d ago`;
-    } catch { return ''; }
   }
 
   function calcTerminator(): [number, number][] {
@@ -440,7 +420,7 @@
   .wm-wrap {
     position: relative;
     width: 100%;
-    height: 340px;
+    height: 460px;
     background: #0d1b2a;
     border-radius: 10px;
     overflow: hidden;
