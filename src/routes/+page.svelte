@@ -16,24 +16,30 @@
   import PriceChart from '$lib/PriceChart.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
-  let btcChartRange: '1D' | '1W' | '1Y' = '1D';
+  let btcChartRange: '1D' | '1W' | '1Y' | 'All' = '1D';
   let btcChartData: { t: number; p: number }[] = [];
   let btcChartLoading = false;
+  let btcDayOpenPrice = 0; // price at start of today for daily % change
 
   async function fetchBtcChart(r = btcChartRange) {
     btcChartLoading = true;
     try {
-      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y' };
+      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', 'All':'max' };
       const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
       btcChartData = d.prices ?? [];
+      if (r === '1D' && btcChartData.length > 0) btcDayOpenPrice = btcChartData[0].p;
     } catch { btcChartData = []; }
     finally { btcChartLoading = false; }
   }
 
-  async function setBtcChartRange(r: '1D' | '1W' | '1Y') {
+  async function setBtcChartRange(r: '1D' | '1W' | '1Y' | 'All') {
     btcChartRange = r;
     await fetchBtcChart(r);
   }
+
+  $: btcDayChangePct = btcDayOpenPrice > 0 && $btcPrice > 0
+    ? (($btcPrice - btcDayOpenPrice) / btcDayOpenPrice) * 100
+    : null;
 
   // Keep last chart price point in sync with live WebSocket price.
   // Only update when price changes by >0.05% to avoid excessive array copies.
@@ -207,7 +213,7 @@
       <div class="price-pair" aria-live="polite" aria-atomic="true">
         <span class="price-usd" style="color:{$priceColor};transition:color .5s;">{$btcPrice>0?'$'+n($btcPrice):'—'}</span>
         {#if $btcDisplayPrice !== null && displayCur !== 'USD'}
-          <span class="price-sep">·</span>
+          <span class="price-sep">|</span>
           <span class="price-alt" style="color:{$priceColor};transition:color .5s;">${n($btcDisplayPrice,0)}</span>
         {/if}
       </div>
@@ -215,9 +221,12 @@
         <span class="stat-l">
           <span class="price-label-usd">USD</span>
           {#if $btcDisplayPrice !== null && displayCur !== 'USD'}
-            <span class="price-label-sep"> · </span><span class="price-label-cur">{displayCur}</span>
+            <span class="price-label-sep"> | </span><span class="price-label-cur">{displayCur}</span>
           {/if}
         </span>
+        {#if btcDayChangePct !== null}
+          <span class="price-day-change" style="color:{btcDayChangePct >= 0 ? 'var(--up)' : 'var(--dn)'};">{btcDayChangePct >= 0 ? '+' : ''}{btcDayChangePct.toFixed(2)}%</span>
+        {/if}
       </div>
     </div>
 
@@ -487,7 +496,7 @@
           <PriceChart
             prices={hashrateData}
             fillParent={true}
-            range={hashrateChartRange === 'All' ? 'max' : hashrateChartRange === '2Y' ? '5y' : '1y'}
+            range={hashrateChartRange === 'All' ? 'max' : hashrateChartRange === '2Y' ? '5y' : hashrateChartRange === '1Y' ? '1y' : '7d'}
             formatY={(v) => `${v.toFixed(0)} EH/s`}
             lineColor="#f7931a"
             overlays={[
@@ -651,6 +660,7 @@
           <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
           <button class="crb" class:crb--active={btcChartRange==='1W'} on:click={() => setBtcChartRange('1W')}>1W</button>
           <button class="crb" class:crb--active={btcChartRange==='1Y'} on:click={() => setBtcChartRange('1Y')}>1Y</button>
+          <button class="crb" class:crb--active={btcChartRange==='All'} on:click={() => setBtcChartRange('All')}>All</button>
         </div>
       </div>
     </div>
@@ -662,7 +672,7 @@
         <PriceChart
           prices={btcChartData}
           height={160}
-          range={btcChartRange === '1D' ? '1d' : '1y'}
+          range={btcChartRange === '1D' ? '1d' : btcChartRange === '1W' ? '7d' : btcChartRange === 'All' ? 'max' : '1y'}
         />
       {:else}
         <p class="dim" style="text-align:center;padding:60px 0;">Loading chart data…</p>
@@ -842,9 +852,16 @@
   .price-usd { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; }
   .price-sep { font-size:.9rem; color:var(--t3); font-weight:400; }
   .price-alt { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; }
-  .price-label-usd { color:rgba(255,255,255,.55); font-weight:700; }
+  .price-label-usd {
+    font-weight: 700;
+    background: linear-gradient(105deg, #ef4444 0%, #f8f8f8 50%, #3b82f6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
   .price-label-sep { color:var(--t3); }
   .price-label-cur { color:#22c55e; font-weight:700; }
+  .price-day-change { font-size:.6rem; font-weight:700; letter-spacing:.04em; }
   @media (max-width:500px) {
     .price-usd { font-size:1.2rem; }
     .price-alt { font-size:1.2rem; }
@@ -1530,7 +1547,7 @@
   :global(html.light) .news-img-overlay { background:linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.6) 70%, rgba(0,0,0,.82) 100%); }
 
   /* ── LIGHT MODE OVERRIDES (page-level) ────────────────── */
-  :global(html.light) .price-label-usd { color:rgba(0,0,0,.45); }
+  :global(html.light) .price-label-usd { background: linear-gradient(105deg, #dc2626 0%, #555 50%, #1d4ed8 100%); -webkit-text-fill-color: transparent; }
   :global(html.light) .sats-cur { color:#111; }
   :global(html.light) .sats-label-sats { -webkit-text-fill-color:unset; background:none; color:#c77a10; animation:none; }
   :global(html.light) .sats-label-cur  { color:#16a34a; }
