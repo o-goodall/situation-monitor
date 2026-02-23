@@ -165,7 +165,11 @@ export function calcDCA(
       name: 'Halving Window',
       description: 'Within 365 days of the next Bitcoin halving event',
       active: halvingActive,
-      value: halvingDate ? halvingDate : (halvingActive ? 'Active' : 'Inactive'),
+      value: halvingActive
+        ? (halvingDate || 'Active')
+        : live.halvingDaysLeft !== null && live.halvingDaysLeft > 365
+          ? `${(live.halvingDaysLeft - 365).toLocaleString()} days`
+          : 'Inactive',
       boost: 10,
       source: 'schedule',
     },
