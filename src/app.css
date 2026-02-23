@@ -302,6 +302,18 @@ body::after {
   body::after { display:none; }
   /* Tone down ambient background animation on mobile */
   body::before { animation:none; opacity:.65; }
+  /* Disable continuous text-shadow and box-shadow animations on mobile.
+     These run on every heading and primary button, causing constant repaints
+     that interact with GPU compositor layers and produce the header/button
+     flicker seen in Brave mobile. Use static shadows instead. */
+  h1, h2, h3, h4, h5, h6, .sect-title {
+    animation: none;
+    text-shadow: 0 0 14px rgba(247,147,26,0.7), 0 0 28px rgba(247,147,26,0.35);
+  }
+  .btn-primary {
+    animation: none;
+    box-shadow: 0 0 20px rgba(247,147,26,0.4);
+  }
 }
 
 @media (max-width:768px) {

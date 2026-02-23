@@ -944,8 +944,12 @@
   .mobile-hdr-right { display:none; align-items:center; gap:6px; }
 
   @media (max-width:768px) {
-    .hdr { position:relative; height:54px; padding:0 16px; backdrop-filter:blur(12px) saturate(160%); -webkit-backdrop-filter:blur(12px) saturate(160%); }
-    .hdr--scrolled { height:54px; }
+    /* Remove backdrop-filter on mobile — it forces the header to re-composite with
+       the animated canvas on every frame, causing the header/buttons to flash. Use
+       a solid background instead and promote the element to its own GPU layer so it
+       is unaffected by paints in other layers. */
+    .hdr { position:relative; height:54px; padding:0 16px; backdrop-filter:none; -webkit-backdrop-filter:none; background:rgba(10,10,10,0.97); transform:translateZ(0); }
+    .hdr--scrolled { height:54px; background:rgba(10,10,10,0.99); box-shadow:0 4px 28px rgba(247,147,26,0.10); }
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:0; }
