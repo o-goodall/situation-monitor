@@ -39,13 +39,10 @@
     mapError   = '';
 
     try {
-      // Dynamic imports — Leaflet is browser-only
-      const [L, heatPlugin] = await Promise.all([
-        import('leaflet'),
-        import('leaflet.heat'),
-      ]);
-      // leaflet.heat attaches itself to the global L; ensure it's registered
-      void heatPlugin;
+      // Dynamic imports — Leaflet is browser-only; load sequentially so that
+      // window.L is set by Leaflet before leaflet.heat tries to access it as a global
+      const L = await import('leaflet');
+      await import('leaflet.heat');
 
       // Fetch both data sources in parallel
       const [threatData, eventData] = await Promise.all([
@@ -91,8 +88,10 @@
       ]);
 
       if (heatPoints.length > 0) {
+        // leaflet.heat adds heatLayer to the global window.L, not to the ESM
+        // module namespace — access it through the global after sequential load
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        (L as any).heatLayer(heatPoints, {
+        (window as any).L.heatLayer(heatPoints, {
           radius:    25,
           blur:      20,
           maxZoom:   10,
