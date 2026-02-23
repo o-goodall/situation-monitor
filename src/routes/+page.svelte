@@ -261,7 +261,7 @@
       <!-- Flip container — both faces always rendered; front stays in flow to lock card height -->
       <div class="dca-flip-scene">
         <!-- FRONT FACE — signal view; always in flow to set card height -->
-        <div class="dca-face dca-face--front" class:dca-face--hidden={dcaFlipped} aria-hidden={dcaFlipped || undefined}>
+        <div class="dca-face dca-face--front" class:dca-face--hidden={dcaFlipped} aria-hidden={dcaFlipped ? 'true' : 'false'}>
           <div class="gc-head">
             <div>
               <p class="eyebrow orange">DCA Signal</p>
@@ -333,7 +333,7 @@
         </div>
 
         <!-- BACK FACE — formula explanation; absolutely positioned so it doesn't affect card height -->
-        <div class="dca-face dca-face--back" class:dca-face--hidden={!dcaFlipped} aria-hidden={!dcaFlipped || undefined}>
+        <div class="dca-face dca-face--back" class:dca-face--hidden={!dcaFlipped} aria-hidden={!dcaFlipped ? 'true' : 'false'}>
           <div class="dca-formula-head">
             <p class="eyebrow orange">The Formula</p>
           </div>
@@ -1040,9 +1040,10 @@
   .dca-flip-scene { position:relative; z-index:2; }
   /* Front face stays in normal flow (sets card height); back face absolutely overlays it */
   .dca-face--back { position:absolute; top:0; left:0; right:0; }
-  /* Hide inactive face without removing it from layout (front stays in flow) */
+  /* Front face: visibility:hidden keeps it in normal flow (preserving card height) while blocking interaction.
+     Back face: display:none is used instead because it's absolutely positioned and layout-impact doesn't matter. */
   .dca-face--hidden { visibility:hidden; pointer-events:none; }
-  .dca-face--back.dca-face--hidden { display:none; }
+  .dca-face--back.dca-face--hidden { display:none; visibility:visible; }
   .dca-face { animation:dcaFaceIn .38s cubic-bezier(.25,.46,.45,.94) both; position:relative; }
   @keyframes dcaFaceIn {
     from { opacity:0; transform:scale(.97); }
