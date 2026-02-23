@@ -944,7 +944,7 @@
   .mobile-hdr-right { display:none; align-items:center; gap:6px; }
 
   @media (max-width:768px) {
-    .hdr { position:relative; height:54px; padding:0 16px; backdrop-filter:blur(12px) saturate(160%); -webkit-backdrop-filter:blur(12px) saturate(160%); }
+    .hdr { position:relative; height:54px; padding:0 16px; backdrop-filter:blur(12px) saturate(160%); -webkit-backdrop-filter:blur(12px) saturate(160%); transform:translateZ(0); will-change:transform; transition:background .15s, box-shadow .15s; }
     .hdr--scrolled { height:54px; }
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
@@ -1128,7 +1128,7 @@
   :global(html.light) body::after { background: linear-gradient(transparent 50%, rgba(0,0,0,0.008) 50%); }
   :global(html.light) .hdr { background:rgba(255,255,255,.92); border-bottom-color:rgba(0,0,0,.08); }
   :global(html.light) .hdr--scrolled { background:rgba(255,255,255,.97); box-shadow:0 2px 12px rgba(0,0,0,.08); }
-  :global(html.light) .brand-name { color:#111; }
+  /* brand-name keeps its default light color — the eye background is always dark so white text stays readable in both modes */
   :global(html.light) .hdr-clock { color:rgba(0,0,0,.45); }
   :global(html.light) .nav-link { color:rgba(0,0,0,.55); }
   :global(html.light) .nav-link:hover { color:#c77a10; border-color:rgba(200,120,16,.45); background:rgba(247,147,26,.1); box-shadow:0 0 8px rgba(200,120,16,.2); }
