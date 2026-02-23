@@ -519,15 +519,15 @@
         <!-- Corner accent dots -->
         <circle class="eye-corner" cx="6"  cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
         <circle class="eye-corner" cx="54" cy="12" r="1.1" fill="rgba(247,147,26,0.6)"/>
-        <!-- Eyelid cover — slides up on load to reveal GL4NCE text (once, on page load) -->
+        <!-- Eyelid cover — slides up on load via CSS animation to reveal GL4NCE text -->
         <g clip-path="url(#eyeClip)">
-          <rect class="eye-lid-reveal" x="6" y="3.5" width="48" height="17" fill="#040201">
-            <animate attributeName="y" from="3.5" to="-17" dur="2.4s" begin="0.4s" fill="freeze" calcMode="spline" keyTimes="0;1" keySplines="0.42 0 0.18 1"/>
-          </rect>
+          <rect class="eye-lid-reveal" x="6" y="3.5" width="48" height="17" fill="#040201"/>
         </g>
-        <!-- Iris and pupil — revealed on hover/tap -->
-        <circle class="eye-iris"  cx="30" cy="12" r="5"   fill="rgba(247,147,26,0.06)" stroke="rgba(247,147,26,0.55)" stroke-width="0.55"/>
-        <circle class="eye-pupil" cx="30" cy="12" r="2.2" fill="rgba(14,2,1,0.92)"     stroke="rgba(247,147,26,0.28)" stroke-width="0.3"/>
+        <!-- Iris and pupil — revealed on hover/tap, clipped to eye shape -->
+        <g clip-path="url(#eyeClip)">
+          <circle class="eye-iris"  cx="30" cy="12" r="5"   fill="rgba(247,147,26,0.06)" stroke="rgba(247,147,26,0.55)" stroke-width="0.55"/>
+          <circle class="eye-pupil" cx="30" cy="12" r="2.2" fill="rgba(14,2,1,0.92)"     stroke="rgba(247,147,26,0.28)" stroke-width="0.3"/>
+        </g>
       </svg>
       <span class="brand-name">GL<span class="b-4">4</span>NCE</span>
     </div>
@@ -891,20 +891,34 @@
   .eye-corner  { animation:eyeCornerToSilver 2s ease-out 3.5s forwards; }
   .eye-lid-top { animation:eyeLidTopToSilver 2s ease-out 3.5s forwards; }
 
-  /* Eyelid reveal: hidden once open (SMIL animate handles the motion in SVG) */
-  .eye-lid-reveal { transform-box:fill-box; }
+  /* Eyelid reveal — CSS animation (more reliable than SMIL across browsers) */
+  @keyframes eyeLidReveal {
+    from { transform: translateY(0); }
+    to   { transform: translateY(-130%); }
+  }
+  .eye-lid-reveal {
+    transform-box: fill-box;
+    animation: eyeLidReveal 2.4s cubic-bezier(0.42, 0, 0.18, 1) 0.4s both;
+  }
 
   /* ── PUPIL & IRIS — hover/tap interactive effect ────────── */
-  .eye-iris, .eye-pupil { opacity:0; transition:opacity .3s ease; }
+  .eye-iris, .eye-pupil { opacity:0; transition:opacity .3s ease, filter .3s ease; }
   .brand:hover .eye-iris, .brand:focus-within .eye-iris,
   .brand:hover .eye-pupil, .brand:focus-within .eye-pupil { opacity:1; }
-  /* Shimmer sweep on brand hover — same as btn-ghost shimmer */
+  /* Orange glow on iris when hovered */
+  .brand:hover .eye-iris, .brand:focus-within .eye-iris {
+    filter: drop-shadow(0 0 2px rgba(247,147,26,0.9)) drop-shadow(0 0 5px rgba(247,147,26,0.5));
+  }
+  /* Shimmer sweep on brand hover — clipped to eye shape so it doesn't spill outside.
+     Ellipse values approximate the eye outline: ~80% width (10%–90% of viewBox x),
+     ~71% height (14.6%–85.4% of viewBox y), centred at 50% 50%. */
   .eye-wrap::after {
     content:''; position:absolute; inset:0; pointer-events:none; z-index:2;
     background:linear-gradient(105deg,transparent 25%,rgba(255,255,255,.45) 50%,transparent 75%);
     background-size:200% 100%; background-position:-200% center;
     transition:background-position .4s ease, opacity .2s ease;
     opacity:0;
+    clip-path: ellipse(40% 35% at 50% 50%);
   }
   .brand:hover .eye-wrap::after, .brand:focus-within .eye-wrap::after {
     background-position:200% center; opacity:1;
@@ -914,7 +928,7 @@
     .eye-outline { animation:none; }
     .eye-corner  { animation:none; }
     .eye-lid-top { animation:none; }
-    .eye-lid-reveal { display:none; }
+    .eye-lid-reveal { display:none; animation:none; }
     .brand-name { animation:none !important; opacity:1 !important; }
   }
 
@@ -942,7 +956,7 @@
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:0; }
-    .brand-name { font-size:0.82rem; }
+    .brand-name { font-size:0.74rem; }
     .eye-wrap { width:104px; height:44px; }
     .mobile-hdr-right { display:flex; }
     /* Uniform button size for all header controls on mobile */
