@@ -16,6 +16,8 @@
   import PriceChart from '$lib/PriceChart.svelte';
   import WorldMap from '$lib/WorldMap.svelte';
   import CompareChart from '$lib/CompareChart.svelte';
+  import PersonalGreeting from '$lib/PersonalGreeting.svelte';
+  import { getStoredSettings } from '$lib/personalization';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
   let btcChartRange: '1D' | '1W' | '1Y' | '5Y' = '1D';
@@ -301,13 +303,23 @@
     fetchHashrateChart();
     fetchBtcGoldRange();
     fetchAuData();
+    // Re-read personalization state after hydration so SSR default (false) is corrected
+    personalizationEnabled = getStoredSettings().enabled;
   });
+
+  // Initialize from localStorage on mount; SSR-safe default is false
+  let personalizationEnabled = typeof window !== 'undefined' ? getStoredSettings().enabled : false;
 </script>
 
 <!-- ══════════════════════════════════════════════════════════
   ① SIGNAL SECTION
 ═══════════════════════════════════════════════════════════ -->
 <section id="signal" class="section" aria-label="Signal">
+  {#if personalizationEnabled}
+    <div class="pg-container">
+      <PersonalGreeting />
+    </div>
+  {/if}
   <div class="section-header">
     <h2 class="sect-title">Signal</h2>
   </div>
@@ -1048,6 +1060,7 @@
   }
   .section::before { content: ''; position: absolute; inset: -20% 0; z-index: -1; background: radial-gradient(ellipse at 50% 30%, rgba(247,147,26,.04) 0%, transparent 70%); transform: translateY(0); transition: transform 0.6s ease-out; pointer-events: none; }
   .section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+  .pg-container { margin-bottom: 20px; }
 
   .section-divider {
     max-width:1440px; margin:48px auto 0;

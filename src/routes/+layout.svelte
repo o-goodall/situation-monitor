@@ -2,6 +2,7 @@
   import '../app.css';
   import { onMount, onDestroy } from 'svelte';
   import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
+  import SettingsPersonalizationToggle from '$lib/SettingsPersonalizationToggle.svelte';
   import type { FeedCategory } from '$lib/settings';
   import {
     settings, showSettings, saved, time, lightMode, activeSection,
@@ -714,6 +715,9 @@
         <label class="df"><span class="dlbl">Currency</span><input bind:value={$settings.ghostfolio.currency} placeholder="AUD" class="dinp" style="max-width:80px;"/></label>
       </div>
     </div>
+    <div class="dg"><p class="dg-hd">Personalization</p>
+      <SettingsPersonalizationToggle />
+    </div>
     <button on:click={saveAll} class="btn-primary" class:d-save--ok={$saved}>{$saved?'✓ Saved':'Save Settings'}</button>
   </div>
 </div>
@@ -786,6 +790,9 @@
       </div>
       <div class="dg"><p class="dg-hd">Ghostfolio Token</p>
         <label class="df"><span class="dlbl">Security token</span><input type="password" bind:value={$settings.ghostfolio.token} placeholder="your-security-token" class="dinp"/></label>
+      </div>
+      <div class="dg"><p class="dg-hd">Personalization</p>
+        <SettingsPersonalizationToggle />
       </div>
       <button on:click={() => { saveAll(); closeMobileMenu(); }} class="btn-primary" style="width:100%;">{$saved?'✓ Saved':'Save Settings'}</button>
     </div>
