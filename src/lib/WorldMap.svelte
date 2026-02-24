@@ -29,6 +29,9 @@
   let mapLoading = true;
   let mapError = '';
   let threatsUpdatedAt = '';
+  let majorEvents: ThreatEvent[] = [];
+
+  const MAX_MAJOR_EVENTS = 8;
 
   const THREAT_COLORS: Record<string, string> = {
     critical: '#ff4444',
@@ -105,6 +108,9 @@
       const { threats, conflictCountryIds, updatedAt } = threatData;
       const conflictIds = new Set(conflictCountryIds);
       threatsUpdatedAt = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+      // Store major events (critical + high only) for the story panel
+      majorEvents = eventData.events.filter(e => e.level === 'critical' || e.level === 'high').slice(0, MAX_MAJOR_EVENTS);
 
       const svgEl = mapContainer?.querySelector('svg');
       if (!svgEl) return;
@@ -281,52 +287,90 @@
 
   onMount(() => { initMap(); });
   onDestroy(() => { /* cleanup handled by DOM removal */ });
+
+  function ago(d: string): string {
+    try {
+      const MINS_PER_HOUR = 60;
+      const MINS_PER_DAY = 1440;
+      const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
+      return m < MINS_PER_HOUR ? `${m}m` : m < MINS_PER_DAY ? `${Math.floor(m / MINS_PER_HOUR)}h` : `${Math.floor(m / MINS_PER_DAY)}d`;
+    } catch { return ''; }
+  }
 </script>
 
-<div class="wm-wrap" bind:this={mapContainer}>
-  {#if mapLoading}
-    <div class="wm-state">
-      <span class="wm-spinner"></span>
-      <span class="wm-state-text">Loading world map…</span>
+<div class="wm-outer">
+  <div class="wm-wrap" bind:this={mapContainer}>
+    {#if mapLoading}
+      <div class="wm-state">
+        <span class="wm-spinner"></span>
+        <span class="wm-state-text">Loading world map…</span>
+      </div>
+    {:else if mapError}
+      <div class="wm-state wm-state--error">{mapError}</div>
+    {/if}
+
+    <svg class="wm-svg"></svg>
+
+    {#if tooltipVisible && tooltipContent}
+      <div class="wm-tooltip" style="left:{tooltipLeft}px;top:{tooltipTop}px;">
+        <strong style="color:{tooltipContent.color};">{tooltipContent.title}</strong>
+        {#each tooltipContent.lines as line}
+          <br /><span class="wm-tip-line">{line}</span>
+        {/each}
+      </div>
+    {/if}
+
+    <div class="wm-zoom">
+      <button class="wm-zbtn" on:click={zoomIn}  title="Zoom in">+</button>
+      <button class="wm-zbtn" on:click={zoomOut} title="Zoom out">−</button>
+      <button class="wm-zbtn" on:click={resetZoom} title="Reset view">⟲</button>
+      <button class="wm-zbtn" on:click={initMap} title="Refresh threats" disabled={mapLoading}>↺</button>
     </div>
-  {:else if mapError}
-    <div class="wm-state wm-state--error">{mapError}</div>
-  {/if}
 
-  <svg class="wm-svg"></svg>
+    <div class="wm-legend">
+      <div class="wm-leg-title">THREAT</div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff4444;"></span>Critical</div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff8800;"></span>High</div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span>Elevated</div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
+      <div class="wm-leg-sep"></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
+      {#if threatsUpdatedAt}
+        <div class="wm-leg-sep"></div>
+        <div class="wm-leg-ts">Updated {threatsUpdatedAt}</div>
+      {/if}
+    </div>
+  </div>
 
-  {#if tooltipVisible && tooltipContent}
-    <div class="wm-tooltip" style="left:{tooltipLeft}px;top:{tooltipTop}px;">
-      <strong style="color:{tooltipContent.color};">{tooltipContent.title}</strong>
-      {#each tooltipContent.lines as line}
-        <br /><span class="wm-tip-line">{line}</span>
+  {#if majorEvents.length > 0}
+  <div class="wm-stories" aria-label="Major developing stories">
+    <div class="wm-stories-head">
+      <span class="wm-stories-title">MAJOR STORIES</span>
+      <span class="wm-stories-badge">LIVE</span>
+    </div>
+    <div class="wm-stories-list">
+      {#each majorEvents as ev}
+        <a href={ev.link} target="_blank" rel="noopener noreferrer" class="wm-story" aria-label="{ev.title}">
+          <span class="wm-story-dot" style="background:{EVENT_COLORS[ev.level] ?? '#888'};box-shadow:0 0 6px {EVENT_COLORS[ev.level] ?? '#888'};"></span>
+          <div class="wm-story-body">
+            <span class="wm-story-loc">{ev.location}</span>
+            <span class="wm-story-title">{ev.title}</span>
+          </div>
+          <span class="wm-story-age">{ago(ev.pubDate)}</span>
+        </a>
       {/each}
     </div>
+  </div>
   {/if}
-
-  <div class="wm-zoom">
-    <button class="wm-zbtn" on:click={zoomIn}  title="Zoom in">+</button>
-    <button class="wm-zbtn" on:click={zoomOut} title="Zoom out">−</button>
-    <button class="wm-zbtn" on:click={resetZoom} title="Reset view">⟲</button>
-    <button class="wm-zbtn" on:click={initMap} title="Refresh threats" disabled={mapLoading}>↺</button>
-  </div>
-
-  <div class="wm-legend">
-    <div class="wm-leg-title">THREAT</div>
-    <div class="wm-leg-row"><span class="wm-dot" style="background:#ff4444;"></span>Critical</div>
-    <div class="wm-leg-row"><span class="wm-dot" style="background:#ff8800;"></span>High</div>
-    <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span>Elevated</div>
-    <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
-    <div class="wm-leg-sep"></div>
-    <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
-    {#if threatsUpdatedAt}
-      <div class="wm-leg-sep"></div>
-      <div class="wm-leg-ts">Updated {threatsUpdatedAt}</div>
-    {/if}
-  </div>
 </div>
 
 <style>
+  .wm-outer {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
   .wm-wrap {
     position: relative;
     width: 100%;
@@ -334,7 +378,7 @@
     height: calc(100vh - 300px);
     min-height: 460px;
     background: #0d1b2a;
-    border-radius: 10px;
+    border-radius: 10px 10px 0 0;
     overflow: hidden;
   }
   .wm-svg { width: 100%; height: 100%; display: block; }
@@ -391,7 +435,63 @@
   }
   :global(.wm-hit) { cursor: pointer; }
 
+  /* ── MAJOR STORIES PANEL ────────────────────────────────── */
+  .wm-stories {
+    background: #0a1420;
+    border: 1px solid rgba(0,200,255,0.18);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    padding: 10px 14px 12px;
+  }
+  .wm-stories-head {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  }
+  .wm-stories-title {
+    font-size: .5rem; font-weight: 700; letter-spacing: .12em; color: rgba(0,200,255,0.6);
+    font-family: monospace;
+  }
+  .wm-stories-badge {
+    font-size: .48rem; font-weight: 700; letter-spacing: .1em;
+    padding: 1px 6px; border-radius: 3px;
+    border: 1px solid rgba(239,68,68,.4); background: rgba(239,68,68,.12); color: #f87171;
+    animation: wm-badge-blink 2.2s ease-in-out infinite;
+  }
+  @keyframes wm-badge-blink { 0%,100%{opacity:1;} 50%{opacity:.5;} }
+
+  .wm-stories-list {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px;
+  }
+  .wm-story {
+    display: flex; align-items: flex-start; gap: 7px;
+    padding: 7px 9px; border-radius: 6px;
+    background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.06);
+    text-decoration: none; transition: background .2s, border-color .2s;
+    min-width: 0;
+  }
+  .wm-story:hover { background: rgba(0,200,255,.06); border-color: rgba(0,200,255,.2); }
+  .wm-story-dot {
+    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 3px;
+  }
+  .wm-story-body {
+    display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;
+  }
+  .wm-story-loc {
+    font-size: .52rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+    color: rgba(0,200,255,.7); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .wm-story-title {
+    font-size: .62rem; color: #b8c8d8; line-height: 1.4;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .wm-story-age {
+    font-size: .5rem; color: rgba(255,255,255,.3); font-family: monospace;
+    flex-shrink: 0; margin-top: 2px; white-space: nowrap;
+  }
+
   @media (max-width: 768px) {
-    .wm-wrap { height: 400px; min-height: 400px; }
+    .wm-wrap { height: 340px; min-height: 340px; border-radius: 10px 10px 0 0; }
+    .wm-stories-list { grid-template-columns: 1fr; }
   }
 </style>
