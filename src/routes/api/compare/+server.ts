@@ -3,6 +3,8 @@ import type { RequestEvent } from '@sveltejs/kit';
 
 type PricePoint = { t: number; p: number };
 
+const MS_PER_DAY = 86400000;
+
 const HEADERS = {
   'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
   'Accept': 'application/json,text/plain,*/*',
@@ -49,7 +51,7 @@ async function fetchStooqHistory(ticker: string, yfRange: string): Promise<Price
   if (!stooqTicker) return [];
   const { days, interval } = STOOQ_RANGE[yfRange] ?? STOOQ_RANGE['1y'];
   const now = new Date();
-  const start = new Date(now.getTime() - days * 86400000);
+  const start = new Date(now.getTime() - days * MS_PER_DAY);
   const url = `https://stooq.com/q/d/l/?s=${stooqTicker}&d1=${stooqDateStr(start)}&d2=${stooqDateStr(now)}&i=${interval}`;
   try {
     const res = await fetch(url, { headers: HEADERS });
@@ -154,8 +156,14 @@ async function fetchBtcHistory(days: string, range: string): Promise<PricePoint[
     if (!res.ok) throw new Error(`${res.status}`);
     const data = await res.json();
     const pts = (data.prices ?? []).map(([t, p]: [number, number]) => ({ t, p }));
-    if (pts.length > 1) return pts;
-    throw new Error('insufficient data');
+    // Ensure the response actually covers at least 80% of the requested period.
+    // CoinGecko's free tier may silently cap historical data (e.g. returning only
+    // ~365 days when 1825 days are requested for the 5Y chart), which would cause
+    // the comparison chart to show BTC for a much shorter window than S&P/Gold.
+    const numDays = parseInt(days, 10);
+    const minCoverageMs = numDays * 0.8 * MS_PER_DAY;
+    if (pts.length > 1 && (Date.now() - pts[0].t) >= minCoverageMs) return pts;
+    throw new Error('insufficient coverage');
   } catch {
     return fetchBinanceBtcHistory(range);
   }
