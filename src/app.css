@@ -72,13 +72,14 @@ a {
   text-decoration: none;
 }
 
-/* Subtle ambient vignette — calm, not animated */
+/* Subtle ambient vignette — warm Bitcoin-orange tones */
 body::before {
   content: '';
   position: fixed; inset: 0; z-index: -2;
   background:
-    radial-gradient(circle at 15% 85%, rgba(247,147,26,0.06) 0%, transparent 50%),
-    radial-gradient(circle at 85% 10%, rgba(247,147,26,0.04) 0%, transparent 50%);
+    radial-gradient(circle at 15% 85%, rgba(247,147,26,0.08) 0%, transparent 45%),
+    radial-gradient(circle at 85% 10%, rgba(247,147,26,0.05) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(180,100,0,0.03) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -246,8 +247,8 @@ body::before {
 /* ── LIGHT MODE GLOBAL OVERRIDES ══════════════════════════ */
 html.light body::before {
   background:
-    radial-gradient(circle at 15% 85%, rgba(247,147,26,.04) 0%, transparent 50%),
-    radial-gradient(circle at 85% 10%, rgba(247,147,26,.03) 0%, transparent 50%);
+    radial-gradient(circle at 15% 85%, rgba(247,147,26,.06) 0%, transparent 45%),
+    radial-gradient(circle at 85% 10%, rgba(247,147,26,.04) 0%, transparent 45%);
 }
 html.light .card {
   background: rgba(255,255,255,.72); border-color: rgba(0,0,0,.1);

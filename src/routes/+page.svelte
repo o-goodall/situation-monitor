@@ -818,7 +818,6 @@
 
   <!-- Transition wrapper — fixed container prevents layout shift -->
   <div class="intel-view-wrap" class:intel-view-wrap--transitioning={intelTransitioning}>
-    <div class="intel-foil-sweep" class:intel-foil-sweep--active={intelTransitioning}></div>
 
     {#if intelView === 'cutting-edge'}
     <!-- ── CUTTING EDGE: Polymarket Geopolitics card grid ── -->
@@ -1034,25 +1033,12 @@
   /* Halving number — same size as price-alt for uniformity */
   .halving-n { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; }
 
-  /* Projected halving date label */
+  /* Halving date label */
   .halving-date { font-size:.58rem; color:var(--orange); margin-top:4px; font-variant-numeric:tabular-nums; letter-spacing:.03em; position:relative; display:inline-block; }
 
-  /* Subtle foil sweep — fires once every ~10 s, single pass */
-  @keyframes halvingFoil {
-    0%   { background-position: -200% center; }
-    15%  { background-position: 200% center; }
-    100% { background-position: 200% center; }
-  }
+  /* Static orange labels — no animated foil */
   .halving-date--glow, .btc-glimmer, .eyebrow.orange, .sats-label-sats {
-    background: linear-gradient(105deg, var(--orange) 30%, #ffe0a0 50%, var(--orange) 70%);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    animation: halvingFoil 10s linear infinite;
-  }
-  @media (prefers-reduced-motion: reduce) {
-    .halving-date--glow, .btc-glimmer, .eyebrow.orange, .sats-label-sats { animation: none; -webkit-text-fill-color: var(--orange); color: var(--orange); }
+    color: var(--orange);
   }
 
   /* Static stat tile — no interactive cursor */
@@ -1546,23 +1532,8 @@
   /* ── INTEL VIEW TRANSITION ─────────────────────────────── */
   .intel-view-wrap { position:relative; transition:opacity .35s ease; }
   .intel-view-wrap--transitioning { opacity:0; pointer-events:none; }
-  .intel-foil-sweep {
-    position:absolute; inset:0; z-index:10; pointer-events:none; opacity:0;
-    background:linear-gradient(105deg,transparent 30%,rgba(247,147,26,.18) 45%,rgba(255,224,160,.22) 50%,rgba(247,147,26,.18) 55%,transparent 70%);
-    background-size:250% 100%; border-radius:8px;
-  }
-  .intel-foil-sweep--active {
-    opacity:1;
-    animation:intelFoilSweep .8s ease-out forwards;
-  }
-  @keyframes intelFoilSweep {
-    0%   { background-position:-100% center; opacity:1; }
-    80%  { opacity:1; }
-    100% { background-position:200% center; opacity:0; }
-  }
   @media (prefers-reduced-motion:reduce) {
     .intel-view-wrap--transitioning { opacity:1; }
-    .intel-foil-sweep--active { animation:none; opacity:0; }
   }
 
   /* ── INTEL CONSISTENT GC CONTAINER ─────────────────────── */
@@ -1663,27 +1634,21 @@
   :global(html.light) .pm-card--trending { border-color:rgba(200,50,50,.2); }
 
   /* ── TRENDING FOIL ANIMATION ────────────────────────────── */
-  @keyframes trendingFoil {
-    0%   { background-position: -200% center; }
-    60%  { background-position: 200% center; }
-    100% { background-position: 200% center; }
-  }
+  /* Removed foil animation — trending tag uses static highlight only */
 
   /* ── EXTRA TAG VARIANTS ────────────────────────────────── */
   .pm-trending-tag {
-    background: linear-gradient(105deg, rgba(220,50,30,.25) 0%, rgba(255,130,60,.45) 45%, rgba(255,200,120,.55) 55%, rgba(220,50,30,.25) 100%);
-    background-size: 250% auto;
+    background: rgba(220,60,30,.18);
     color: #ff7755 !important;
-    border-color: rgba(255,80,40,.5);
-    animation: trendingFoil 3.5s ease-in-out infinite;
+    border-color: rgba(255,80,40,.4);
     font-weight: 700;
   }
   @media (prefers-reduced-motion: reduce) {
-    .pm-trending-tag { animation: none; color: #ff6644 !important; background: rgba(255,60,30,.15); }
+    .pm-trending-tag { color: #ff6644 !important; background: rgba(255,60,30,.15); }
   }
+  :global(html.light) .pm-trending-tag { background: rgba(180,40,20,.1); color: #c03020 !important; border-color: rgba(200,60,40,.35); }
   .pm-urgent-tag { background:rgba(255,180,50,.1); border-color:rgba(255,180,50,.3); color:#ffb432; }
   .pm-date-tag { color:var(--t3); }
-  :global(html.light) .pm-trending-tag { background: linear-gradient(105deg, rgba(180,40,20,.15) 0%, rgba(220,80,30,.3) 45%, rgba(255,160,80,.4) 55%, rgba(180,40,20,.15) 100%); background-size: 250% auto; color: #c03020 !important; border-color: rgba(200,60,40,.45); animation: trendingFoil 3.5s ease-in-out infinite; }
   :global(html.light) .pm-urgent-tag { background:rgba(180,110,0,.08); border-color:rgba(180,110,0,.25); color:#946000; }
 
   /* ── INTEL GRID ─────────────────────────────────────────── */
