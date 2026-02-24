@@ -343,10 +343,11 @@
     const dec = -23.45 * Math.cos(((360 / 365) * (doy + 10) * Math.PI) / 180);
     // Hour angle at UTC midnight shifted to [−180, 180] longitude
     const ha  = (now.getUTCHours() + now.getUTCMinutes() / 60) * 15 - 180;
+    // Tangent of declination is constant across all latitude iterations
+    const td  = Math.tan((dec * Math.PI) / 180);
     const pts: [number, number][] = [];
     // Forward pass: compute sunrise longitude for each latitude
     for (let lat = -89; lat <= 89; lat += 2) {
-      const td = Math.tan((dec * Math.PI) / 180);
       const tl = Math.tan((lat * Math.PI) / 180);
       const acos = -td * tl;
       // acos outside [−1,1] means polar day or polar night — push to edge
@@ -355,7 +356,6 @@
     }
     // Reverse pass: compute sunset longitude (closes the polygon)
     for (let lat = 89; lat >= -89; lat -= 2) {
-      const td = Math.tan((dec * Math.PI) / 180);
       const tl = Math.tan((lat * Math.PI) / 180);
       const acos = -td * tl;
       if (acos < -1 || acos > 1) { pts.push([lat * dec > 0 ? -ha - 180 : -ha, lat]); continue; }
