@@ -56,14 +56,6 @@ export interface Settings {
     defaultFeeds: RssFeed[];   // Pre-selected feeds (toggleable)
     customFeeds: RssFeed[];    // User-added feeds (toggleable)
   };
-  threats: {
-    /** User-added threat hotspots */
-    customThreats: Threat[];
-    /** IDs of default threats the user has hidden */
-    disabledIds: string[];
-    /** Per-location level overrides: id → ThreatLevel.  'off' means disabled. */
-    threatLevels: Record<string, ThreatLevel>;
-  };
   ghostfolio: { token: string; currency: string };
   displayCurrency: string;   // User's preferred display currency (e.g. AUD, EUR, GBP)
 }
@@ -105,11 +97,6 @@ export const DEFAULT_SETTINGS: Settings = {
     defaultFeeds: DEFAULT_RSS_FEEDS.map(f => ({...f})),
     customFeeds: [],
   },
-  threats: {
-    customThreats: [],
-    disabledIds: [],
-    threatLevels: {},
-  },
   ghostfolio: { token: '', currency: 'AUD' },
   displayCurrency: 'AUD',
 };
@@ -150,13 +137,6 @@ export function loadSettings(): Settings {
         for (const f of parsed.news.customFeeds) {
           if (!f.category) f.category = 'global';
         }
-      }
-      // Backfill threats section for users who saved settings before this field existed
-      if (!parsed.threats) {
-        parsed.threats = { customThreats: [], disabledIds: [], threatLevels: {} };
-      }
-      if (!parsed.threats.threatLevels) {
-        parsed.threats.threatLevels = {};
       }
       return { ...DEFAULT_SETTINGS, ...parsed, dca: { ...DEFAULT_SETTINGS.dca, ...parsed.dca, dcaFrequency: parsed.dca?.dcaFrequency ?? 'fortnightly' }, displayCurrency: parsed.displayCurrency ?? DEFAULT_SETTINGS.displayCurrency };
     }

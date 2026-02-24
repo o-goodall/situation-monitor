@@ -2,7 +2,6 @@
   import { onMount, onDestroy } from 'svelte';
   import type { Threat } from '$lib/settings';
   import type { ThreatEvent } from '../routes/api/events/+server';
-  import { settings } from '$lib/store';
 
   export let polymarketThreats: { question: string; url: string; probability: number; topOutcome: string }[] = [];
 
@@ -112,21 +111,9 @@
   function zoomOut()   { if (svg && zoom) svg.transition().duration(280).call(zoom.scaleBy, 1/1.5); }
   function resetZoom() { if (svg && zoom && d3Module) svg.transition().duration(280).call(zoom.transform, d3Module.zoomIdentity); }
 
-  /** Fetch static threat hotspots, honouring the user's disabled/custom settings */
+  /** Fetch live threat hotspots (ACLED when configured, static fallback otherwise) */
   async function fetchThreats(): Promise<{ threats: Threat[]; conflictCountryIds: string[]; updatedAt: string }> {
-    const threatSettings = $settings.threats;
-    const params = new URLSearchParams();
-    if (threatSettings.disabledIds.length > 0) {
-      params.set('disabled', JSON.stringify(threatSettings.disabledIds));
-    }
-    if (threatSettings.customThreats.length > 0) {
-      params.set('custom', JSON.stringify(threatSettings.customThreats));
-    }
-    if (threatSettings.threatLevels && Object.keys(threatSettings.threatLevels).length > 0) {
-      params.set('levels', JSON.stringify(threatSettings.threatLevels));
-    }
-    const query = params.toString() ? `?${params.toString()}` : '';
-    const res = await fetch(`/api/threats${query}`);
+    const res = await fetch('/api/threats');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   }
