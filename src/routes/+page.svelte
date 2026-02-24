@@ -578,7 +578,7 @@
     </div>
 
     <!-- GHOSTFOLIO -->
-    <div class="gc">
+    <div class="gc" class:gc--no-token={!$settings.ghostfolio?.token}>
       {#if !$settings.ghostfolio?.token}
         <div class="gc-head" style="margin-bottom:12px;"><p class="gc-title">Connect Ghostfolio</p></div>
         <p class="dim" style="line-height:1.7;margin-bottom:8px;">Add your Ghostfolio security token in Settings to see full portfolio performance and holdings.</p>
@@ -837,7 +837,7 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:700px) {
-    .section { padding:20px 14px 0; min-height:auto; scroll-snap-align:none; width:100%; }
+    .section { padding:20px 14px 0; min-height:100vh; scroll-snap-align:start; width:100%; }
     .section-header {
       margin-bottom:16px;
     }
@@ -846,6 +846,11 @@
     #signal    { padding-bottom:80px; }
     #portfolio { padding-bottom:80px; }
     #intel     { padding-bottom:80px; }
+    /* Uniform tile gap across all section grids on mobile */
+    .port-grid   { gap:10px; }
+    .intel-grid  { gap:10px; }
+    /* Hide Connect Ghostfolio tile on mobile when no token is configured */
+    .gc--no-token { display:none; }
   }
   @media (max-width:600px) {
     .section-header { margin-bottom:14px; }
@@ -1527,7 +1532,7 @@
   /* Intel section padding on mobile */
   #intel.section { padding-bottom: 80px; }
   @media (max-width:700px) {
-    #intel.section { min-height: auto; padding-top: 20px; padding-bottom: 40px; }
+    #intel.section { padding-top: 20px; padding-bottom: 80px; }
   }
 
   /* Prediction market — PolyMarket-inspired */
