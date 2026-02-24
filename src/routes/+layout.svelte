@@ -615,40 +615,9 @@
     </button>
   </div>
 
-  <!-- Mobile right controls — live badge + mode toggle + settings cog (visible on small screens) -->
+  <!-- Mobile right controls — just the clock (no polling dot, no mode toggle, no settings cog — all moved to bottom nav) -->
   <div class="mobile-hdr-right mobile-only">
-    <!-- Live price feed status (mobile) -->
-    <span class="ws-badge btn-ghost" class:ws-badge--live={$btcWsConnected}
-      role="status"
-      aria-label="{$btcWsConnected?'Live price feed connected':'Price polling fallback'}"
-      title="{$btcWsConnected?'Live price feed connected (Binance WebSocket)':'Price polling fallback — attempting live connection…'}">
-      <span class="ws-dot" aria-hidden="true"></span>
-    </span>
-    <button class="mode-toggle btn-ghost" on:click={toggleLightMode}
-      aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
-      {#if $lightMode}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-        </svg>
-      {:else}
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-          <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/>
-          <line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
-          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/>
-          <line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
-          <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-        </svg>
-      {/if}
-    </button>
-    <button class="btn-ghost settings-btn" class:settings-btn--on={mobileMenuOpen}
-      on:click={toggleMobileMenu}
-      aria-label="{mobileMenuOpen ? 'Close menu' : 'Open settings'}"
-      aria-expanded={mobileMenuOpen} aria-controls="mobile-menu">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
-        <circle cx="12" cy="12" r="3"/>
-        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-      </svg>
-    </button>
+    <time class="hdr-clock" aria-label="Current time">{$time}</time>
   </div>
 
 </header>
@@ -744,6 +713,20 @@
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="mobile-menu-backdrop" on:click={closeMobileMenu}></div>
   <div class="mobile-menu-panel">
+    <!-- Appearance row: light/dark toggle -->
+    <div class="mob-appearance-row">
+      <span class="mob-appearance-label">Appearance</span>
+      <button class="mob-theme-btn" on:click={toggleLightMode} aria-label="Switch to {$lightMode ? 'dark' : 'light'} mode">
+        {#if $lightMode}
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          Dark
+        {:else}
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          Light
+        {/if}
+      </button>
+    </div>
+
     <!-- Settings inline in mobile menu -->
     <p class="mobile-section-title">Settings</p>
     <div class="mobile-settings">
@@ -833,6 +816,16 @@
   <button class="bnav-btn" class:bnav-btn--active={$activeSection==='intel'} on:click={()=>navigateTo('intel')} aria-label="Intel section" aria-current={$activeSection==='intel'?'page':undefined}>
     <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <span class="bnav-label">Intel</span>
+  </button>
+  <!-- Settings button in bottom nav -->
+  <button class="bnav-btn" class:bnav-btn--active={mobileMenuOpen} on:click={toggleMobileMenu}
+    aria-label="{mobileMenuOpen ? 'Close settings' : 'Open settings'}"
+    aria-expanded={mobileMenuOpen} aria-controls="mobile-menu">
+    <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="3"/>
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    <span class="bnav-label">Settings</span>
   </button>
 </nav>
 
@@ -998,15 +991,7 @@
     .brand { margin-right:0; }
     .brand-name { font-size:0.74rem; }
     .eye-wrap { width:104px; height:44px; }
-    .mobile-hdr-right { display:flex; }
-    /* Uniform button size for all header controls on mobile */
-    .mobile-hdr-right .btn-ghost,
-    .mobile-hdr-right .ws-badge,
-    .mobile-hdr-right .mode-toggle,
-    .mobile-hdr-right .settings-btn {
-      width:44px; height:44px; padding:0;
-      display:flex; align-items:center; justify-content:center;
-    }
+    .mobile-hdr-right { display:flex; align-items:center; }
   }
 
   /* ── MOBILE BOTTOM NAVIGATION ────────────────────────────── */
@@ -1095,7 +1080,32 @@
     font-size:.6rem; font-weight:700; color:rgba(247,147,26,.7);
     text-transform:uppercase; letter-spacing:.15em;
   }
-  .mobile-settings { padding:0 20px; display:flex; flex-direction:column; gap:18px; }
+  .mobile-settings { padding:0 20px; display:flex; flex-direction:column; gap:0; }
+  .mobile-settings .dg { padding:14px 0; border-bottom:1px solid rgba(255,255,255,.04); }
+  .mobile-settings .dg:last-of-type { border-bottom:none; }
+
+  /* ── MOBILE APPEARANCE ROW ───────────────────────────────── */
+  .mob-appearance-row {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 20px; border-bottom:1px solid rgba(255,255,255,.05);
+  }
+  .mob-appearance-label {
+    font-family:'Poison',monospace; font-size:.62rem; font-weight:700;
+    text-transform:uppercase; letter-spacing:.1em; color:rgba(255,255,255,.4);
+  }
+  .mob-theme-btn {
+    display:flex; align-items:center; gap:6px;
+    padding:6px 14px; border-radius:4px; background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.1); cursor:pointer;
+    font-family:'Poison',monospace; font-size:.62rem; font-weight:600;
+    text-transform:uppercase; letter-spacing:.08em; color:rgba(255,255,255,.55);
+    transition:background .2s, border-color .2s, color .2s;
+  }
+  .mob-theme-btn:hover { color:var(--orange); border-color:rgba(247,147,26,.4); background:rgba(247,147,26,.1); }
+  :global(html.light) .mob-appearance-row { border-bottom-color:rgba(0,0,0,.06); }
+  :global(html.light) .mob-appearance-label { color:rgba(0,0,0,.45); }
+  :global(html.light) .mob-theme-btn { background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.55); }
+  :global(html.light) .mob-theme-btn:hover { color:#c77a10; border-color:rgba(200,120,16,.45); background:rgba(247,147,26,.1); }
 
   /* ── PAGE WRAP ───────────────────────────────────────────── */
   .page-wrap { padding-top:64px; min-height:100vh; }
@@ -1117,13 +1127,15 @@
     to   { opacity:1; transform:translateY(0); }
   }
   @media (max-width:768px) { .drawer { top: 54px; max-height: calc(100vh - 54px - var(--bottom-nav-h)); } }
-  .drawer-inner { max-width:900px; margin:0 auto; padding:28px 24px; display:flex; flex-direction:column; gap:22px; }
-  .dg-hd { font-size:.72rem; font-weight:600; color:rgba(255,255,255,.5); margin-bottom:12px; display:flex; align-items:center; gap:8px; font-family:'Poison',monospace; letter-spacing:.06em; text-transform:uppercase; }
-  .dhint { font-size:.62rem; color:rgba(255,255,255,.2); font-weight:400; font-family:'Poison',monospace; text-transform:none; letter-spacing:0; }
+  .drawer-inner { max-width:900px; margin:0 auto; padding:20px 24px; display:flex; flex-direction:column; gap:0; }
+  .dg { padding:16px 0; border-bottom:1px solid rgba(255,255,255,.04); }
+  .dg:last-of-type { border-bottom:none; }
+  .dg-hd { font-size:.65rem; font-weight:700; color:rgba(255,255,255,.4); margin-bottom:10px; display:flex; align-items:center; gap:8px; font-family:'Poison',monospace; letter-spacing:.08em; text-transform:uppercase; }
+  .dhint { font-size:.6rem; color:rgba(255,255,255,.18); font-weight:400; font-family:'Poison',monospace; text-transform:none; letter-spacing:0; }
   .dfields { display:flex; gap:10px; flex-wrap:wrap; }
   .df { display:flex; flex-direction:column; gap:5px; flex:1; min-width:100px; }
   .dlbl { font-size:.58rem; color:rgba(255,255,255,.25); font-weight:500; text-transform:uppercase; letter-spacing:.1em; }
-  .dinp { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,94,0,.22); border-radius:6px; padding:10px 12px; color:#eaeaea; font-family:'Poison',monospace; font-size:.82rem; transition:border-color .2s,box-shadow .2s; }
+  .dinp { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:6px; padding:8px 10px; color:#eaeaea; font-family:'Poison',monospace; font-size:.78rem; transition:border-color .2s,box-shadow .2s; }
   .dinp:focus { outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(247,147,26,.12),0 0 16px rgba(247,147,26,.18); }
   .dtags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
   .dtag { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; background:rgba(247,147,26,.07); border:1px solid rgba(247,147,26,.2); border-radius:999px; font-size:.68rem; color:rgba(255,255,255,.55); }
@@ -1182,7 +1194,8 @@
   :global(html.light) .nav-link:hover { color:#c77a10; border-color:rgba(200,120,16,.45); background:rgba(247,147,26,.1); box-shadow:0 0 8px rgba(200,120,16,.2); }
   :global(html.light) .nav-link--active { color:#c77a10!important; border-color:rgba(247,147,26,.4)!important; }
   :global(html.light) .drawer { background:rgba(255,255,255,.98); border-bottom-color:rgba(0,0,0,.08); }
-  :global(html.light) .dinp { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.15); color:#111; }
+  :global(html.light) .dg { border-bottom-color:rgba(0,0,0,.06); }
+  :global(html.light) .dinp { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.12); color:#111; }
   :global(html.light) .dinp:focus { border-color:var(--orange); }
   :global(html.light) .dg-hd { color:rgba(0,0,0,.7); }
   :global(html.light) .dhint { color:rgba(0,0,0,.35); }
@@ -1196,6 +1209,7 @@
   :global(html.light) .footer-sources a:hover { color:#c77a10; }
   :global(html.light) .mobile-menu-panel { background:rgba(255,255,255,.98); }
   :global(html.light) .mobile-menu-backdrop { background:rgba(0,0,0,.25); }
+  :global(html.light) .mobile-settings .dg { border-bottom-color:rgba(0,0,0,.06); }
   :global(html.light) .mobile-nav-link { color:rgba(0,0,0,.75); border-bottom-color:rgba(0,0,0,.06); }
   :global(html.light) .mobile-theme-toggle { color:rgba(0,0,0,.6); }
   :global(html.light) .mobile-section-title { color:rgba(247,147,26,.9); }

@@ -691,9 +691,9 @@
     <h2 class="sect-title">Intel</h2>
     <!-- Toggle: Markets / News / Globe — segmented buttons -->
     <div class="intel-toggle-wrap" role="group" aria-label="Intel view">
-      <button class="crb" class:crb--active={intelView==='cutting-edge'} on:click={() => switchIntelView('cutting-edge')} aria-pressed={intelView === 'cutting-edge'} title="Cutting Edge — prediction markets">◈ Markets</button>
-      <button class="crb" class:crb--active={intelView==='classic'} on:click={() => switchIntelView('classic')} aria-pressed={intelView === 'classic'} title="Classic — news feed">☰ News</button>
       <button class="crb globe-toggle-btn" class:crb--active={intelView==='globe'} on:click={() => switchIntelView('globe')} aria-pressed={intelView === 'globe'} title="Globe — live world events map">🌐 Globe</button>
+      <button class="crb" class:crb--active={intelView==='classic'} on:click={() => switchIntelView('classic')} aria-pressed={intelView === 'classic'} title="Classic — news feed">☰ News</button>
+      <button class="crb" class:crb--active={intelView==='cutting-edge'} on:click={() => switchIntelView('cutting-edge')} aria-pressed={intelView === 'cutting-edge'} title="Cutting Edge — prediction markets">◈ Markets</button>
     </div>
   </div>
 
@@ -825,14 +825,14 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:700px) {
-    .section { padding:20px 14px 0; min-height:100vh; width:100%; }
+    .section { padding:20px 14px 0; min-height:unset; width:100%; }
     .section-header {
       margin-bottom:16px;
     }
-    .section-divider { margin-top:24px; }
-    /* Bottom padding for each section — extra space for sticky bottom nav */
-    #signal    { padding-bottom:80px; }
-    #portfolio { padding-bottom:80px; }
+    .section-divider { margin-top:16px; }
+    /* Bottom padding for each section — enough space before the next section */
+    #signal    { padding-bottom:32px; }
+    #portfolio { padding-bottom:32px; }
     #intel     { padding-bottom:80px; }
     /* Uniform tile gap across all section grids on mobile */
     .port-grid   { gap:10px; }
