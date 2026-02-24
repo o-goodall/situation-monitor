@@ -42,7 +42,7 @@ export const dcaUpdated     = writable('');
 export const btcHashrate    = writable<number|null>(null); // network hash rate in EH/s
 
 // ── MARKETS / NEWS ────────────────────────────────────────────
-export type Market = { id:string; question:string; topOutcome:string; probability:number; outcomes:{name:string;probability:number}[]; volume:number; volume24hr:number; endDate:string; tag:string; url:string; pinned:boolean };
+export type Market = { id:string; question:string; topOutcome:string; probability:number; outcomes:{name:string;probability:number}[]; volume:number; volume24hr:number; liquidity:number; endDate:string; startDate:string; tag:string; url:string; pinned:boolean; trending:boolean; daysLeft:number|null };
 export const markets = writable<Market[]>([]);
 export type NewsItem = { title:string; link:string; source:string; pubDate:string; description:string; image:string };
 export const newsItems = writable<NewsItem[]>([]);
