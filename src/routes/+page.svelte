@@ -101,23 +101,39 @@
 
   /** Detect topic keyword for frosted background tint */
   const TOPIC_MAP: [RegExp, string][] = [
-    [/trump|maga|republican|gop/, '🇺🇸'],
-    [/iran|tehran|persian/, '🇮🇷'],
-    [/china|beijing|xi jinping/, '🇨🇳'],
+    [/trump|maga|republican|gop|democrat|harris|biden/, '🇺🇸'],
+    [/iran|tehran|persian|khamenei/, '🇮🇷'],
+    [/china|beijing|xi jinping|taiwan|pla/, '🇨🇳'],
     [/russia|moscow|putin|kremlin/, '🇷🇺'],
-    [/bitcoin|btc|crypto|ethereum/, '₿'],
-    [/fed|federal reserve|interest rate|inflation/, '🏛️'],
-    [/israel|gaza|hamas|palestine/, '⚔️'],
-    [/ukraine|kyiv|zelensky/, '🇺🇦'],
-    [/oil|opec|energy|gas/, '🛢️'],
-    [/election|vote|ballot|poll/, '🗳️'],
-    [/war|military|missile|nuclear/, '⚠️'],
-    [/trade|tariff|sanction/, '📊'],
+    [/bitcoin|btc|crypto|ethereum|defi/, '₿'],
+    [/fed|federal reserve|interest rate|inflation|cpi/, '🏛️'],
+    [/israel|gaza|hamas|palestine|idf/, '⚔️'],
+    [/ukraine|kyiv|zelensky|donbas/, '🇺🇦'],
+    [/oil|opec|energy|gas|petroleum/, '🛢️'],
+    [/election|vote|ballot|poll|president/, '🗳️'],
+    [/war|military|missile|nuclear|troops/, '⚠️'],
+    [/trade|tariff|sanction|wto/, '📊'],
+    [/korea|dprk|kim jong/, '🇰🇵'],
+    [/india|modi|pakistan|kashmir/, '🌏'],
+    [/europe|eu|nato|macron|scholz|uk|britain/, '🌍'],
+    [/climate|weather|disaster|earthquake|flood/, '🌡️'],
+    [/ai|artificial intelligence|tech|openai/, '🤖'],
   ];
   function detectTopic(text: string): string {
     const t = text.toLowerCase();
     for (const [re, icon] of TOPIC_MAP) { if (re.test(t)) return icon; }
     return '◈';
+  }
+
+  /** Format end date as short human-readable "Closes Jan 15" or "3d left" */
+  function fmtEndDate(daysLeft: number | null, endDate: string): string {
+    if (daysLeft === null) return '';
+    if (daysLeft < 0) return 'Closed';
+    if (daysLeft === 0) return 'Closes today';
+    if (daysLeft <= 30) return `${daysLeft}d left`;
+    try {
+      return 'Resolves ' + new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    } catch { return ''; }
   }
 
   const n   = (v:number, dec=0) => v.toLocaleString('en-US',{minimumFractionDigits:dec,maximumFractionDigits:dec});
@@ -720,48 +736,73 @@
       {:else}
         <div class="pm-grid">
           {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
-            <a href="{m.url}" target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{m.question}">
+            {@const topic = detectTopic(m.question)}
+            {@const endLabel = fmtEndDate(m.daysLeft, m.endDate)}
+            {@const isBinary = m.outcomes.length <= 2}
+            {@const isUrgent = m.daysLeft !== null && m.daysLeft >= 0 && m.daysLeft <= 7}
+            <a href="{m.url}" target="_blank" rel="noopener noreferrer"
+               class="pm-card pm-card--intel"
+               class:pm-card--urgent={isUrgent}
+               class:pm-card--trending={m.trending && !m.pinned}
+               aria-label="{m.question}">
               <div class="pm-card-frosted-overlay"></div>
+              <!-- Topic icon watermark -->
+              <span class="pm-card-topic-icon" aria-hidden="true">{topic}</span>
               <!-- Tag row -->
               <div class="pm-card-tags" style="position:relative;z-index:1;">
                 {#if m.pinned}
                   <span class="pm-tag pm-pin">★ Watching</span>
+                {:else if m.trending}
+                  <span class="pm-tag pm-trending-tag">🔥 Trending</span>
                 {:else}
                   <span class="pm-tag">{m.tag}</span>
                 {/if}
-                <span class="pm-tag pm-prob-tag" style="color:{pc(m.probability)};" aria-label="{m.topOutcome} probability {m.probability} percent">{m.topOutcome} {m.probability}%</span>
+                {#if isUrgent}
+                  <span class="pm-tag pm-urgent-tag" title="Resolves soon">⏱ {endLabel}</span>
+                {:else if endLabel}
+                  <span class="pm-tag pm-date-tag">{endLabel}</span>
+                {/if}
               </div>
               <!-- Question -->
               <p class="pm-card-q" style="position:relative;z-index:1;">{m.question}</p>
-              <!-- Top outcomes list for multi-outcome markets (e.g. FIFA, elections) -->
-              {#if m.outcomes.length > 2}
+              <!-- Binary market: large YES/NO probability display -->
+              {#if isBinary}
+                <div class="pm-binary-prob" style="position:relative;z-index:1;">
+                  <span class="pm-binary-outcome" style="color:{pc(m.probability)};" aria-label="Outcome: {m.topOutcome}">{m.topOutcome}</span>
+                  <span class="pm-binary-pct" style="color:{pc(m.probability)};" aria-label="Probability: {m.probability} percent">{m.probability}%</span>
+                </div>
+              {:else}
+                <!-- Multi-outcome: outcomes with inline mini bars -->
                 <ul class="pm-outcomes" style="position:relative;z-index:1;" aria-label="Top contenders">
                   {#each m.outcomes.slice(0, 4) as o}
                     <li class="pm-outcome-row">
-                      <span class="pm-outcome-name">{o.name}</span>
+                      <span class="pm-outcome-name" title="{o.name}">{o.name}</span>
+                      <div class="pm-outcome-bar-wrap" role="progressbar" aria-valuenow="{o.probability}" aria-valuemin="0" aria-valuemax="100" aria-label="{o.name} {o.probability}%">
+                        <div class="pm-outcome-bar" style="width:{Math.min(o.probability,100)}%;background:{pc(o.probability)};"></div>
+                      </div>
                       <span class="pm-outcome-pct" style="color:{pc(o.probability)};">{o.probability}%</span>
                     </li>
                   {/each}
                 </ul>
               {/if}
-              <!-- Enhanced data row -->
+              <!-- Data row: volume + liquidity -->
               <div class="pm-card-data" style="position:relative;z-index:1;">
-                <span class="pm-data-vol" title="Total volume">{fmtVol(m.volume)}</span>
                 {#if m.volume24hr > 0}
                   <span class="pm-data-vol24" title="24h volume">24h {fmtVol(m.volume24hr)}</span>
                 {/if}
-                {#if m.probability >= 70}
-                  <span class="pm-data-trend pm-data-trend--high" title="High probability">▲ Likely</span>
-                {:else if m.probability <= 30}
-                  <span class="pm-data-trend pm-data-trend--low" title="Low probability">▼ Unlikely</span>
-                {:else}
-                  <span class="pm-data-trend pm-data-trend--mid" title="Contested">◆ Contested</span>
+                {#if m.liquidity > 0}
+                  <span class="pm-data-liq" title="Liquidity">💧 {fmtVol(m.liquidity)}</span>
+                {/if}
+                {#if m.volume > 0}
+                  <span class="pm-data-vol" title="Total volume">Vol {fmtVol(m.volume)}</span>
                 {/if}
               </div>
-              <!-- Probability bar -->
-              <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
-                <div class="pm-prob-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
-              </div>
+              <!-- Probability bar (binary markets only) -->
+              {#if isBinary}
+                <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
+                  <div class="pm-prob-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
+                </div>
+              {/if}
             </a>
           {/each}
         </div>
@@ -1417,40 +1458,55 @@
   /* ── POLYMARKET OUTCOMES LIST (multi-outcome markets) ──────── */
   .pm-outcomes {
     list-style:none; margin:0; padding:0;
-    display:flex; flex-direction:column; gap:3px;
+    display:flex; flex-direction:column; gap:4px;
     margin-top:2px;
   }
   .pm-outcome-row {
-    display:flex; justify-content:space-between; align-items:center;
-    font-size:.72rem; line-height:1.3;
+    display:flex; align-items:center; gap:5px;
+    font-size:.7rem; line-height:1.3;
   }
   .pm-outcome-name {
-    color:var(--t2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70%;
+    color:var(--t2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 0 auto; max-width:45%;
   }
+  .pm-outcome-bar-wrap {
+    flex:1; height:4px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; min-width:24px;
+  }
+  .pm-outcome-bar { height:100%; border-radius:2px; opacity:.75; transition:width .5s ease; }
   .pm-outcome-pct {
-    font-weight:700; font-size:.72rem; flex-shrink:0;
+    font-weight:700; font-size:.7rem; flex-shrink:0; text-align:right; min-width:28px;
   }
   :global(html.light) .pm-outcome-name { color:rgba(0,0,0,.55); }
+  :global(html.light) .pm-outcome-bar-wrap { background:rgba(0,0,0,.07); }
+
+  /* ── BINARY PROBABILITY DISPLAY ────────────────────────── */
+  .pm-binary-prob {
+    display:flex; align-items:baseline; gap:6px; margin-top:auto;
+  }
+  .pm-binary-outcome {
+    font-size:.75rem; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+  }
+  .pm-binary-pct {
+    font-size:1.4rem; font-weight:800; line-height:1; letter-spacing:-.02em;
+  }
+  @media (max-width:600px) {
+    .pm-binary-pct { font-size:1.2rem; }
+  }
 
   /* ── POLYMARKET DATA ROW ───────────────────────────────── */
   .pm-card-data {
-    display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin-top:auto;
+    display:flex; gap:5px; align-items:center; flex-wrap:wrap; margin-top:auto;
   }
-  .pm-data-vol, .pm-data-vol24 {
+  .pm-data-vol, .pm-data-vol24, .pm-data-liq {
     font-size:.54rem; font-weight:600; color:var(--t3); text-transform:uppercase; letter-spacing:.05em;
     padding:1px 6px; border-radius:4px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.05);
   }
   .pm-data-vol24 { color:var(--t2); }
-  .pm-data-trend {
-    font-size:.54rem; font-weight:700; letter-spacing:.04em; margin-left:auto;
-  }
-  .pm-data-trend--high { color:var(--up); }
-  .pm-data-trend--low { color:var(--dn); }
-  .pm-data-trend--mid { color:var(--orange); }
-  :global(html.light) .pm-data-vol, :global(html.light) .pm-data-vol24 {
+  .pm-data-liq { color:rgba(100,200,255,.7); border-color:rgba(100,200,255,.15); }
+  :global(html.light) .pm-data-vol, :global(html.light) .pm-data-vol24, :global(html.light) .pm-data-liq {
     background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.06); color:rgba(0,0,0,.4);
   }
   :global(html.light) .pm-data-vol24 { color:rgba(0,0,0,.55); }
+  :global(html.light) .pm-data-liq { color:rgba(0,100,200,.55); }
 
   /* ── PROBABILITY BAR ───────────────────────────────────── */
   .pm-card-prob-bar {
@@ -1459,6 +1515,21 @@
   .pm-prob-fill { height:100%; border-radius:2px; transition:width .7s ease; opacity:.7; }
   :global(html.light) .pm-card-prob-bar { background:rgba(0,0,0,.04); }
   :global(html.light) .pm-prob-fill { opacity:.5; }
+
+  /* ── URGENT / TRENDING CARD VARIANTS ──────────────────── */
+  .pm-card--urgent { border-color:rgba(255,180,50,.18); }
+  .pm-card--urgent::before { background:linear-gradient(90deg,transparent,rgba(255,180,50,.25),transparent); }
+  .pm-card--trending { border-color:rgba(255,100,100,.15); }
+  .pm-card--trending::before { background:linear-gradient(90deg,transparent,rgba(255,100,100,.2),transparent); }
+  :global(html.light) .pm-card--urgent { border-color:rgba(200,120,0,.2); }
+  :global(html.light) .pm-card--trending { border-color:rgba(200,50,50,.15); }
+
+  /* ── EXTRA TAG VARIANTS ────────────────────────────────── */
+  .pm-trending-tag { background:rgba(255,80,80,.1); border-color:rgba(255,80,80,.3); color:#ff7070; }
+  .pm-urgent-tag { background:rgba(255,180,50,.1); border-color:rgba(255,180,50,.3); color:#ffb432; }
+  .pm-date-tag { color:var(--t3); }
+  :global(html.light) .pm-trending-tag { background:rgba(200,40,40,.08); border-color:rgba(200,40,40,.25); color:#c02828; }
+  :global(html.light) .pm-urgent-tag { background:rgba(180,110,0,.08); border-color:rgba(180,110,0,.25); color:#946000; }
 
   /* ── INTEL GRID ─────────────────────────────────────────── */
   .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
