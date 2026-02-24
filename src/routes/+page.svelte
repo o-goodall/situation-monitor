@@ -17,41 +17,30 @@
   import WorldMap from '$lib/WorldMap.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
-  let btcChartRange: '1D' | '1W' | '1Y' = '1D';
   let btcChartData: { t: number; p: number }[] = [];
   let btcChartLoading = false;
   let btcDayOpenPrice = 0; // price at start of today for daily % change
 
-  async function fetchBtcChart(r = btcChartRange) {
+  async function fetchBtcChart() {
     btcChartLoading = true;
     try {
-      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y' };
-      const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
+      const d = await fetch('/api/bitcoin/history?range=1y').then(res => res.json());
       btcChartData = d.prices ?? [];
-      if (r === '1D' && btcChartData.length > 0) btcDayOpenPrice = btcChartData[0].p;
     } catch { btcChartData = []; }
     finally { btcChartLoading = false; }
   }
 
-  async function setBtcChartRange(r: '1D' | '1W' | '1Y') {
-    btcChartRange = r;
-    await fetchBtcChart(r);
+  async function fetchDayOpen() {
+    try {
+      const d = await fetch('/api/bitcoin/history?range=1d').then(res => res.json());
+      const prices: { t: number; p: number }[] = d.prices ?? [];
+      if (prices.length > 0) btcDayOpenPrice = prices[0].p;
+    } catch {}
   }
 
   $: btcDayChangePct = btcDayOpenPrice > 0 && $btcPrice > 0
     ? (($btcPrice - btcDayOpenPrice) / btcDayOpenPrice) * 100
     : null;
-
-  // Keep last chart price point in sync with live WebSocket price.
-  // Only update when price changes by >0.05% to avoid excessive array copies.
-  let _lastChartPrice = 0;
-  $: if ($btcPrice > 0 && btcChartData.length > 0 && btcChartRange === '1D') {
-    const changePct = _lastChartPrice > 0 ? Math.abs($btcPrice - _lastChartPrice) / _lastChartPrice : 1;
-    if (changePct >= 0.0005) {
-      _lastChartPrice = $btcPrice;
-      btcChartData = [...btcChartData.slice(0, -1), { t: Date.now(), p: $btcPrice }];
-    }
-  }
 
   let hashrateChartRange: '3M' | '6M' | '1Y' | '2Y' | 'All' = '1Y';
   let hashrateData: { t: number; p: number }[] = [];
@@ -250,15 +239,11 @@
     catch{$gfError='Connection failed';}finally{$gfLoading=false;}
   }
 
-  function btcApiRange(r = btcChartRange): string {
-    const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y' };
-    return map[r] ?? '1d';
-  }
-
   const fmtPct = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
 
   onMount(() => {
     fetchBtcChart();
+    fetchDayOpen();
     fetchHashrateChart();
     fetchBtcGoldRange();
     fetchAuData();
@@ -784,12 +769,7 @@
     <div class="chart-header">
       <p class="gc-title">Bitcoin Price</p>
       <div class="chart-controls">
-        <!-- Range buttons -->
-        <div class="chart-range-btns" role="group" aria-label="Chart time range">
-          <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
-          <button class="crb" class:crb--active={btcChartRange==='1W'} on:click={() => setBtcChartRange('1W')}>1W</button>
-          <button class="crb" class:crb--active={btcChartRange==='1Y'} on:click={() => setBtcChartRange('1Y')}>1Y</button>
-        </div>
+        <span class="btc-chart-live-price" style="color:{$priceColor};transition:color .5s;" aria-live="polite">{$btcPrice > 0 ? '$' + n($btcPrice) : '—'}</span>
       </div>
     </div>
 
@@ -800,7 +780,7 @@
         <PriceChart
           prices={btcChartData}
           height={160}
-          range={btcChartRange === '1D' ? '1d' : btcChartRange === '1W' ? '7d' : '1y'}
+          range="1y"
         />
       {:else}
         <p class="dim" style="text-align:center;padding:60px 0;">Loading chart data…</p>
@@ -1074,6 +1054,7 @@
   .btc-chart-card { padding:16px 18px; margin-bottom:14px; }
   .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
   .chart-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .btc-chart-live-price { font-size:.9rem; font-weight:600; font-variant-numeric:tabular-nums; }
   .overlay-btns { display:flex; gap:4px; }
   .chart-container { width:100%; }
   .chart-range-btns { display:flex; gap:4px; }
