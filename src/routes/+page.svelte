@@ -260,15 +260,36 @@
       </div>
     </div>
 
-    <!-- Sats per display currency — $1 | SATS format -->
-    <div class="stat-tile stat-tile--static" data-tooltip="Satoshis you get for 1 {displayCur}">
-      <div class="sats-display">
-        <span class="sats-cur">{$satsPerAud !== null ? $satsPerAud.toLocaleString() : '—'}</span>
+    <!-- BTC in Gold + AU Snapshot — moved from signal grid -->
+    <div class="stat-tile stat-tile--static stat-tile--btc-gold" data-tooltip="Bitcoin priced in gold (troy ounces)">
+      <div class="btc-gold-strip-hero" aria-live="polite" aria-atomic="true">
+        {#if btcInGoldOz !== null}
+          <span class="btc-gold-strip-n">{btcInGoldOz.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span class="btc-gold-strip-unit">oz gold</span>
+        {:else}
+          <span class="btc-gold-strip-n muted">—</span>
+        {/if}
       </div>
-      <span class="stat-l"><span class="sats-label-sats">SATS</span> · <span class="sats-label-cur">{displayCur}</span></span>
+      <span class="stat-l">Bitcoin in Gold</span>
+      {#if $goldPriceUsd !== null}
+        <span class="btc-gold-strip-spot">${n($goldPriceUsd, 0)} <span class="met-u">USD/oz</span></span>
+      {/if}
+      {#if displayCur === 'AUD'}
+        <div class="au-strip-rows">
+          <div class="au-strip-row">
+            <span class="au-strip-label">🇦🇺 Med. Income</span>
+            <span class="au-strip-val">$92k <span class="au-chg up">+4.1%</span></span>
+          </div>
+          <div class="au-strip-row">
+            <span class="au-strip-label">Med. House</span>
+            <span class="au-strip-val">$890k <span class="au-chg up">+6.8%</span></span>
+          </div>
+        </div>
+      {/if}
     </div>
 
-    <div class="stat-tile halving-tile stat-tile--static" data-tooltip="Estimated blocks remaining until next Bitcoin halving">
+    <!-- Halving countdown + sats per currency combined -->
+    <div class="stat-tile halving-tile stat-tile--static" data-tooltip="Estimated blocks remaining until next Bitcoin halving · Satoshis per {displayCur}">
       {#if $halvingDays > 0}
         <div class="price-pair" aria-live="polite" aria-atomic="true">
           <span class="stat-n halving-n">{$halvingDays.toLocaleString()}</span>
@@ -283,6 +304,11 @@
         <span class="stat-n muted">—</span>
         <span class="stat-l">Days to Halving</span>
       {/if}
+      <div class="halving-sats-divider"></div>
+      <div class="sats-display">
+        <span class="sats-cur">{$satsPerAud !== null ? $satsPerAud.toLocaleString() : '—'}</span>
+      </div>
+      <span class="stat-l"><span class="sats-label-sats">SATS</span> · <span class="sats-label-cur">{displayCur}</span></span>
     </div>
   </div>
 
@@ -545,48 +571,6 @@
       </div>
       {/if}
     </div>
-
-    <!-- BTC PRICED IN GOLD -->
-    <div class="gc btc-gold-card">
-      <div class="gc-head">
-        <p class="gc-title">Bitcoin in Gold</p>
-      </div>
-      <div class="btc-gold-hero" aria-live="polite" aria-atomic="true">
-        {#if btcInGoldOz !== null}
-          <span class="btc-gold-n">{btcInGoldOz.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          <span class="btc-gold-unit">oz gold</span>
-        {:else}
-          <span class="btc-gold-n muted">—</span>
-        {/if}
-      </div>
-      <p class="btc-gold-sub">Bitcoin priced in gold (troy ounces)</p>
-      {#if $goldPriceUsd !== null}
-        <div class="btc-gold-meta">
-          <span class="eyebrow">Gold spot</span>
-          <span class="btc-gold-spot">${n($goldPriceUsd, 0)} <span class="met-u">USD/oz</span></span>
-        </div>
-      {/if}
-    </div>
-
-    <!-- AUSTRALIA SNAPSHOT — visible only when AUD is selected -->
-    {#if displayCur === 'AUD'}
-    <div class="gc au-snapshot-card">
-      <div class="gc-head">
-        <p class="gc-title">🇦🇺 Australia Snapshot</p>
-        <span class="ts">2025</span>
-      </div>
-      <div class="au-rows">
-        <div class="au-row">
-          <span class="au-label">Median Income</span>
-          <span class="au-val">$92,000 <span class="au-chg up">+4.1%</span></span>
-        </div>
-        <div class="au-row">
-          <span class="au-label">Median House Price</span>
-          <span class="au-val">$890,000 <span class="au-chg up">+6.8%</span></span>
-        </div>
-      </div>
-    </div>
-    {/if}
 
   </div>
 </section>
@@ -1337,6 +1321,25 @@
   .au-val { font-size:.8rem; font-weight:700; color:var(--t1); font-variant-numeric:tabular-nums; }
   .au-chg { font-size:.62rem; font-weight:600; margin-left:5px; }
   :global(html.light) .au-row { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
+
+  /* ── BTC-IN-GOLD STAT TILE (stat-strip) ─────────────────── */
+  .stat-tile--btc-gold { border-color:rgba(201,168,76,.22) !important; }
+  .btc-gold-strip-hero { display:flex; align-items:baseline; gap:5px; justify-content:center; margin-bottom:2px; }
+  .btc-gold-strip-n { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; color:#c9a84c; }
+  .btc-gold-strip-unit { font-size:.62rem; font-weight:600; color:var(--t2); align-self:flex-end; padding-bottom:2px; }
+  .btc-gold-strip-spot { font-size:.62rem; font-weight:600; color:var(--t2); margin-top:4px; font-variant-numeric:tabular-nums; }
+  @media (max-width:500px) { .btc-gold-strip-n { font-size:1.15rem; } }
+
+  /* AU snapshot rows inside stat tile */
+  .au-strip-rows { display:flex; flex-direction:column; gap:4px; margin-top:7px; width:100%; }
+  .au-strip-row { display:flex; justify-content:space-between; align-items:center; padding:5px 8px;
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:6px; }
+  .au-strip-label { font-size:.55rem; color:var(--t2); font-weight:500; }
+  .au-strip-val { font-size:.62rem; font-weight:700; color:var(--t1); font-variant-numeric:tabular-nums; }
+  :global(html.light) .au-strip-row { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
+
+  /* Divider between halving and sats in combined tile */
+  .halving-sats-divider { width:40%; height:1px; background:rgba(255,255,255,.08); margin:8px auto 6px; }
 
   /* ── PRICE SCENARIOS ─────────────────────────────────────── */
   .price-scen { margin-top:16px; padding-top:14px; border-top:1px solid rgba(255,255,255,.05); }
