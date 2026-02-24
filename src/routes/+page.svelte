@@ -15,6 +15,7 @@
   import Sparkline from '$lib/Sparkline.svelte';
   import PriceChart from '$lib/PriceChart.svelte';
   import WorldMap from '$lib/WorldMap.svelte';
+  import CompareChart from '$lib/CompareChart.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
   let btcChartRange: '1D' | '1W' | '1Y' = '1D';
@@ -36,6 +37,27 @@
   async function setBtcChartRange(r: '1D' | '1W' | '1Y') {
     btcChartRange = r;
     await fetchBtcChart(r);
+    if (btcChartView === 'compare') await fetchCompareChart(r);
+  }
+
+  // ── Chart view toggle: 'price' | 'compare' ───────────────────
+  let btcChartView: 'price' | 'compare' = 'price';
+  let compareData: { btc: { t: number; p: number }[]; sp500: { t: number; p: number }[]; gold: { t: number; p: number }[] } = { btc: [], sp500: [], gold: [] };
+  let compareLoading = false;
+
+  async function fetchCompareChart(r = btcChartRange) {
+    compareLoading = true;
+    try {
+      const map: Record<string, string> = { '1D': '1d', '1W': '7d', '1Y': '1y' };
+      const d = await fetch(`/api/compare?range=${map[r]}`).then(res => res.json());
+      compareData = { btc: d.btc ?? [], sp500: d.sp500 ?? [], gold: d.gold ?? [] };
+    } catch { compareData = { btc: [], sp500: [], gold: [] }; }
+    finally { compareLoading = false; }
+  }
+
+  async function setChartView(view: 'price' | 'compare') {
+    btcChartView = view;
+    if (view === 'compare' && !compareData.btc.length) await fetchCompareChart();
   }
 
   $: btcDayChangePct = btcDayOpenPrice > 0 && $btcPrice > 0
@@ -820,8 +842,13 @@
   <!-- BITCOIN PRICE CHART — full width below the two tiles -->
   <div class="gc btc-chart-card" style="margin-top:14px;">
     <div class="chart-header">
-      <p class="gc-title">Bitcoin Price</p>
+      <p class="gc-title">{btcChartView === 'compare' ? 'BTC · S&P · Gold' : 'Bitcoin Price'}</p>
       <div class="chart-controls">
+        <!-- View toggle: Price / Compare -->
+        <div class="chart-range-btns" role="group" aria-label="Chart view">
+          <button class="crb" class:crb--active={btcChartView==='price'} on:click={() => setChartView('price')} aria-pressed={btcChartView==='price'}>Price</button>
+          <button class="crb" class:crb--active={btcChartView==='compare'} on:click={() => setChartView('compare')} aria-pressed={btcChartView==='compare'} title="Indexed comparison: BTC vs S&P 500 vs Gold">Compare</button>
+        </div>
         <!-- Range buttons -->
         <div class="chart-range-btns" role="group" aria-label="Chart time range">
           <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
@@ -832,7 +859,18 @@
     </div>
 
     <div class="chart-container">
-      {#if btcChartLoading}
+      {#if btcChartView === 'compare'}
+        {#if compareLoading}
+          <div class="skeleton" style="height:220px;border-radius:6px;"></div>
+        {:else}
+          <CompareChart
+            btc={compareData.btc}
+            sp500={compareData.sp500}
+            gold={compareData.gold}
+            range={btcChartRange}
+          />
+        {/if}
+      {:else if btcChartLoading}
         <div class="skeleton" style="height:160px;border-radius:6px;"></div>
       {:else if btcChartData.length >= 2}
         <PriceChart
