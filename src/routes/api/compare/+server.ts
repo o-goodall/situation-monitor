@@ -26,6 +26,57 @@ const YF_PARAMS: Record<string, { range: string; interval: string }> = {
   '5y':  { range: '5y',  interval: '1wk' },
 };
 
+// ── Stooq.com fallback for S&P 500 and Gold history ──────────────────────────
+// Stooq provides free CSV historical data without authentication.
+const STOOQ_TICKER: Record<string, string> = {
+  '%5EGSPC': '%5Espx',  // S&P 500
+  'GC=F':    'xauusd',  // Gold (XAU/USD)
+};
+// Map Yahoo Finance range → { days to look back, Stooq interval }
+const STOOQ_RANGE: Record<string, { days: number; interval: string }> = {
+  '1d':  { days: 5,    interval: 'd' },
+  '5d':  { days: 10,   interval: 'd' },
+  '1y':  { days: 366,  interval: 'd' },
+  '5y':  { days: 1830, interval: 'w' },
+};
+
+function stooqDateStr(d: Date): string {
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+}
+
+async function fetchStooqHistory(ticker: string, yfRange: string): Promise<PricePoint[]> {
+  const stooqTicker = STOOQ_TICKER[ticker];
+  if (!stooqTicker) return [];
+  const { days, interval } = STOOQ_RANGE[yfRange] ?? STOOQ_RANGE['1y'];
+  const now = new Date();
+  const start = new Date(now.getTime() - days * 86400000);
+  const url = `https://stooq.com/q/d/l/?s=${stooqTicker}&d1=${stooqDateStr(start)}&d2=${stooqDateStr(now)}&i=${interval}`;
+  try {
+    const res = await fetch(url, { headers: HEADERS });
+    if (!res.ok) return [];
+    const text = await res.text();
+    // CSV: Date,Open,High,Low,Close,Volume — skip header and any non-data rows.
+    // Rows are filtered by leading 4-digit year (YYYY-MM-DD format from Stooq).
+    const lines = text.trim().split('\n').filter((l: string) => /^\d{4}-\d{2}-\d{2}/.test(l));
+    // Need at least 2 points: one as the normalisation base and one to compare against
+    if (lines.length < 2) return [];
+    const pts: PricePoint[] = [];
+    for (const line of lines) {
+      const cols = line.split(',');
+      if (cols.length < 5) continue;
+      const close = parseFloat(cols[4]);
+      if (!close || isNaN(close)) continue;
+      const t = new Date(cols[0]).getTime();
+      if (isNaN(t)) continue;
+      pts.push({ t, p: close });
+    }
+    // Require at least 2 valid points (normalisation base + 1 comparison point)
+    return pts.length > 1 ? pts : [];
+  } catch {
+    return [];
+  }
+}
+
 // ── Yahoo Finance crumb authentication ────────────────────────────────────────
 // Yahoo Finance requires a session cookie + crumb token for API access.
 // Crumbs are cached in-memory for up to 1 hour per function instance.
@@ -108,7 +159,8 @@ async function fetchYahooHistory(ticker: string, yfRange: string, yfInterval: st
       })
     );
   } catch {
-    return [];
+    // Yahoo Finance failed — fall back to Stooq.com for supported tickers
+    return fetchStooqHistory(ticker, yfRange);
   }
 }
 
