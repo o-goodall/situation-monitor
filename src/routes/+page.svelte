@@ -189,6 +189,43 @@
     ? parseFloat(($btcPrice / $goldPriceUsd).toFixed(2))
     : null;
 
+  // BTC/gold ratio historical % change
+  let btcGoldRange: '6m' | '1y' | '5y' | 'max' = '1y';
+  let btcGoldPctChange: number | null = null;
+  let btcGoldRangeLoading = false;
+
+  async function fetchBtcGoldRange(r = btcGoldRange) {
+    btcGoldRangeLoading = true;
+    try {
+      const d = await fetch(`/api/bitcoin/gold?range=${r}`).then(res => res.json());
+      btcGoldPctChange = d.pctChange ?? null;
+    } catch { btcGoldPctChange = null; }
+    finally { btcGoldRangeLoading = false; }
+  }
+
+  async function setBtcGoldRange(r: '6m' | '1y' | '5y' | 'max') {
+    btcGoldRange = r;
+    await fetchBtcGoldRange(r);
+  }
+
+  // Australian median income + house price (live data)
+  let auMedianIncome: number | null = null;
+  let auIncomePct: number | null = null;
+  let auMedianHouse: number | null = null;
+  let auHousePct: number | null = null;
+  let auAffordabilityRatio: number | null = null;
+
+  async function fetchAuData() {
+    try {
+      const d = await fetch('/api/australia').then(res => res.json());
+      auMedianIncome       = d.medianIncome       ?? null;
+      auIncomePct          = d.incomePctChange     ?? null;
+      auMedianHouse        = d.medianHousePrice    ?? null;
+      auHousePct           = d.housePctChange      ?? null;
+      auAffordabilityRatio = d.affordabilityRatio  ?? null;
+    } catch {}
+  }
+
   async function refreshGF() {
     const token=$settings.ghostfolio?.token?.trim();if(!token)return;
     $gfLoading=true;$gfError='';
@@ -221,6 +258,8 @@
   onMount(() => {
     fetchBtcChart();
     fetchHashrateChart();
+    fetchBtcGoldRange();
+    fetchAuData();
   });
 </script>
 
@@ -270,7 +309,19 @@
           <span class="btc-gold-strip-n muted">—</span>
         {/if}
       </div>
-      <span class="stat-l">Bitcoin in Gold</span>
+      <div class="btc-gold-range-row">
+        <span class="stat-l">Bitcoin in Gold</span>
+        {#if btcGoldPctChange !== null}
+          <span class="btc-gold-pct" style="color:{btcGoldPctChange >= 0 ? 'var(--up)' : 'var(--dn)'}">{btcGoldPctChange >= 0 ? '+' : ''}{btcGoldPctChange.toFixed(1)}%</span>
+        {:else if btcGoldRangeLoading}
+          <span class="btc-gold-pct muted">…</span>
+        {/if}
+      </div>
+      <div class="btc-gold-range-btns" aria-label="BTC/gold ratio period">
+        {#each (['6m','1y','5y','max'] as const) as r}
+          <button class="crb crb--xs" class:crb--active={btcGoldRange === r} on:click={() => setBtcGoldRange(r)}>{r.toUpperCase()}</button>
+        {/each}
+      </div>
       {#if $goldPriceUsd !== null}
         <span class="btc-gold-strip-spot">${n($goldPriceUsd, 0)} <span class="met-u">USD/oz</span></span>
       {/if}
@@ -278,12 +329,24 @@
         <div class="au-strip-rows">
           <div class="au-strip-row">
             <span class="au-strip-label">🇦🇺 Med. Income</span>
-            <span class="au-strip-val">$92k <span class="au-chg up">+4.1%</span></span>
+            <span class="au-strip-val">
+              {auMedianIncome !== null ? '$' + Math.round(auMedianIncome / 1000) + 'k' : '$100k'}
+              {#if auIncomePct !== null}<span class="au-chg" style="color:{auIncomePct >= 0 ? 'var(--up)' : 'var(--dn)'}">{auIncomePct >= 0 ? '+' : ''}{auIncomePct.toFixed(1)}%</span>{/if}
+            </span>
           </div>
           <div class="au-strip-row">
             <span class="au-strip-label">Med. House</span>
-            <span class="au-strip-val">$890k <span class="au-chg up">+6.8%</span></span>
+            <span class="au-strip-val">
+              {auMedianHouse !== null ? '$' + Math.round(auMedianHouse / 1000) + 'k' : '$815k'}
+              {#if auHousePct !== null}<span class="au-chg" style="color:{auHousePct >= 0 ? 'var(--up)' : 'var(--dn)'}">{auHousePct >= 0 ? '+' : ''}{auHousePct.toFixed(1)}%</span>{/if}
+            </span>
           </div>
+          {#if auAffordabilityRatio !== null}
+            <div class="au-strip-row au-strip-row--ratio">
+              <span class="au-strip-label">House/Income Ratio</span>
+              <span class="au-strip-val au-ratio-val">{auAffordabilityRatio}× <span class="au-ratio-sub">yr income</span></span>
+            </div>
+          {/if}
         </div>
       {/if}
     </div>
@@ -791,7 +854,7 @@
                 {:else if m.trending}
                   <span class="pm-tag pm-trending-tag">Trending</span>
                 {:else}
-                  <span class="pm-tag">{m.tag}</span>
+                  <span class="pm-tag">{m.tag || 'Market'}</span>
                 {/if}
                 {#if isUrgent}
                   <span class="pm-tag pm-urgent-tag" title="Resolves soon">{endLabel}</span>
@@ -1328,15 +1391,24 @@
   .btc-gold-strip-n { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; color:#c9a84c; }
   .btc-gold-strip-unit { font-size:.62rem; font-weight:600; color:var(--t2); align-self:flex-end; padding-bottom:2px; }
   .btc-gold-strip-spot { font-size:.62rem; font-weight:600; color:var(--t2); margin-top:4px; font-variant-numeric:tabular-nums; }
+  .btc-gold-range-row { display:flex; align-items:center; justify-content:space-between; gap:6px; }
+  .btc-gold-pct { font-size:.68rem; font-weight:700; font-variant-numeric:tabular-nums; }
+  .btc-gold-range-btns { display:flex; gap:3px; margin:4px 0 2px; flex-wrap:wrap; }
+  .crb--xs { padding:2px 7px; font-size:.52rem; }
   @media (max-width:500px) { .btc-gold-strip-n { font-size:1.15rem; } }
 
   /* AU snapshot rows inside stat tile */
   .au-strip-rows { display:flex; flex-direction:column; gap:4px; margin-top:7px; width:100%; }
   .au-strip-row { display:flex; justify-content:space-between; align-items:center; padding:5px 8px;
     background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:6px; }
+  .au-strip-row--ratio { border-color:rgba(100,160,255,.15); background:rgba(100,160,255,.04); }
   .au-strip-label { font-size:.55rem; color:var(--t2); font-weight:500; }
   .au-strip-val { font-size:.62rem; font-weight:700; color:var(--t1); font-variant-numeric:tabular-nums; }
+  .au-ratio-val { color:#7eb8f7 !important; }
+  .au-ratio-sub { font-size:.5rem; font-weight:500; color:var(--t2); }
   :global(html.light) .au-strip-row { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
+  :global(html.light) .au-strip-row--ratio { background:rgba(60,100,200,.05); border-color:rgba(60,100,200,.12); }
+  :global(html.light) .au-ratio-val { color:#2563eb !important; }
 
   /* Divider between halving and sats in combined tile */
   .halving-sats-divider { width:40%; height:1px; background:rgba(255,255,255,.08); margin:8px auto 6px; }
@@ -1575,27 +1647,25 @@
   /* ── TRENDING FOIL ANIMATION ────────────────────────────── */
   @keyframes trendingFoil {
     0%   { background-position: -200% center; }
-    20%  { background-position: 200% center; }
+    60%  { background-position: 200% center; }
     100% { background-position: 200% center; }
   }
 
   /* ── EXTRA TAG VARIANTS ────────────────────────────────── */
   .pm-trending-tag {
-    background: linear-gradient(105deg, #ff4444 20%, #ffbb88 45%, #ff6644 55%, #ff4444 80%);
-    background-size: 200% auto;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    border-color: rgba(255,80,40,.45);
-    animation: trendingFoil 4s linear infinite;
+    background: linear-gradient(105deg, rgba(220,50,30,.25) 0%, rgba(255,130,60,.45) 45%, rgba(255,200,120,.55) 55%, rgba(220,50,30,.25) 100%);
+    background-size: 250% auto;
+    color: #ff7755 !important;
+    border-color: rgba(255,80,40,.5);
+    animation: trendingFoil 3.5s ease-in-out infinite;
     font-weight: 700;
   }
   @media (prefers-reduced-motion: reduce) {
-    .pm-trending-tag { animation: none; -webkit-text-fill-color: #ff6644; color: #ff6644; background: none; }
+    .pm-trending-tag { animation: none; color: #ff6644 !important; background: rgba(255,60,30,.15); }
   }
   .pm-urgent-tag { background:rgba(255,180,50,.1); border-color:rgba(255,180,50,.3); color:#ffb432; }
   .pm-date-tag { color:var(--t3); }
-  :global(html.light) .pm-trending-tag { border-color:rgba(200,60,40,.35); background: linear-gradient(105deg, #c02020 20%, #e06020 45%, #c03010 55%, #c02020 80%); background-size: 200% auto; animation: trendingFoil 4s linear infinite; }
+  :global(html.light) .pm-trending-tag { background: linear-gradient(105deg, rgba(180,40,20,.15) 0%, rgba(220,80,30,.3) 45%, rgba(255,160,80,.4) 55%, rgba(180,40,20,.15) 100%); background-size: 250% auto; color: #c03020 !important; border-color: rgba(200,60,40,.45); animation: trendingFoil 3.5s ease-in-out infinite; }
   :global(html.light) .pm-urgent-tag { background:rgba(180,110,0,.08); border-color:rgba(180,110,0,.25); color:#946000; }
 
   /* ── INTEL GRID ─────────────────────────────────────────── */
