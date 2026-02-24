@@ -4,6 +4,43 @@
   import type { ThreatEvent } from '../routes/api/events/+server';
   import { settings } from '$lib/store';
 
+  export let polymarketThreats: { question: string; url: string; probability: number; topOutcome: string }[] = [];
+
+  /** Maps geo-keywords in market questions to [lat, lon, locationLabel] */
+  const POLY_GEO: [RegExp, number, number, string][] = [
+    [/iran/i, 32.0, 53.0, 'Iran'],
+    [/israel/i, 31.8, 35.2, 'Israel'],
+    [/gaza/i, 31.5, 34.5, 'Gaza'],
+    [/ukraine/i, 49.0, 31.5, 'Ukraine'],
+    [/russia/i, 55.7, 37.6, 'Russia'],
+    [/taiwan/i, 24.0, 121.0, 'Taiwan'],
+    [/north korea/i, 40.0, 127.0, 'North Korea'],
+    [/yemen/i, 15.3, 44.2, 'Yemen'],
+    [/syria/i, 34.8, 38.5, 'Syria'],
+    [/iraq/i, 33.3, 44.4, 'Iraq'],
+    [/afghanistan/i, 34.5, 69.2, 'Afghanistan'],
+    [/pakistan/i, 30.4, 69.3, 'Pakistan'],
+    [/sudan/i, 15.5, 30.0, 'Sudan'],
+    [/india/i, 20.6, 79.0, 'India'],
+    [/south china sea/i, 12.0, 114.0, 'South China Sea'],
+    [/lebanon/i, 33.9, 35.5, 'Lebanon'],
+    [/hezbollah/i, 33.9, 35.5, 'Lebanon'],
+    [/hamas/i, 31.5, 34.5, 'Gaza'],
+    [/houthi|red sea/i, 15.3, 44.2, 'Yemen'],
+    [/myanmar/i, 19.7, 96.1, 'Myanmar'],
+    [/korea/i, 37.5, 127.0, 'Korea'],
+    [/china/i, 35.9, 104.2, 'China'],
+    [/venezu[e]?la/i, 6.4, -66.6, 'Venezuela'],
+    [/ethiopia/i, 9.1, 40.5, 'Ethiopia'],
+  ];
+
+  function geolocateMarket(question: string): { lat: number; lon: number; label: string } | null {
+    for (const [re, lat, lon, label] of POLY_GEO) {
+      if (re.test(question)) return { lat, lon, label };
+    }
+    return null;
+  }
+
   let mapContainer: HTMLDivElement;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let d3Module: any = null;
@@ -17,6 +54,8 @@
   let path: any = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let zoom: any = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let polyGroup: any = null; // separate SVG group for polymarket markers (re-rendered on prop change)
 
   const WIDTH = 900;
   const HEIGHT = 460;
@@ -250,6 +289,10 @@
           .on('mouseleave', hideTip);
       }
 
+      // Create a dedicated group for polymarket markers (so they can be updated independently)
+      polyGroup = mapGroup.append('g').attr('id', 'wm-poly-group');
+      renderPolyMarkers();
+
       mapLoading = false;
     } catch (err) {
       console.error('WorldMap init failed', err);
@@ -257,6 +300,49 @@
       mapLoading = false;
     }
   }
+
+  /** Renders (or re-renders) polymarket threat markers into the dedicated poly group */
+  function renderPolyMarkers() {
+    if (!polyGroup || !projection) return;
+    polyGroup.selectAll('*').remove();
+
+    const POLY_MARKET_COLOR = '#f59e0b'; // amber
+    for (const m of polymarketThreats) {
+      const geo = geolocateMarket(m.question);
+      if (!geo) continue;
+      const pos = projection([geo.lon, geo.lat]);
+      if (!pos) continue;
+      const [x, y] = pos;
+      const size = 5 + (m.probability - 50) / 25; // size 5–9 based on probability
+
+      // Draw a diamond (rotated square) in amber
+      polyGroup.append('path')
+        .attr('d', `M${x},${y - size} L${x + size},${y} L${x},${y + size} L${x - size},${y} Z`)
+        .attr('fill', POLY_MARKET_COLOR).attr('fill-opacity', 0.75)
+        .attr('class', 'wm-poly-pulse');
+      // Outer ring
+      polyGroup.append('path')
+        .attr('d', `M${x},${y - size - 3} L${x + size + 3},${y} L${x},${y + size + 3} L${x - size - 3},${y} Z`)
+        .attr('fill', 'none').attr('stroke', POLY_MARKET_COLOR).attr('stroke-width', 0.7)
+        .attr('stroke-opacity', 0.4).attr('class', 'wm-poly-pulse');
+      // Label
+      polyGroup.append('text')
+        .attr('x', x + size + 5).attr('y', y + 3)
+        .attr('fill', POLY_MARKET_COLOR).attr('font-size', '7px').attr('font-family', 'monospace')
+        .attr('pointer-events', 'none')
+        .text(`${geo.label} ${m.probability}%`);
+      // Hit area (click opens Polymarket in new tab)
+      polyGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 14)
+        .attr('fill', 'transparent').attr('class', 'wm-hit')
+        .on('mouseenter', (e: MouseEvent) => showTip(e, `◈ Market Signal: ${geo.label}`, POLY_MARKET_COLOR, [m.question, `Crowd: ${m.topOutcome} ${m.probability}%`, 'Trending on Polymarket — click to open']))
+        .on('mousemove', moveTip)
+        .on('mouseleave', hideTip)
+        .on('click', () => window.open(m.url, '_blank', 'noopener,noreferrer'));
+    }
+  }
+
+  // Re-render polymarket markers whenever the prop changes (after map is initialised)
+  $: if (polyGroup) renderPolyMarkers();
 
   function calcTerminator(): [number, number][] {
     const now = new Date();
@@ -343,6 +429,9 @@
       <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
+      {#if polymarketThreats.length > 0}
+        <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #f59e0b;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#f59e0b;">Market signals</span></div>
+      {/if}
       {#if threatsUpdatedAt}
         <div class="wm-leg-sep"></div>
         <div class="wm-leg-ts">Updated {threatsUpdatedAt}</div>
@@ -450,6 +539,11 @@
     50%       { opacity: .65; }
   }
   :global(.wm-hit) { cursor: pointer; }
+  :global(.wm-poly-pulse) { animation: wm-poly-pulse 1.8s ease-in-out infinite; }
+  @keyframes wm-poly-pulse {
+    0%, 100% { opacity: .5; }
+    50%       { opacity: 1; }
+  }
 
   /* ── MAJOR STORIES TICKER ───────────────────────────────── */
   .wm-stories {
