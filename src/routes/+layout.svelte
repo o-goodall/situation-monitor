@@ -800,13 +800,22 @@
 <footer class="site-footer" role="contentinfo">
   <span class="footer-brand">GL<span style="color:var(--orange);">4</span>NCE <span class="footer-slogan">Everything. At a Glance.</span></span>
   <span class="footer-sources">
-    <a href="https://mempool.space" target="_blank" rel="noopener noreferrer">mempool.space</a> ·
-    <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">alternative.me</a> ·
-    <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer">binance</a> ·
-    <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">exchangerate-api</a> ·
-    <a href="https://ghostfol.io" target="_blank" rel="noopener noreferrer">ghostfol.io</a> ·
-    <a href="https://www.worldbank.org" target="_blank" rel="noopener noreferrer">worldbank</a> ·
-    <a href="https://gdeltproject.org" target="_blank" rel="noopener noreferrer">GDELT</a>
+    <span class="footer-src-group">
+      <span class="footer-src-label">Markets</span>
+      <a href="https://mempool.space" target="_blank" rel="noopener noreferrer">mempool.space</a> ·
+      <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">alternative.me</a> ·
+      <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer">binance</a> ·
+      <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">exchangerate-api</a> ·
+      <a href="https://ghostfol.io" target="_blank" rel="noopener noreferrer">ghostfol.io</a> ·
+      <a href="https://www.worldbank.org" target="_blank" rel="noopener noreferrer">worldbank</a>
+    </span>
+    <span class="footer-src-sep" aria-hidden="true">|</span>
+    <span class="footer-src-group">
+      <span class="footer-src-label">Intel</span>
+      <a href="https://gdeltproject.org" target="_blank" rel="noopener noreferrer">GDELT</a> ·
+      <a href="https://reliefweb.int" target="_blank" rel="noopener noreferrer">ReliefWeb</a> ·
+      <a href="https://feeds.reuters.com" target="_blank" rel="noopener noreferrer">Reuters</a>
+    </span>
   </span>
   <span class="footer-est">est. block 938144</span>
 </footer>
@@ -1189,9 +1198,12 @@
   }
   .footer-brand { font-family:inherit; font-size:.65rem; font-weight:900; color:rgba(255,255,255,.28); letter-spacing:.1em; text-transform:uppercase; }
   .footer-slogan { font-weight:400; font-size:.6rem; letter-spacing:.04em; color:rgba(255,255,255,.22); text-transform:none; }
-  .footer-sources { font-size:.56rem; color:rgba(255,255,255,.18); letter-spacing:.02em; }
+  .footer-sources { font-size:.56rem; color:rgba(255,255,255,.18); letter-spacing:.02em; display:flex; align-items:center; flex-wrap:wrap; gap:8px; }
   .footer-sources a { color:rgba(255,255,255,.25); text-decoration:none; transition:color .2s; }
   .footer-sources a:hover { color:var(--orange); }
+  .footer-src-group { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+  .footer-src-label { font-size:.48rem; font-weight:700; letter-spacing:.09em; text-transform:uppercase; color:rgba(255,255,255,.18); padding-right:2px; }
+  .footer-src-sep { color:rgba(255,255,255,.12); padding:0 2px; }
   .footer-est { font-size:.52rem; color:rgba(255,255,255,.18); letter-spacing:.05em; font-variant-numeric:tabular-nums; }
   @media (max-width:600px) { .site-footer { display:none; } }
 
@@ -1222,6 +1234,8 @@
   :global(html.light) .footer-sources { color:rgba(0,0,0,.35); }
   :global(html.light) .footer-sources a { color:rgba(0,0,0,.35); }
   :global(html.light) .footer-sources a:hover { color:#c77a10; }
+  :global(html.light) .footer-src-label { color:rgba(0,0,0,.28); }
+  :global(html.light) .footer-src-sep { color:rgba(0,0,0,.15); }
   :global(html.light) .footer-est { color:rgba(0,0,0,.3); }
   :global(html.light) .mobile-menu-panel { background:rgba(255,255,255,.98); }
   :global(html.light) .mobile-menu-backdrop { background:rgba(0,0,0,.25); }

@@ -11,6 +11,12 @@ export interface Threat {
   desc: string;
   /** ISO 3166-1 numeric country ID for conflict shading on the map (optional) */
   countryId?: string;
+  /** Multi-factor threat score (event volume × weight + acceleration modifier) */
+  score?: number;
+  /** 7-day trend direction derived from week-over-week acceleration */
+  direction?: '↑' | '↓' | '→';
+  /** Week-over-week acceleration as a percentage (+/−) */
+  accelerationPct?: number;
 }
 
 export interface RssFeed {

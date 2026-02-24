@@ -379,10 +379,18 @@
         .attr('fill', col).attr('font-size', '7.5px').attr('font-family', 'monospace')
         .attr('pointer-events', 'none')
         .text(h.name);
-      // hit area
+      // hit area — tooltip shows risk level, direction and score when available
+      const tipLines: string[] = [];
+      if (h.direction && h.accelerationPct !== undefined) {
+        const accelStr = h.accelerationPct !== 0
+          ? ` (${h.accelerationPct > 0 ? '+' : ''}${h.accelerationPct}% vs prior week)`
+          : '';
+        tipLines.push(`Trend: ${h.direction} ${h.direction === '↑' ? 'Rising' : h.direction === '↓' ? 'Cooling' : 'Stable'}${accelStr}`);
+      }
+      if (h.score !== undefined) tipLines.push(`Score: ${h.score}`);
       threatGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 12)
         .attr('fill', 'transparent').attr('class', 'wm-hit')
-        .on('mouseenter', (e: MouseEvent) => showTip(e, h.desc, col))
+        .on('mouseenter', (e: MouseEvent) => showTip(e, h.desc, col, tipLines))
         .on('mousemove', moveTip)
         .on('mouseleave', hideTip);
     }
