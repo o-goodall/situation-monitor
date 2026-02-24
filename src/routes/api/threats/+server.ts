@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
-import { DEFAULT_THREATS, type Threat } from '$lib/settings';
+import { DEFAULT_THREATS, type Threat, type ThreatLevel } from '$lib/settings';
 
 /**
  * GET /api/threats
@@ -10,6 +10,7 @@ import { DEFAULT_THREATS, type Threat } from '$lib/settings';
  * Query params:
  *  - disabled  (optional) JSON array of threat IDs to exclude, e.g. ["ukraine","gaza"]
  *  - custom    (optional) JSON array of user-added Threat objects to merge in
+ *  - levels    (optional) JSON object of ID → ThreatLevel overrides
  *
  * Response: { threats: Threat[], conflictCountryIds: string[], updatedAt: string }
  */
@@ -18,12 +19,16 @@ export async function GET({ url }: RequestEvent) {
     // Parse optional user overrides passed from the client
     const disabledParam = url.searchParams.get('disabled');
     const customParam   = url.searchParams.get('custom');
+    const levelsParam   = url.searchParams.get('levels');
 
     const disabledIds: string[] = disabledParam ? JSON.parse(decodeURIComponent(disabledParam)) : [];
     const customThreats: Threat[] = customParam ? JSON.parse(decodeURIComponent(customParam)) : [];
+    const levelOverrides: Record<string, ThreatLevel> = levelsParam ? JSON.parse(decodeURIComponent(levelsParam)) : {};
 
-    // Start from the curated defaults, apply disable list
-    const active = DEFAULT_THREATS.filter(t => !disabledIds.includes(t.id));
+    // Start from the curated defaults, apply disable list, then apply level overrides
+    const active = DEFAULT_THREATS
+      .filter(t => !disabledIds.includes(t.id))
+      .map(t => (t.id in levelOverrides) ? { ...t, level: levelOverrides[t.id] } : t);
 
     // Merge in user-defined custom threats (append — they carry their own IDs)
     const merged: Threat[] = [...active, ...customThreats];

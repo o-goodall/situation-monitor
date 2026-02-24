@@ -297,31 +297,35 @@
 
     <!-- BTC in Gold + AU Snapshot — moved from signal grid -->
     <div class="stat-tile stat-tile--static stat-tile--btc-gold" data-tooltip="Bitcoin priced in gold (troy ounces)">
+      <!-- 1 ₿ header with foil glimmer -->
+      <div class="btc-gold-badge-row">
+        <span class="btc-gold-badge-btc btc-glimmer">1 ₿</span>
+      </div>
+      <!-- Label -->
+      <span class="btc-gold-label">Price in Gold (oz)</span>
+      <!-- Current price - primary display -->
       <div class="btc-gold-strip-hero" aria-live="polite" aria-atomic="true">
         {#if btcInGoldOz !== null}
           <span class="btc-gold-strip-n">{btcInGoldOz.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-          <span class="btc-gold-strip-unit">oz gold</span>
+          <span class="btc-gold-strip-unit">oz</span>
         {:else}
           <span class="btc-gold-strip-n muted">—</span>
         {/if}
       </div>
-      <div class="btc-gold-range-row">
-        <span class="stat-l">1 BTC <span class="price-label-sep">·</span> oz</span>
-        {#if btcGoldPctChange !== null}
-          <span class="btc-gold-pct" style="color:{btcGoldPctChange >= 0 ? 'var(--up)' : 'var(--dn)'}">{btcGoldPctChange >= 0 ? '+' : ''}{btcGoldPctChange.toFixed(1)}%</span>
-        {:else if btcGoldRangeLoading}
-          <span class="btc-gold-pct muted">…</span>
-        {/if}
-      </div>
+      <!-- Year ago + % change -->
       {#if btcGoldRangeLoading}
         <span class="btc-gold-strip-spot muted">…</span>
       {:else if btcGoldStartRatio !== null && btcGoldPctChange !== null}
-        <span class="btc-gold-strip-spot">
-          {#if btcInGoldOz !== null}{n(btcInGoldOz, 2)} oz <span class="met-u">live</span> &nbsp;|&nbsp; {/if}
-          {n(btcGoldStartRatio, 2)} oz <span class="met-u">1yr ago</span>
-          &nbsp;|&nbsp;
-          <span style="color:{btcGoldPctChange >= 0 ? 'var(--up)' : 'var(--dn)'}">{btcGoldPctChange >= 0 ? '+' : ''}{btcGoldPctChange.toFixed(1)}%</span>
-        </span>
+        <div class="btc-gold-history">
+          <div class="btc-gold-hist-row">
+            <span class="btc-gold-hist-label">1yr ago</span>
+            <span class="btc-gold-hist-val">{n(btcGoldStartRatio, 2)} oz</span>
+          </div>
+          <div class="btc-gold-hist-row">
+            <span class="btc-gold-hist-label">change</span>
+            <span class="btc-gold-hist-pct" style="color:{btcGoldPctChange >= 0 ? 'var(--up)' : 'var(--dn)'}">{btcGoldPctChange >= 0 ? '+' : ''}{btcGoldPctChange.toFixed(1)}%</span>
+          </div>
+        </div>
       {/if}
       {#if displayCur === 'AUD'}
         <div class="au-strip-rows">
@@ -931,6 +935,10 @@
 <style>
   /* ── LAYOUT ──────────────────────────────────────────────── */
   .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; min-height: 100vh; position: relative; overflow: clip; }
+  /* Desktop scroll snap — align section start to viewport */
+  @media (min-width:701px) {
+    .section { scroll-snap-align: start; }
+  }
   .section::before { content: ''; position: absolute; inset: -20% 0; z-index: -1; background: radial-gradient(ellipse at 50% 30%, rgba(247,147,26,.04) 0%, transparent 70%); transform: translateY(0); transition: transform 0.6s ease-out; pointer-events: none; }
   .section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
 
@@ -955,8 +963,10 @@
     #portfolio { padding-bottom:32px; }
     #intel     { padding-bottom:80px; }
     /* Uniform tile gap across all section grids on mobile */
-    .port-grid   { gap:10px; }
-    .intel-grid  { gap:10px; }
+    .port-grid   { gap:8px; }
+    .intel-grid  { gap:8px; }
+    .signal-grid { gap:8px; }
+    .stat-strip  { margin-bottom:8px; }
     /* Hide Connect Ghostfolio tile on mobile when no token is configured */
     .gc--no-token { display:none; }
   }
@@ -1385,14 +1395,25 @@
 
   /* ── BTC-IN-GOLD STAT TILE (stat-strip) ─────────────────── */
   .stat-tile--btc-gold { border-color:rgba(201,168,76,.22) !important; }
-  .btc-gold-strip-hero { display:flex; align-items:baseline; gap:5px; justify-content:center; margin-bottom:2px; }
-  .btc-gold-strip-n { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; color:#c9a84c; }
-  .btc-gold-strip-unit { font-size:.62rem; font-weight:600; color:var(--t2); align-self:flex-end; padding-bottom:2px; }
+  /* 1 ₿ badge row */
+  .btc-gold-badge-row { display:flex; justify-content:center; margin-bottom:2px; }
+  .btc-gold-badge-btc { font-size:1.1rem; font-weight:900; letter-spacing:-.02em; line-height:1; }
+  /* label under badge */
+  .btc-gold-label { font-size:.52rem; font-weight:600; color:var(--t2); text-transform:uppercase; letter-spacing:.09em; margin-bottom:4px; }
+  /* main price hero */
+  .btc-gold-strip-hero { display:flex; align-items:baseline; gap:4px; justify-content:center; margin-bottom:4px; }
+  .btc-gold-strip-n { font-size:1.35rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; color:#c9a84c; }
+  .btc-gold-strip-unit { font-size:.6rem; font-weight:600; color:var(--t2); align-self:flex-end; padding-bottom:2px; }
+  /* year-ago + change history rows */
+  .btc-gold-history { display:flex; flex-direction:column; gap:3px; width:100%; margin-top:2px; padding-top:5px; border-top:1px solid rgba(201,168,76,.12); }
+  .btc-gold-hist-row { display:flex; justify-content:space-between; align-items:center; }
+  .btc-gold-hist-label { font-size:.54rem; color:var(--t2); font-weight:500; text-transform:uppercase; letter-spacing:.06em; }
+  .btc-gold-hist-val { font-size:.62rem; font-weight:700; color:var(--t1); font-variant-numeric:tabular-nums; }
+  .btc-gold-hist-pct { font-size:.72rem; font-weight:800; font-variant-numeric:tabular-nums; }
+  /* legacy spot text (loading state) */
   .btc-gold-strip-spot { font-size:.62rem; font-weight:600; color:var(--t2); margin-top:4px; font-variant-numeric:tabular-nums; }
-  .btc-gold-range-row { display:flex; align-items:center; justify-content:space-between; gap:6px; }
-  .btc-gold-pct { font-size:.68rem; font-weight:700; font-variant-numeric:tabular-nums; }
   .crb--xs { padding:2px 7px; font-size:.52rem; }
-  @media (max-width:500px) { .btc-gold-strip-n { font-size:1.15rem; } }
+  @media (max-width:500px) { .btc-gold-strip-n { font-size:1.1rem; } .btc-gold-badge-btc { font-size:.95rem; } }
 
   /* AU snapshot rows inside stat tile */
   .au-strip-rows { display:flex; flex-direction:column; gap:4px; margin-top:7px; width:100%; }

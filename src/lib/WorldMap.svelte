@@ -122,6 +122,9 @@
     if (threatSettings.customThreats.length > 0) {
       params.set('custom', JSON.stringify(threatSettings.customThreats));
     }
+    if (threatSettings.threatLevels && Object.keys(threatSettings.threatLevels).length > 0) {
+      params.set('levels', JSON.stringify(threatSettings.threatLevels));
+    }
     const query = params.toString() ? `?${params.toString()}` : '';
     const res = await fetch(`/api/threats${query}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
