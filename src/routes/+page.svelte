@@ -736,73 +736,53 @@
       {:else}
         <div class="pm-grid">
           {#each $markets.slice(0, INTEL_TILE_LIMIT) as m}
-            {@const topic = detectTopic(m.question)}
             {@const endLabel = fmtEndDate(m.daysLeft, m.endDate)}
-            {@const isBinary = m.outcomes.length <= 2}
             {@const isUrgent = m.daysLeft !== null && m.daysLeft >= 0 && m.daysLeft <= 7}
+            {@const topOutcome = m.outcomes[0]?.name ?? m.topOutcome}
+            {@const topPct = m.outcomes[0]?.probability ?? m.probability}
             <a href="{m.url}" target="_blank" rel="noopener noreferrer"
                class="pm-card pm-card--intel"
                class:pm-card--urgent={isUrgent}
                class:pm-card--trending={m.trending && !m.pinned}
                aria-label="{m.question}">
               <div class="pm-card-frosted-overlay"></div>
-              <!-- Topic icon watermark -->
-              <span class="pm-card-topic-icon" aria-hidden="true">{topic}</span>
               <!-- Tag row -->
               <div class="pm-card-tags" style="position:relative;z-index:1;">
                 {#if m.pinned}
                   <span class="pm-tag pm-pin">★ Watching</span>
                 {:else if m.trending}
-                  <span class="pm-tag pm-trending-tag">🔥 Trending</span>
+                  <span class="pm-tag pm-trending-tag">Trending</span>
                 {:else}
                   <span class="pm-tag">{m.tag}</span>
                 {/if}
                 {#if isUrgent}
-                  <span class="pm-tag pm-urgent-tag" title="Resolves soon">⏱ {endLabel}</span>
+                  <span class="pm-tag pm-urgent-tag" title="Resolves soon">{endLabel}</span>
                 {:else if endLabel}
                   <span class="pm-tag pm-date-tag">{endLabel}</span>
                 {/if}
               </div>
               <!-- Question -->
               <p class="pm-card-q" style="position:relative;z-index:1;">{m.question}</p>
-              <!-- Binary market: large YES/NO probability display -->
-              {#if isBinary}
-                <div class="pm-binary-prob" style="position:relative;z-index:1;">
-                  <span class="pm-binary-outcome" style="color:{pc(m.probability)};" aria-label="Outcome: {m.topOutcome}">{m.topOutcome}</span>
-                  <span class="pm-binary-pct" style="color:{pc(m.probability)};" aria-label="Probability: {m.probability} percent">{m.probability}%</span>
-                </div>
-              {:else}
-                <!-- Multi-outcome: outcomes with inline mini bars -->
-                <ul class="pm-outcomes" style="position:relative;z-index:1;" aria-label="Top contenders">
-                  {#each m.outcomes.slice(0, 4) as o}
-                    <li class="pm-outcome-row">
-                      <span class="pm-outcome-name" title="{o.name}">{o.name}</span>
-                      <div class="pm-outcome-bar-wrap" role="progressbar" aria-valuenow="{o.probability}" aria-valuemin="0" aria-valuemax="100" aria-label="{o.name} {o.probability}%">
-                        <div class="pm-outcome-bar" style="width:{Math.min(o.probability,100)}%;background:{pc(o.probability)};"></div>
-                      </div>
-                      <span class="pm-outcome-pct" style="color:{pc(o.probability)};">{o.probability}%</span>
-                    </li>
-                  {/each}
-                </ul>
-              {/if}
-              <!-- Data row: volume + liquidity -->
-              <div class="pm-card-data" style="position:relative;z-index:1;">
-                {#if m.volume24hr > 0}
-                  <span class="pm-data-vol24" title="24h volume">24h {fmtVol(m.volume24hr)}</span>
-                {/if}
-                {#if m.liquidity > 0}
-                  <span class="pm-data-liq" title="Liquidity">💧 {fmtVol(m.liquidity)}</span>
-                {/if}
-                {#if m.volume > 0}
-                  <span class="pm-data-vol" title="Total volume">Vol {fmtVol(m.volume)}</span>
-                {/if}
+              <!-- Leading outcome: large display for all market types -->
+              <div class="pm-binary-prob" style="position:relative;z-index:1;">
+                <span class="pm-binary-outcome" style="color:{pc(topPct)};" aria-label="Leading outcome: {topOutcome}">{topOutcome}</span>
+                <span class="pm-binary-pct" style="color:{pc(topPct)};" aria-label="Probability: {topPct} percent">{topPct}%</span>
               </div>
-              <!-- Probability bar (binary markets only) -->
-              {#if isBinary}
-                <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
-                  <div class="pm-prob-fill" style="width:{m.probability}%;background:{pc(m.probability)};"></div>
+              <!-- Secondary outcomes (multi-outcome markets only) -->
+              {#if m.outcomes.length > 2}
+                <div class="pm-secondary-outcomes" style="position:relative;z-index:1;" aria-label="Other contenders">
+                  {#each m.outcomes.slice(1, 4) as o}
+                    <span class="pm-secondary-item">
+                      <span class="pm-secondary-name">{o.name}</span>
+                      <span class="pm-secondary-pct" style="color:{pc(o.probability)};">{o.probability}%</span>
+                    </span>
+                  {/each}
                 </div>
               {/if}
+              <!-- Probability bar -->
+              <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
+                <div class="pm-prob-fill" style="width:{topPct}%;background:{pc(topPct)};"></div>
+              </div>
             </a>
           {/each}
         </div>
@@ -1455,28 +1435,20 @@
   }
   :global(html.light) .pm-card-topic-icon { opacity:.06; }
 
-  /* ── POLYMARKET OUTCOMES LIST (multi-outcome markets) ──────── */
-  .pm-outcomes {
-    list-style:none; margin:0; padding:0;
-    display:flex; flex-direction:column; gap:4px;
-    margin-top:2px;
+  /* ── SECONDARY OUTCOMES (multi-outcome markets) ─────────── */
+  .pm-secondary-outcomes {
+    display:flex; flex-wrap:wrap; gap:4px 10px; margin-top:2px;
   }
-  .pm-outcome-row {
-    display:flex; align-items:center; gap:5px;
-    font-size:.7rem; line-height:1.3;
+  .pm-secondary-item {
+    display:inline-flex; align-items:baseline; gap:3px;
   }
-  .pm-outcome-name {
-    color:var(--t2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 0 auto; max-width:45%;
+  .pm-secondary-name {
+    font-size:.62rem; color:var(--t2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:120px;
   }
-  .pm-outcome-bar-wrap {
-    flex:1; height:4px; background:rgba(255,255,255,.07); border-radius:2px; overflow:hidden; min-width:24px;
+  .pm-secondary-pct {
+    font-size:.62rem; font-weight:700; flex-shrink:0;
   }
-  .pm-outcome-bar { height:100%; border-radius:2px; opacity:.75; transition:width .5s ease; }
-  .pm-outcome-pct {
-    font-weight:700; font-size:.7rem; flex-shrink:0; text-align:right; min-width:28px;
-  }
-  :global(html.light) .pm-outcome-name { color:rgba(0,0,0,.55); }
-  :global(html.light) .pm-outcome-bar-wrap { background:rgba(0,0,0,.07); }
+  :global(html.light) .pm-secondary-name { color:rgba(0,0,0,.5); }
 
   /* ── BINARY PROBABILITY DISPLAY ────────────────────────── */
   .pm-binary-prob {
