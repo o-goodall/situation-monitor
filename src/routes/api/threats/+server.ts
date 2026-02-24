@@ -10,8 +10,16 @@ import { DEFAULT_THREATS, type Threat, type ThreatLevel } from '$lib/settings';
  * Data source: GDELT Events 2.0 (https://api.gdeltproject.org)
  *   — completely free, no registration or API key required
  *   — updated every 15 minutes
- *   — CAMEO codes 18 (assault) + 19 (fight) + 20 (mass violence)
- *   — pointdata mode returns geographic clusters with event counts
+ *   — Expanded CAMEO code coverage:
+ *       143/145: violent protest / riot       (protest escalation)
+ *       152/154: military posture / mobilize  (military mobilization)
+ *       17:      coerce, sanctions, threats   (government instability)
+ *       18:      assault                      (direct violence)
+ *       19:      fight                        (armed conflict)
+ *       20:      mass violence                (mass killing / atrocity)
+ *   — Dual-period comparison (current vs. prior 7 days) for 7-day acceleration
+ *   — Multi-factor threat score:
+ *       Score = (Event Volume × Base Weight) × (1 + Acceleration Modifier)
  *
  * Falls back to curated static DEFAULT_THREATS on any error.
  *
@@ -20,13 +28,57 @@ import { DEFAULT_THREATS, type Threat, type ThreatLevel } from '$lib/settings';
 
 // ── GDELT Events 2.0 API ──────────────────────────────────────
 // No API key required; https://api.gdeltproject.org
-// CAMEO codes: 18 = assault, 19 = fight, 20 = unconventional mass violence
+//
+// Expanded CAMEO codes (Layer 1 — Raw Event Stream):
+//   • 143 = conduct violent protest
+//   • 145 = protest violently / riot
+//   • 152 = demonstrate or exhibit military or police power
+//   • 154 = mobilize or increase police power
+//   • 17  = coerce (all sub-types: embargo, sanction, blockade, threaten)
+//   • 18  = assault (all sub-types: abduct, torture, kill, etc.)
+//   • 19  = fight (all sub-types: armed battle, air strike, etc.)
+//   • 20  = mass violence (all sub-types: genocide, mass atrocity, etc.)
+const GDELT_QUERY =
+  'cameo:143 OR cameo:145 OR cameo:152 OR cameo:154 OR cameo:17 OR cameo:18 OR cameo:19 OR cameo:20';
+
 const GDELT_TIMESPAN_DAYS = 7;
-const GDELT_TIMESPAN_MINS = GDELT_TIMESPAN_DAYS * 24 * 60; // 10080 minutes
-const GDELT_URL =
-  'https://api.gdeltproject.org/api/v2/events/query' +
-  '?query=' + encodeURIComponent('cameo:18 OR cameo:19 OR cameo:20') +
-  `&mode=pointdata&format=json&TIMESPAN=${GDELT_TIMESPAN_MINS}&MAXROWS=250`;
+const GDELT_TIMESPAN_MINS = GDELT_TIMESPAN_DAYS * 24 * 60; // 10_080 minutes
+const GDELT_MAX_ROWS = 500;
+
+// Layer 2 — Signal Engine: Violence Code Multiplier
+// Reflects the relative severity of each CAMEO parent code group
+// Approximate weighted average across all included codes ≈ 1.8
+const BASE_WEIGHT = 1.8;
+
+// Risk classification thresholds (after acceleration adjustment)
+const SCORE_CRITICAL = 300;
+const SCORE_HIGH     = 80;
+const SCORE_ELEVATED = 15;
+
+// Acceleration Modifier bounds and weight:
+//   NEW_SIGNAL_RATE: assumed 50% growth when a country first appears (no prior data)
+//   ACCEL_WEIGHT:    converts raw acceleration rate to a score modifier (30%)
+//   ACCEL_MAX_BOOST: caps upward contribution at +30% of base score
+//   ACCEL_MAX_PENALTY: caps downward contribution at −15% of base score
+const NEW_SIGNAL_RATE  = 0.5;  // moderate growth assumption for first-seen countries
+const ACCEL_WEIGHT     = 0.3;  // acceleration contributes up to 30% of base score
+const ACCEL_MAX_BOOST  = 0.30; // maximum positive score modifier
+const ACCEL_MAX_PENALTY = -0.15; // maximum negative score modifier (cooling dampens less than rising boosts)
+
+function gdeltUrl(opts: { timespan?: number; startDt?: string; endDt?: string }): string {
+  const base =
+    'https://api.gdeltproject.org/api/v2/events/query' +
+    '?query=' + encodeURIComponent(GDELT_QUERY) +
+    '&mode=pointdata&format=json' +
+    `&MAXROWS=${GDELT_MAX_ROWS}`;
+  if (opts.timespan !== undefined) return base + `&TIMESPAN=${opts.timespan}`;
+  return base + `&STARTDATETIME=${opts.startDt}&ENDDATETIME=${opts.endDt}`;
+}
+
+/** Format a Date as YYYYMMDDHHMMSS for GDELT STARTDATETIME / ENDDATETIME params */
+function dtStr(d: Date): string {
+  return d.toISOString().slice(0, 19).replace(/[-:T]/g, '');
+}
 
 // ── Country name regex → ISO 3166-1 numeric ID + canonical coords ─
 interface CountryInfo { id: string; lat: number; lon: number; canonical: string }
@@ -76,13 +128,6 @@ function matchCountry(name: string): CountryInfo | null {
 
 const LEVEL_ORDER: ThreatLevel[] = ['low', 'elevated', 'high', 'critical'];
 
-function countToLevel(count: number): ThreatLevel {
-  if (count >= 100) return 'critical';
-  if (count >= 25)  return 'high';
-  if (count >= 5)   return 'elevated';
-  return 'low';
-}
-
 // ── GDELT pointdata response shape ────────────────────────────
 interface GdeltFeature {
   geometry?: { coordinates?: [number, number] };
@@ -93,73 +138,172 @@ interface GdeltResponse {
   data?: GdeltFeature[];
 }
 
-// ── Module-level cache (1-hour TTL) ───────────────────────────
+/** Aggregate GDELT pointdata features into a per-country count map */
+function aggregateByCountry(features: GdeltFeature[]): Map<string, {
+  info: CountryInfo; count: number; bestLat: number; bestLon: number; maxCluster: number;
+}> {
+  const map = new Map<string, {
+    info: CountryInfo; count: number; bestLat: number; bestLon: number; maxCluster: number;
+  }>();
+  for (const f of features) {
+    const coords = f.geometry?.coordinates;
+    const lat = coords?.[1];   // GeoJSON: [lon, lat]
+    const lon = coords?.[0];
+    const name = f.properties?.name ?? '';
+    const count = f.properties?.count ?? 1;
+    if (lat == null || lon == null || !name) continue;
+    const country = matchCountry(name);
+    if (!country) continue;
+    if (map.has(country.canonical)) {
+      const entry = map.get(country.canonical)!;
+      entry.count += count;
+      if (count > entry.maxCluster) {
+        entry.maxCluster = count;
+        entry.bestLat = lat;
+        entry.bestLon = lon;
+      }
+    } else {
+      map.set(country.canonical, {
+        info: country, count, bestLat: lat, bestLon: lon, maxCluster: count,
+      });
+    }
+  }
+  return map;
+}
+
+/**
+ * Layer 2 — Signal Engine
+ *
+ * Multi-factor threat score:
+ *   Score = (Event Volume × Base Weight) × (1 + Acceleration Modifier)
+ *
+ * Where:
+ *   Base Weight      ≈ 1.8 (weighted average of included CAMEO code severity)
+ *   Acceleration Modifier = clamp(accelerationRate × 0.3, −0.15, +0.30)
+ *     accelerationRate = (current − prior) / max(1, prior)
+ *
+ * Risk classification (Layer 3 signal output):
+ *   ≥ 300 → Critical  (mass-casualty / open warfare)
+ *   ≥  80 → High      (active conflict / serious instability)
+ *   ≥  15 → Elevated  (rising tension / recurring violence)
+ *   <  15 → Low       (monitored / occasional incidents)
+ */
+function computeScore(currentCount: number, priorCount: number): {
+  score: number;
+  level: ThreatLevel;
+  direction: '↑' | '↓' | '→';
+  accelerationPct: number;
+} {
+  // 7-day Acceleration Rate: proportional change from prior period
+  const accelerationRate = priorCount > 0
+    ? (currentCount - priorCount) / priorCount
+    : (currentCount > 0 ? NEW_SIGNAL_RATE : 0); // no prior data → assume moderate new signal
+
+  // Acceleration Modifier: capped to avoid dominating the base score
+  const accelerationMod = Math.max(ACCEL_MAX_PENALTY, Math.min(ACCEL_MAX_BOOST, accelerationRate * ACCEL_WEIGHT));
+
+  const score = Math.round(currentCount * BASE_WEIGHT * (1 + accelerationMod));
+  const accelerationPct = Math.round(accelerationRate * 100);
+
+  const direction: '↑' | '↓' | '→' =
+    accelerationPct > 10 ? '↑' : accelerationPct < -10 ? '↓' : '→';
+
+  let level: ThreatLevel;
+  if (score >= SCORE_CRITICAL) level = 'critical';
+  else if (score >= SCORE_HIGH) level = 'high';
+  else if (score >= SCORE_ELEVATED) level = 'elevated';
+  else level = 'low';
+
+  return { score, level, direction, accelerationPct };
+}
+
+function riskLabel(level: ThreatLevel): string {
+  switch (level) {
+    case 'critical': return 'Critical';
+    case 'high':     return 'High';
+    case 'elevated': return 'Elevated';
+    default:         return 'Monitored';
+  }
+}
+
+function directionLabel(direction: '↑' | '↓' | '→'): string {
+  switch (direction) {
+    case '↑': return 'Rising';
+    case '↓': return 'Cooling';
+    default:  return 'Stable';
+  }
+}
+
+// ── Module-level cache (15-min TTL — matches GDELT update cadence) ─
 let _cache: { threats: Threat[]; conflictCountryIds: string[]; updatedAt: string } | null = null;
 let _cacheExpiresAt = 0;
-const CACHE_TTL_MS = 60 * 60 * 1000;
+const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
 
 export async function GET(_event: RequestEvent) {
   if (_cache && Date.now() < _cacheExpiresAt) {
-    return json(_cache, { headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=300' } });
+    return json(_cache, { headers: { 'Cache-Control': 's-maxage=900, stale-while-revalidate=120' } });
   }
 
   try {
-    const res = await fetch(GDELT_URL, {
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'situation-monitor/1.0 (https://github.com/o-goodall/situation-monitor)',
-      },
-    });
-    if (!res.ok) throw new Error(`GDELT HTTP ${res.status}`);
+    const now = new Date();
+    const priorEndDt   = dtStr(new Date(now.getTime() - GDELT_TIMESPAN_DAYS * 24 * 60 * 60 * 1000));
+    const priorStartDt = dtStr(new Date(now.getTime() - 2 * GDELT_TIMESPAN_DAYS * 24 * 60 * 60 * 1000));
 
-    const body: GdeltResponse = await res.json();
-    const features: GdeltFeature[] = body.features ?? body.data ?? [];
+    // Layer 1 — Raw Event Stream: fetch current week and prior week in parallel
+    const [currentRes, priorRes] = await Promise.all([
+      fetch(gdeltUrl({ timespan: GDELT_TIMESPAN_MINS }), {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'situation-monitor/1.0 (https://github.com/o-goodall/situation-monitor)',
+        },
+      }),
+      fetch(gdeltUrl({ startDt: priorStartDt, endDt: priorEndDt }), {
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'situation-monitor/1.0 (https://github.com/o-goodall/situation-monitor)',
+        },
+      }),
+    ]);
 
-    // Aggregate event clusters by country (multiple GDELT clusters per country)
-    const countryMap = new Map<string, {
-      info: CountryInfo; totalCount: number; bestLat: number; bestLon: number; maxCluster: number;
-    }>();
+    if (!currentRes.ok) throw new Error(`GDELT HTTP ${currentRes.status}`);
 
-    for (const f of features) {
-      const coords = f.geometry?.coordinates;
-      const lat = coords?.[1];   // GeoJSON: [lon, lat]
-      const lon = coords?.[0];
-      const name = f.properties?.name ?? '';
-      const count = f.properties?.count ?? 1;
+    const currentBody: GdeltResponse = await currentRes.json();
+    const currentFeatures: GdeltFeature[] = currentBody.features ?? currentBody.data ?? [];
 
-      if (lat == null || lon == null || !name) continue;
-
-      const country = matchCountry(name);
-      if (!country) continue;
-
-      if (countryMap.has(country.canonical)) {
-        const entry = countryMap.get(country.canonical)!;
-        entry.totalCount += count;
-        if (count > entry.maxCluster) {
-          entry.maxCluster = count;
-          entry.bestLat = lat;
-          entry.bestLon = lon;
-        }
-      } else {
-        countryMap.set(country.canonical, {
-          info: country, totalCount: count,
-          bestLat: lat, bestLon: lon, maxCluster: count,
-        });
-      }
+    // Prior-period data is best-effort — degrade gracefully if unavailable
+    let priorFeatures: GdeltFeature[] = [];
+    if (priorRes.ok) {
+      try {
+        const priorBody: GdeltResponse = await priorRes.json();
+        priorFeatures = priorBody.features ?? priorBody.data ?? [];
+      } catch { /* ignore parse failures for prior period */ }
     }
 
-    if (countryMap.size === 0) throw new Error('GDELT returned no matching conflict locations');
+    const currentMap = aggregateByCountry(currentFeatures);
+    const priorMap   = aggregateByCountry(priorFeatures);
+
+    if (currentMap.size === 0) throw new Error('GDELT returned no matching conflict locations');
 
     const threats: Threat[] = [];
-    for (const [name, { info, totalCount, bestLat, bestLon }] of countryMap) {
+    for (const [name, { info, count, bestLat, bestLon }] of currentMap) {
+      const priorCount = priorMap.get(name)?.count ?? 0;
+      const { score, level, direction, accelerationPct } = computeScore(count, priorCount);
+
+      const accelStr = accelerationPct !== 0
+        ? ` (${accelerationPct > 0 ? '+' : ''}${accelerationPct}% vs prior week)`
+        : '';
+
       threats.push({
-        id:        name.toLowerCase().replace(/\s+/g, '-'),
+        id:             name.toLowerCase().replace(/\s+/g, '-'),
         name,
-        lat:       bestLat,
-        lon:       bestLon,
-        level:     countToLevel(totalCount),
-        desc:      `⚔️ ${name} — ${totalCount} conflict events in last ${GDELT_TIMESPAN_DAYS} days (GDELT)`,
-        countryId: info.id,
+        lat:            bestLat,
+        lon:            bestLon,
+        level,
+        desc:           `${direction} ${name} — ${riskLabel(level)} · ${directionLabel(direction)}${accelStr} · ${count} events/7d (GDELT)`,
+        countryId:      info.id,
+        score,
+        direction,
+        accelerationPct,
       });
     }
 
@@ -170,7 +314,7 @@ export async function GET(_event: RequestEvent) {
     _cache = payload;
     _cacheExpiresAt = Date.now() + CACHE_TTL_MS;
 
-    return json(payload, { headers: { 'Cache-Control': 's-maxage=3600, stale-while-revalidate=300' } });
+    return json(payload, { headers: { 'Cache-Control': 's-maxage=900, stale-while-revalidate=120' } });
   } catch (err) {
     console.error('GDELT conflict fetch failed, using static fallback:', err);
     const conflictCountryIds = DEFAULT_THREATS
@@ -183,4 +327,3 @@ export async function GET(_event: RequestEvent) {
     });
   }
 }
-
