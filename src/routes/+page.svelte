@@ -192,6 +192,7 @@
   // BTC/gold ratio historical % change
   let btcGoldRange: '6m' | '1y' | '5y' | 'max' = '1y';
   let btcGoldPctChange: number | null = null;
+  let btcGoldStartRatio: number | null = null;
   let btcGoldRangeLoading = false;
 
   async function fetchBtcGoldRange(r = btcGoldRange) {
@@ -199,7 +200,8 @@
     try {
       const d = await fetch(`/api/bitcoin/gold?range=${r}`).then(res => res.json());
       btcGoldPctChange = d.pctChange ?? null;
-    } catch { btcGoldPctChange = null; }
+      btcGoldStartRatio = d.startRatio ?? null;
+    } catch { btcGoldPctChange = null; btcGoldStartRatio = null; }
     finally { btcGoldRangeLoading = false; }
   }
 
@@ -322,8 +324,18 @@
           <button class="crb crb--xs" class:crb--active={btcGoldRange === r} on:click={() => setBtcGoldRange(r)}>{r.toUpperCase()}</button>
         {/each}
       </div>
-      {#if $goldPriceUsd !== null}
-        <span class="btc-gold-strip-spot">${n($goldPriceUsd, 0)} <span class="met-u">USD/oz</span></span>
+      {#if btcGoldRangeLoading}
+        <span class="btc-gold-strip-spot muted">…</span>
+      {:else if btcInGoldOz !== null && btcGoldStartRatio !== null && btcGoldPctChange !== null}
+        <span class="btc-gold-strip-spot">
+          {n(btcInGoldOz, 2)} oz
+          <span class="met-u">now</span>
+          &nbsp;|&nbsp;
+          {n(btcGoldStartRatio, 2)} oz
+          <span class="met-u">{btcGoldRange}</span>
+          &nbsp;|&nbsp;
+          <span style="color:{btcGoldPctChange >= 0 ? 'var(--up)' : 'var(--dn)'}">{btcGoldPctChange >= 0 ? '+' : ''}{btcGoldPctChange.toFixed(1)}%</span>
+        </span>
       {/if}
       {#if displayCur === 'AUD'}
         <div class="au-strip-rows">

@@ -44,7 +44,7 @@ export async function GET({ url }: RequestEvent) {
   ]);
 
   if (!btcCloses || !goldCloses || btcCloses.length < 2 || goldCloses.length < 2) {
-    return json({ pctChange: null, range: safeRange });
+    return json({ pctChange: null, startRatio: null, range: safeRange });
   }
 
   // Use the shorter series length to align start/end
@@ -53,9 +53,9 @@ export async function GET({ url }: RequestEvent) {
   const endRatio   = btcCloses[btcCloses.length - 1]   / goldCloses[goldCloses.length - 1];
 
   if (!startRatio || !endRatio || startRatio <= 0) {
-    return json({ pctChange: null, range: safeRange });
+    return json({ pctChange: null, startRatio: null, range: safeRange });
   }
 
   const pctChange = ((endRatio - startRatio) / startRatio) * 100;
-  return json({ pctChange: parseFloat(pctChange.toFixed(2)), range: safeRange });
+  return json({ pctChange: parseFloat(pctChange.toFixed(2)), startRatio: parseFloat(startRatio.toFixed(2)), range: safeRange });
 }
