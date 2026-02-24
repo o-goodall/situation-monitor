@@ -31,6 +31,8 @@
   $: normSp500 = normalize(sp500);
   $: normGold  = normalize(gold);
 
+  $: hasData = normBtc.length > 0 || normSp500.length > 0 || normGold.length > 0;
+
   // ── Performance badges ───────────────────────────────────────
   function lastValue(pts: { t: number; v: number }[]): number | null {
     return pts.length ? pts[pts.length - 1].v : null;
@@ -305,6 +307,9 @@
 
 <!-- ── Chart ────────────────────────────────────────────────── -->
 <div class="cc-wrap" bind:this={containerEl}>
+  {#if !hasData}
+    <p class="cc-empty">Chart data unavailable — please try again later.</p>
+  {/if}
   <svg bind:this={svgEl} aria-label="Multi-asset indexed performance chart"></svg>
 
   <!-- Tooltip -->
@@ -428,6 +433,16 @@
     display: block;
     width: 100%;
     height: 100%;
+  }
+  .cc-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .66rem;
+    color: rgba(255,255,255,.35);
+    pointer-events: none;
   }
 
   /* ── Tooltip ────────────────────────────────────────────── */
