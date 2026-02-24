@@ -61,6 +61,8 @@ export interface Settings {
     customThreats: Threat[];
     /** IDs of default threats the user has hidden */
     disabledIds: string[];
+    /** Per-location level overrides: id → ThreatLevel.  'off' means disabled. */
+    threatLevels: Record<string, ThreatLevel>;
   };
   ghostfolio: { token: string; currency: string };
   displayCurrency: string;   // User's preferred display currency (e.g. AUD, EUR, GBP)
@@ -106,6 +108,7 @@ export const DEFAULT_SETTINGS: Settings = {
   threats: {
     customThreats: [],
     disabledIds: [],
+    threatLevels: {},
   },
   ghostfolio: { token: '', currency: 'AUD' },
   displayCurrency: 'AUD',
@@ -150,7 +153,10 @@ export function loadSettings(): Settings {
       }
       // Backfill threats section for users who saved settings before this field existed
       if (!parsed.threats) {
-        parsed.threats = { customThreats: [], disabledIds: [] };
+        parsed.threats = { customThreats: [], disabledIds: [], threatLevels: {} };
+      }
+      if (!parsed.threats.threatLevels) {
+        parsed.threats.threatLevels = {};
       }
       return { ...DEFAULT_SETTINGS, ...parsed, dca: { ...DEFAULT_SETTINGS.dca, ...parsed.dca, dcaFrequency: parsed.dca?.dcaFrequency ?? 'fortnightly' }, displayCurrency: parsed.displayCurrency ?? DEFAULT_SETTINGS.displayCurrency };
     }
