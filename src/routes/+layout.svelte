@@ -1108,7 +1108,7 @@
       height: 100vh;
       overflow-y: scroll;
       scroll-snap-type: y proximity;
-      scroll-padding-top: 0;
+      scroll-padding-top: 64px;
     }
   }
   @media (max-width:768px) { .page-wrap { padding-top:0; padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px)); } }
