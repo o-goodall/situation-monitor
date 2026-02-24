@@ -27,9 +27,34 @@ interface Market {
 }
 
 function parseOutcomes(event: any): { topOutcome: string; probability: number; outcomes: { name: string; probability: number }[] } {
-  const firstMarket = event.markets?.[0];
-  if (!firstMarket) return { topOutcome: 'Yes', probability: 50, outcomes: [] };
+  const eventMarkets: any[] = event.markets ?? [];
+  if (!eventMarkets.length) return { topOutcome: 'Yes', probability: 50, outcomes: [] };
 
+  // Multi-market grouped event (e.g. "Fed decision in March?" with sub-markets per rate outcome):
+  // Each sub-market represents one possible outcome; outcomePrices[0] = P(Yes = this outcome occurs).
+  // Use groupItemTitle (or question) as the outcome label.
+  if (eventMarkets.length > 1) {
+    const outcomes: { name: string; probability: number }[] = [];
+    for (let i = 0; i < eventMarkets.length; i++) {
+      const market = eventMarkets[i];
+      let prices: number[] = [];
+      try {
+        prices = typeof market.outcomePrices === 'string'
+          ? JSON.parse(market.outcomePrices).map(Number)
+          : (market.outcomePrices ?? []).map(Number);
+      } catch { /* ignore malformed JSON — market will be skipped */ }
+      if (!prices.length) continue;
+      const name: string = market.groupItemTitle ?? market.question ?? `Option ${i + 1}`;
+      outcomes.push({ name, probability: Math.round((prices[0] ?? 0) * 100) });
+    }
+    if (outcomes.length > 0) {
+      outcomes.sort((a, b) => b.probability - a.probability);
+      return { topOutcome: outcomes[0].name, probability: outcomes[0].probability, outcomes };
+    }
+  }
+
+  // Single market: use outcomePrices/outcomes directly (binary or multi-outcome).
+  const firstMarket = eventMarkets[0];
   let prices: number[] = [];
   let outcomeNames: string[] = [];
 
