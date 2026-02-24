@@ -798,7 +798,7 @@
 
 <!-- ══ FOOTER ════════════════════════════════════════════════ -->
 <footer class="site-footer" role="contentinfo">
-  <span class="footer-brand">GL<span style="color:var(--orange);">4</span>NCE</span>
+  <span class="footer-brand">GL<span style="color:var(--orange);">4</span>NCE <span class="footer-slogan">Everything. At a Glance.</span></span>
   <span class="footer-sources">
     <a href="https://mempool.space" target="_blank" rel="noopener noreferrer">mempool.space</a> ·
     <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener noreferrer">alternative.me</a> ·
@@ -808,6 +808,7 @@
     <a href="https://www.worldbank.org" target="_blank" rel="noopener noreferrer">worldbank</a> ·
     <a href="https://gdeltproject.org" target="_blank" rel="noopener noreferrer">GDELT</a>
   </span>
+  <span class="footer-est">est. block 938144</span>
 </footer>
 
 <!-- ══ MOBILE BOTTOM NAVIGATION ══════════════════════════════ -->
@@ -1187,9 +1188,11 @@
     backdrop-filter:blur(8px);
   }
   .footer-brand { font-family:inherit; font-size:.65rem; font-weight:900; color:rgba(255,255,255,.28); letter-spacing:.1em; text-transform:uppercase; }
+  .footer-slogan { font-weight:400; font-size:.6rem; letter-spacing:.04em; color:rgba(255,255,255,.22); text-transform:none; }
   .footer-sources { font-size:.56rem; color:rgba(255,255,255,.18); letter-spacing:.02em; }
   .footer-sources a { color:rgba(255,255,255,.25); text-decoration:none; transition:color .2s; }
   .footer-sources a:hover { color:var(--orange); }
+  .footer-est { font-size:.52rem; color:rgba(255,255,255,.18); letter-spacing:.05em; font-variant-numeric:tabular-nums; }
   @media (max-width:600px) { .site-footer { display:none; } }
 
   /* ── LIGHT MODE ──────────────────────────────────────────── */
@@ -1215,9 +1218,11 @@
   :global(html.light) .dtag-x { color:rgba(0,0,0,.3); }
   :global(html.light) .site-footer { background:rgba(255,255,255,.75); border-top-color:rgba(0,0,0,.06); }
   :global(html.light) .footer-brand { color:rgba(0,0,0,.4); }
+  :global(html.light) .footer-slogan { color:rgba(0,0,0,.3); }
   :global(html.light) .footer-sources { color:rgba(0,0,0,.35); }
   :global(html.light) .footer-sources a { color:rgba(0,0,0,.35); }
   :global(html.light) .footer-sources a:hover { color:#c77a10; }
+  :global(html.light) .footer-est { color:rgba(0,0,0,.3); }
   :global(html.light) .mobile-menu-panel { background:rgba(255,255,255,.98); }
   :global(html.light) .mobile-menu-backdrop { background:rgba(0,0,0,.25); }
   :global(html.light) .mobile-settings .dg { border-bottom-color:rgba(0,0,0,.06); }
