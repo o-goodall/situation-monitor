@@ -134,8 +134,8 @@
         .translate([WIDTH / 2, HEIGHT / 2 + 20]);
       path = d3.geoPath().projection(projection);
 
-      // World atlas from CDN
-      const world = await fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json').then(r => r.json());
+      // World atlas from local static asset (avoids CDN round-trip)
+      const world = await fetch('/countries-110m.json').then(r => r.json());
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const countries = topojson.feature(world, world.objects.countries as any) as unknown as GeoJSON.FeatureCollection;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
