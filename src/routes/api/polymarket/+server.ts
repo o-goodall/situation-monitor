@@ -186,10 +186,8 @@ export async function GET({ url }: RequestEvent) {
     trendingMarkets.sort((a, b) => b.volume24hr - a.volume24hr);
     const topTrending = trendingMarkets.slice(0, 4);
 
-    // Pinned first, then geo, then trending fills remaining slots up to 16
-    const combined = [...pinnedMarkets, ...geoMarkets];
-    const remaining = Math.max(0, 16 - combined.length);
-    const markets = [...combined, ...topTrending.slice(0, remaining)].slice(0, 16);
+    // Pinned first, then trending (at the top for visibility), then geo
+    const markets = [...pinnedMarkets, ...topTrending, ...geoMarkets].slice(0, 16);
 
     return json({ markets });
   } catch {

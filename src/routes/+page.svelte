@@ -9,7 +9,7 @@
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfFirstOrderDate, gfOrdersCount,
-    markets, newsItems, breakingNewsLinks, btcDisplayPrice, btcWsConnected,
+    markets, marketsUpdated, newsItems, breakingNewsLinks, btcDisplayPrice, btcWsConnected,
     btcHashrate, gfPortfolioChart
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
@@ -98,6 +98,13 @@
     }, BLUR_DURATION_MS);
   }
   const INTEL_TILE_LIMIT = 12; // 3 columns × 4 rows
+
+  /** Conflict/threat keywords to filter polymarket markets for map display */
+  const POLY_CONFLICT_RE = /war|attack|strike|missile|invasion|troops|military|conflict|bomb|nuclear|airstrike|assault|drone|ceasefire|hostage|coup|crisis/i;
+  /** Derive trending/high-probability conflict markets to show on global map */
+  $: polymarketThreats = $markets.filter(m =>
+    m.trending && m.probability >= 50 && POLY_CONFLICT_RE.test(m.question)
+  ).map(m => ({ question: m.question, url: m.url, probability: m.probability, topOutcome: m.topOutcome }));
 
   /** Detect topic keyword for frosted background tint */
   const TOPIC_MAP: [RegExp, string][] = [
@@ -723,7 +730,7 @@
       <div class="gc-head" style="margin-bottom:16px;">
         <div>
           <p class="gc-title">Geopolitics</p>
-          <p class="dim" style="margin-top:3px;">Live prediction markets · what the crowd expects</p>
+          {#if $marketsUpdated}<p class="dim" style="margin-top:3px;">Updated {$marketsUpdated}</p>{/if}
         </div>
         <a href="https://polymarket.com/markets/geopolitics" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open Polymarket Geopolitics in new tab">polymarket.com ↗</a>
       </div>
@@ -822,7 +829,7 @@
           <span class="globe-badge">LIVE</span>
         </div>
       </div>
-      <WorldMap />
+      <WorldMap polymarketThreats={polymarketThreats} />
     </div>
     {/if}
   </div>
@@ -1491,16 +1498,35 @@
   /* ── URGENT / TRENDING CARD VARIANTS ──────────────────── */
   .pm-card--urgent { border-color:rgba(255,180,50,.18); }
   .pm-card--urgent::before { background:linear-gradient(90deg,transparent,rgba(255,180,50,.25),transparent); }
-  .pm-card--trending { border-color:rgba(255,100,100,.15); }
-  .pm-card--trending::before { background:linear-gradient(90deg,transparent,rgba(255,100,100,.2),transparent); }
+  .pm-card--trending { border-color:rgba(255,80,40,.25); box-shadow:0 0 12px rgba(255,80,40,.08); }
+  .pm-card--trending::before { background:linear-gradient(90deg,transparent,rgba(255,80,40,.22),transparent); }
   :global(html.light) .pm-card--urgent { border-color:rgba(200,120,0,.2); }
-  :global(html.light) .pm-card--trending { border-color:rgba(200,50,50,.15); }
+  :global(html.light) .pm-card--trending { border-color:rgba(200,50,50,.2); }
+
+  /* ── TRENDING FOIL ANIMATION ────────────────────────────── */
+  @keyframes trendingFoil {
+    0%   { background-position: -200% center; }
+    20%  { background-position: 200% center; }
+    100% { background-position: 200% center; }
+  }
 
   /* ── EXTRA TAG VARIANTS ────────────────────────────────── */
-  .pm-trending-tag { background:rgba(255,80,80,.1); border-color:rgba(255,80,80,.3); color:#ff7070; }
+  .pm-trending-tag {
+    background: linear-gradient(105deg, #ff4444 20%, #ffbb88 45%, #ff6644 55%, #ff4444 80%);
+    background-size: 200% auto;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    border-color: rgba(255,80,40,.45);
+    animation: trendingFoil 4s linear infinite;
+    font-weight: 700;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pm-trending-tag { animation: none; -webkit-text-fill-color: #ff6644; color: #ff6644; background: none; }
+  }
   .pm-urgent-tag { background:rgba(255,180,50,.1); border-color:rgba(255,180,50,.3); color:#ffb432; }
   .pm-date-tag { color:var(--t3); }
-  :global(html.light) .pm-trending-tag { background:rgba(200,40,40,.08); border-color:rgba(200,40,40,.25); color:#c02828; }
+  :global(html.light) .pm-trending-tag { border-color:rgba(200,60,40,.35); background: linear-gradient(105deg, #c02020 20%, #e06020 45%, #c03010 55%, #c02020 80%); background-size: 200% auto; animation: trendingFoil 4s linear infinite; }
   :global(html.light) .pm-urgent-tag { background:rgba(180,110,0,.08); border-color:rgba(180,110,0,.25); color:#946000; }
 
   /* ── INTEL GRID ─────────────────────────────────────────── */
