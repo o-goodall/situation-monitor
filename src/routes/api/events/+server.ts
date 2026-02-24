@@ -11,9 +11,15 @@ const RSS_FEEDS = [
   'https://news.google.com/rss/search?q=war+OR+missile+OR+airstrike&hl=en-US&gl=US&ceid=US:en',
   'https://news.google.com/rss/search?q=explosion+OR+attack+OR+conflict&hl=en-US&gl=US&ceid=US:en',
   'https://news.google.com/rss/search?q=military+clashes&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=ceasefire+OR+sanctions+OR+troops+deployed&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=coup+OR+civil+war+OR+insurgency&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=humanitarian+crisis+OR+drone+strike&hl=en-US&gl=US&ceid=US:en',
 ];
 
-const ARTICLES_PER_FEED = 10;
+const ARTICLES_PER_FEED = 8;
+
+// ── Max geocode calls per invocation (caps worst-case latency) ─
+const MAX_GEOCODE_CALLS = 12;
 
 // ── Severity keywords ──────────────────────────────────────────
 const SEVERITY_CRITICAL = /\b(missile|airstrike|nuclear|chemical|massacre|genocide)\b/i;
@@ -36,6 +42,11 @@ export interface ThreatEvent {
 
 // ── In-memory geocode cache ────────────────────────────────────
 const geoCache: Record<string, { lat: number; lon: number } | null> = {};
+
+// ── Module-level response cache (5-minute TTL) ─────────────────
+let _cachedResponse: { events: ThreatEvent[]; updatedAt: string } | null = null;
+let _cacheExpiresAt = 0;
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 function classifySeverity(title: string): EventLevel {
   if (SEVERITY_CRITICAL.test(title)) return 'critical';
@@ -88,6 +99,11 @@ function timeDecayScore(pubDate: string, level: EventLevel): number {
 
 // ── Main handler ───────────────────────────────────────────────
 export async function GET(_event: RequestEvent) {
+  // Serve from module-level cache if still fresh
+  if (_cachedResponse && Date.now() < _cacheExpiresAt) {
+    return json(_cachedResponse, { headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=60' } });
+  }
+
   try {
     // Fetch all feeds in parallel, ignore failures
     const feedResults = await Promise.allSettled(
@@ -119,16 +135,24 @@ export async function GET(_event: RequestEvent) {
     });
 
     // Extract locations; only geocode items not already in cache to respect
-    // Nominatim's rate limit of 1 request/second (1 100 ms delay between calls)
+    // Nominatim's rate limit of 1 request/second (1.1s delay between calls).
+    // Limit total network geocode calls per invocation to cap worst-case latency.
     const withLocation = unique
       .map(item => ({ ...item, location: extractLocation(item.title) }))
       .filter((item): item is typeof item & { location: string } => item.location !== null);
 
     const geocoded: (typeof withLocation[0] & { lat: number; lon: number } | null)[] = [];
+    let networkCallsMade = 0;
     for (const item of withLocation) {
       const alreadyCached = item.location in geoCache;
+      if (!alreadyCached && networkCallsMade >= MAX_GEOCODE_CALLS) {
+        // Skip further uncached lookups once we've hit the per-invocation cap
+        geocoded.push(null);
+        continue;
+      }
       const geo = await geocode(item.location);
       if (!alreadyCached) {
+        networkCallsMade++;
         // Throttle only actual network requests to stay within 1 req/s
         await new Promise(resolve => setTimeout(resolve, 1100));
       }
@@ -154,9 +178,13 @@ export async function GET(_event: RequestEvent) {
       })
       .sort((a, b) => b.score - a.score);
 
+    const payload = { events, updatedAt: new Date().toISOString() };
+    _cachedResponse = payload;
+    _cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+
     return json(
-      { events, updatedAt: new Date().toISOString() },
-      { headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=30' } }
+      payload,
+      { headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=60' } }
     );
   } catch {
     return json(
