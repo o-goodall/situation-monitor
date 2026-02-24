@@ -309,15 +309,15 @@
     });
 
 
-    // Subtle network visualization: semi-static anchor nodes with faint
-    // connections, data packets traveling between them, and expanding pings.
+    // Bitcoin peer-to-peer network visualization: anchor nodes (peers) with faint
+    // connections, data packets (transactions) traveling between them, and expanding pings (confirmations).
     (function() {
       const canvas = document.getElementById('net-canvas') as HTMLCanvasElement;
       if (!canvas) return;
       const ctx = canvas.getContext('2d')!;
       let W: number, H: number, animId: number;
       const ORANGE = 'rgba(247,147,26,';
-      const ELECTRIC = 'rgba(0,200,255,';
+      const AMBER  = 'rgba(255,180,60,';
 
       let mobile = window.innerWidth < 768;
       const NODE_COUNT = () => mobile ? 10 : 32;
@@ -360,7 +360,7 @@
           this.from = from; this.to = to;
           this.progress = 0;
           this.speed = 0.008 + Math.random() * 0.012;
-          this.hue = Math.random() < 0.7 ? 'o' : 'e';
+          this.hue = Math.random() < 0.65 ? 'o' : 'a';
           this.size = 1.5 + Math.random() * 1.5;
           this.trail = [];
         }
@@ -374,7 +374,7 @@
           return this.progress >= 1;
         }
         draw() {
-          const col = this.hue === 'o' ? ORANGE : ELECTRIC;
+          const col = this.hue === 'o' ? ORANGE : AMBER;
           // Trail
           for (const t of this.trail) {
             ctx.beginPath();
@@ -399,20 +399,28 @@
         x: number; y: number; radius: number; maxRadius: number; alpha: number;
         constructor(x: number, y: number) {
           this.x = x; this.y = y;
-          this.radius = 2; this.maxRadius = 18 + Math.random() * 12;
-          this.alpha = 0.5;
+          this.radius = 1.5; this.maxRadius = 22 + Math.random() * 14;
+          this.alpha = 0.65;
         }
         update(): boolean {
-          this.radius += 0.4;
-          this.alpha *= 0.96;
+          this.radius += 0.45;
+          this.alpha *= 0.955;
           return this.radius >= this.maxRadius || this.alpha < 0.02;
         }
         draw() {
+          // Outer ring
           ctx.beginPath();
           ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
           ctx.strokeStyle = ORANGE + this.alpha + ')';
           ctx.lineWidth = 1;
           ctx.stroke();
+          // Inner faint fill dot for confirmed-block feel
+          if (this.radius < 8) {
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, Math.max(0, 3 - this.radius * 0.3), 0, Math.PI * 2);
+            ctx.fillStyle = ORANGE + (this.alpha * 0.4) + ')';
+            ctx.fill();
+          }
         }
       }
 
@@ -1180,7 +1188,7 @@
   /* ── LIGHT MODE ──────────────────────────────────────────── */
   :global(html.light) { --bg:#f4f4f5; --bg2:#eaeaeb; --glass-bg:rgba(255,255,255,.72); --glass-bg2:rgba(255,255,255,.85); --glass-bd:rgba(0,0,0,.12); --glass-bd2:rgba(0,0,0,.18); --t1:#111; --t2:#444; --t3:#aaa; --up:#16a34a; --dn:#dc2626; }
   :global(html.light) body { background:#f0f0f1; color:#111; }
-  :global(html.light) body::before { background: radial-gradient(circle at 15% 85%,rgba(247,147,26,.10) 0%,transparent 42%), radial-gradient(circle at 85% 10%,rgba(0,180,255,.06) 0%,transparent 42%); }
+  :global(html.light) body::before { background: radial-gradient(circle at 15% 85%,rgba(247,147,26,.10) 0%,transparent 42%), radial-gradient(circle at 85% 10%,rgba(247,147,26,.06) 0%,transparent 42%); }
   :global(html.light) body::after { background: linear-gradient(transparent 50%, rgba(0,0,0,0.008) 50%); }
   :global(html.light) .hdr { background:rgba(255,255,255,.92); border-bottom-color:rgba(0,0,0,.08); }
   :global(html.light) .hdr--scrolled { background:rgba(255,255,255,.97); box-shadow:0 2px 12px rgba(0,0,0,.08); }
