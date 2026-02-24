@@ -184,6 +184,11 @@
 
   $: cpiLoss = (()=>{if($cpiAnnual===null)return 0;const y=Math.max(.1,dcaDays/365.25);return(1-1/Math.pow(1+$cpiAnnual/100,y))*100;})();
 
+  // BTC priced in gold troy ounces
+  $: btcInGoldOz = ($btcPrice > 0 && $goldPriceUsd !== null && $goldPriceUsd > 0)
+    ? parseFloat(($btcPrice / $goldPriceUsd).toFixed(2))
+    : null;
+
   async function refreshGF() {
     const token=$settings.ghostfolio?.token?.trim();if(!token)return;
     $gfLoading=true;$gfError='';
@@ -540,6 +545,48 @@
       </div>
       {/if}
     </div>
+
+    <!-- BTC PRICED IN GOLD -->
+    <div class="gc btc-gold-card">
+      <div class="gc-head">
+        <p class="gc-title">Bitcoin in Gold</p>
+      </div>
+      <div class="btc-gold-hero" aria-live="polite" aria-atomic="true">
+        {#if btcInGoldOz !== null}
+          <span class="btc-gold-n">{btcInGoldOz.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span class="btc-gold-unit">oz gold</span>
+        {:else}
+          <span class="btc-gold-n muted">—</span>
+        {/if}
+      </div>
+      <p class="btc-gold-sub">Bitcoin priced in gold (troy ounces)</p>
+      {#if $goldPriceUsd !== null}
+        <div class="btc-gold-meta">
+          <span class="eyebrow">Gold spot</span>
+          <span class="btc-gold-spot">${n($goldPriceUsd, 0)} <span class="met-u">USD/oz</span></span>
+        </div>
+      {/if}
+    </div>
+
+    <!-- AUSTRALIA SNAPSHOT — visible only when AUD is selected -->
+    {#if displayCur === 'AUD'}
+    <div class="gc au-snapshot-card">
+      <div class="gc-head">
+        <p class="gc-title">🇦🇺 Australia Snapshot</p>
+        <span class="ts">2025</span>
+      </div>
+      <div class="au-rows">
+        <div class="au-row">
+          <span class="au-label">Median Income</span>
+          <span class="au-val">$92,000 <span class="au-chg up">+4.1%</span></span>
+        </div>
+        <div class="au-row">
+          <span class="au-label">Median House Price</span>
+          <span class="au-val">$890,000 <span class="au-chg up">+6.8%</span></span>
+        </div>
+      </div>
+    </div>
+    {/if}
 
   </div>
 </section>
@@ -1271,6 +1318,25 @@
   .hash-row { display:flex; justify-content:space-between; align-items:center; margin-top:14px; padding-top:12px; border-top:1px solid rgba(255,255,255,.05); }
   .hash-val { font-size:1rem; font-weight:700; color:var(--t1); font-variant-numeric:tabular-nums; }
   :global(html.light) .hash-row { border-top-color:rgba(0,0,0,.06); }
+
+  /* ── BTC IN GOLD TILE ────────────────────────────────────── */
+  .btc-gold-card { border-color:rgba(201,168,76,.22) !important; }
+  .btc-gold-hero { display:flex; align-items:baseline; gap:8px; padding:18px 0 10px; justify-content:center; flex-wrap:wrap; }
+  .btc-gold-n { font-size:clamp(2.4rem,5vw,3.6rem); font-weight:800; letter-spacing:-.04em; line-height:1; color:#c9a84c; }
+  .btc-gold-unit { font-size:.9rem; font-weight:600; color:var(--t2); align-self:flex-end; padding-bottom:4px; }
+  .btc-gold-sub { font-size:.6rem; color:var(--t2); text-transform:uppercase; letter-spacing:.1em; text-align:center; margin-bottom:14px; }
+  .btc-gold-meta { display:flex; justify-content:space-between; align-items:center; padding-top:12px; border-top:1px solid rgba(255,255,255,.05); }
+  .btc-gold-spot { font-size:.8rem; font-weight:600; color:var(--t1); font-variant-numeric:tabular-nums; }
+  :global(html.light) .btc-gold-meta { border-top-color:rgba(0,0,0,.06); }
+
+  /* ── AUSTRALIA SNAPSHOT TILE ─────────────────────────────── */
+  .au-snapshot-card { border-color:rgba(0,0,150,.22) !important; }
+  .au-rows { display:flex; flex-direction:column; gap:10px; margin-top:4px; }
+  .au-row { display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; }
+  .au-label { font-size:.66rem; color:var(--t2); font-weight:500; }
+  .au-val { font-size:.8rem; font-weight:700; color:var(--t1); font-variant-numeric:tabular-nums; }
+  .au-chg { font-size:.62rem; font-weight:600; margin-left:5px; }
+  :global(html.light) .au-row { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
 
   /* ── PRICE SCENARIOS ─────────────────────────────────────── */
   .price-scen { margin-top:16px; padding-top:14px; border-top:1px solid rgba(255,255,255,.05); }
