@@ -30,6 +30,9 @@
   let mapError = '';
   let threatsUpdatedAt = '';
   let majorEvents: ThreatEvent[] = [];
+  let legendMinimized = false;
+  let legendAutoHideTimer: ReturnType<typeof setTimeout> | null = null;
+  const LEGEND_AUTO_HIDE_DELAY_MS = 1500;
 
   const MAX_MAJOR_EVENTS = 8;
 
@@ -285,8 +288,12 @@
     return pts;
   }
 
-  onMount(() => { initMap(); });
-  onDestroy(() => { /* cleanup handled by DOM removal */ });
+  onMount(() => {
+    initMap();
+    // Auto-minimize legend after LEGEND_AUTO_HIDE_DELAY_MS
+    legendAutoHideTimer = setTimeout(() => { legendMinimized = true; }, LEGEND_AUTO_HIDE_DELAY_MS);
+  });
+  onDestroy(() => { if (legendAutoHideTimer) clearTimeout(legendAutoHideTimer); });
 
   function ago(d: string): string {
     try {
@@ -327,8 +334,9 @@
       <button class="wm-zbtn" on:click={initMap} title="Refresh threats" disabled={mapLoading}>↺</button>
     </div>
 
-    <div class="wm-legend">
-      <div class="wm-leg-title">THREAT</div>
+    <button class="wm-legend" class:wm-legend--min={legendMinimized} on:click={() => legendMinimized = !legendMinimized} title={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-label={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-expanded={!legendMinimized}>
+      <div class="wm-leg-title">THREAT {#if legendMinimized}<span class="wm-leg-expand">▸</span>{:else}<span class="wm-leg-expand">▾</span>{/if}</div>
+      {#if !legendMinimized}
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ff4444;"></span>Critical</div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ff8800;"></span>High</div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span>Elevated</div>
@@ -339,7 +347,8 @@
         <div class="wm-leg-sep"></div>
         <div class="wm-leg-ts">Updated {threatsUpdatedAt}</div>
       {/if}
-    </div>
+      {/if}
+    </button>
   </div>
 
   {#if majorEvents.length > 0}
@@ -421,8 +430,14 @@
     position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column;
     gap: 3px; background: rgba(8,18,32,.88); padding: 6px 9px; border-radius: 6px;
     border: 1px solid rgba(0,200,255,0.18);
+    cursor: pointer; text-align: left;
+    transition: padding .25s ease, gap .25s ease;
+    overflow: hidden;
   }
-  .wm-leg-title { font-size: .52rem; color: var(--t3); letter-spacing: .08em; margin-bottom: 2px; }
+  .wm-legend--min { gap: 0; padding: 5px 9px; }
+  .wm-leg-expand { font-size: .55rem; color: rgba(0,200,255,0.5); margin-left: 4px; }
+  .wm-leg-title { font-size: .52rem; color: var(--t3); letter-spacing: .08em; margin-bottom: 2px; display: flex; align-items: center; }
+  .wm-legend--min .wm-leg-title { margin-bottom: 0; }
   .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .56rem; color: #8ab; font-family: monospace; }
   .wm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.15); margin: 3px 0; }
