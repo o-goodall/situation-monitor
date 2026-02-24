@@ -1080,7 +1080,7 @@
   .crb {
     display:inline-flex; align-items:center;
     padding:4px 12px; font-size:.62rem; font-weight:700; letter-spacing:.06em;
-    text-transform:uppercase; font-family:'Poison',monospace;
+    text-transform:uppercase; font-family:inherit;
     background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.1);
     border-radius:3px; color:rgba(255,255,255,.45); cursor:pointer;
     transition:background .2s, border-color .2s, color .2s, box-shadow .2s;
@@ -1125,7 +1125,7 @@
   .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(247,147,26,.25),transparent); }
   .gc:hover { transform:translateY(-4px); border-color:rgba(255,255,255,.14); box-shadow:0 10px 28px rgba(0,0,0,.3); }
   .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; }
-  .gc-title { font-family:'Poison',monospace; font-size:.72rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.08em; }
+  .gc-title { font-family:inherit; font-size:.72rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.08em; }
   @media (max-width:600px) { .gc { padding:16px 14px; border-radius:var(--r-md); } }
   /* Reduce blur on mobile for better paint performance */
   @media (max-width:768px) {
