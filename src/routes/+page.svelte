@@ -78,6 +78,26 @@
     }
   }
 
+  // Keep last compare-chart price points in sync with live prices.
+  let _lastCompareBtcPrice = 0;
+  $: if ($btcPrice > 0 && btcChartView === 'compare' && compareData.btc.length > 0) {
+    const changePct = _lastCompareBtcPrice > 0 ? Math.abs($btcPrice - _lastCompareBtcPrice) / _lastCompareBtcPrice : 1;
+    if (changePct >= 0.0005) {
+      _lastCompareBtcPrice = $btcPrice;
+      compareData = { ...compareData, btc: [...compareData.btc.slice(0, -1), { t: Date.now(), p: $btcPrice }] };
+    }
+  }
+  let _lastCompareGoldPrice = 0;
+  $: if ($goldPriceUsd !== null && $goldPriceUsd > 0 && $goldPriceUsd !== _lastCompareGoldPrice && btcChartView === 'compare' && compareData.gold.length > 0) {
+    _lastCompareGoldPrice = $goldPriceUsd;
+    compareData = { ...compareData, gold: [...compareData.gold.slice(0, -1), { t: Date.now(), p: $goldPriceUsd }] };
+  }
+  let _lastCompareSp500Price = 0;
+  $: if ($sp500Price !== null && $sp500Price > 0 && $sp500Price !== _lastCompareSp500Price && btcChartView === 'compare' && compareData.sp500.length > 0) {
+    _lastCompareSp500Price = $sp500Price;
+    compareData = { ...compareData, sp500: [...compareData.sp500.slice(0, -1), { t: Date.now(), p: $sp500Price }] };
+  }
+
   let hashrateChartRange: '3M' | '6M' | '1Y' | '2Y' | 'All' = '1Y';
   let hashrateData: { t: number; p: number }[] = [];
   let hashrateLoading = false;
