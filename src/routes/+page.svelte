@@ -189,25 +189,19 @@
     ? parseFloat(($btcPrice / $goldPriceUsd).toFixed(2))
     : null;
 
-  // BTC/gold ratio historical % change
-  let btcGoldRange: '6m' | '1y' | '5y' | 'max' = '1y';
+  // BTC/gold ratio historical % change (fixed 1-year window)
   let btcGoldPctChange: number | null = null;
   let btcGoldStartRatio: number | null = null;
   let btcGoldRangeLoading = false;
 
-  async function fetchBtcGoldRange(r = btcGoldRange) {
+  async function fetchBtcGoldRange() {
     btcGoldRangeLoading = true;
     try {
-      const d = await fetch(`/api/bitcoin/gold?range=${r}`).then(res => res.json());
+      const d = await fetch(`/api/bitcoin/gold?range=1y`).then(res => res.json());
       btcGoldPctChange = d.pctChange ?? null;
       btcGoldStartRatio = d.startRatio ?? null;
     } catch { btcGoldPctChange = null; btcGoldStartRatio = null; }
     finally { btcGoldRangeLoading = false; }
-  }
-
-  async function setBtcGoldRange(r: '6m' | '1y' | '5y' | 'max') {
-    btcGoldRange = r;
-    await fetchBtcGoldRange(r);
   }
 
   // Australian median income + house price (live data)
@@ -319,18 +313,12 @@
           <span class="btc-gold-pct muted">…</span>
         {/if}
       </div>
-      <div class="btc-gold-range-btns" aria-label="BTC/gold ratio period">
-        {#each (['6m','1y','5y','max'] as const) as r}
-          <button class="crb crb--xs" class:crb--active={btcGoldRange === r} on:click={() => setBtcGoldRange(r)}>{r.toUpperCase()}</button>
-        {/each}
-      </div>
       {#if btcGoldRangeLoading}
         <span class="btc-gold-strip-spot muted">…</span>
       {:else if btcGoldStartRatio !== null && btcGoldPctChange !== null}
         <span class="btc-gold-strip-spot">
-          {#if btcInGoldOz !== null}{n(btcInGoldOz, 2)} oz <span class="met-u">now</span> &nbsp;|&nbsp; {/if}
-          {n(btcGoldStartRatio, 2)} oz
-          <span class="met-u">{btcGoldRange}</span>
+          {#if btcInGoldOz !== null}{n(btcInGoldOz, 2)} oz <span class="met-u">live</span> &nbsp;|&nbsp; {/if}
+          {n(btcGoldStartRatio, 2)} oz <span class="met-u">1yr ago</span>
           &nbsp;|&nbsp;
           <span style="color:{btcGoldPctChange >= 0 ? 'var(--up)' : 'var(--dn)'}">{btcGoldPctChange >= 0 ? '+' : ''}{btcGoldPctChange.toFixed(1)}%</span>
         </span>
@@ -1403,7 +1391,6 @@
   .btc-gold-strip-spot { font-size:.62rem; font-weight:600; color:var(--t2); margin-top:4px; font-variant-numeric:tabular-nums; }
   .btc-gold-range-row { display:flex; align-items:center; justify-content:space-between; gap:6px; }
   .btc-gold-pct { font-size:.68rem; font-weight:700; font-variant-numeric:tabular-nums; }
-  .btc-gold-range-btns { display:flex; gap:3px; margin:4px 0 2px; flex-wrap:wrap; }
   .crb--xs { padding:2px 7px; font-size:.52rem; }
   @media (max-width:500px) { .btc-gold-strip-n { font-size:1.15rem; } }
 
