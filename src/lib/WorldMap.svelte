@@ -353,21 +353,22 @@
 
   {#if majorEvents.length > 0}
   <div class="wm-stories" aria-label="Major developing stories">
-    <div class="wm-stories-head">
-      <span class="wm-stories-title">MAJOR STORIES</span>
+    <div class="wm-ticker-label">
+      <span class="wm-stories-title">BREAKING</span>
       <span class="wm-stories-badge">LIVE</span>
     </div>
-    <div class="wm-stories-list">
-      {#each majorEvents as ev}
-        <a href={ev.link} target="_blank" rel="noopener noreferrer" class="wm-story" aria-label="{ev.title}">
-          <span class="wm-story-dot" style="background:{EVENT_COLORS[ev.level] ?? '#888'};box-shadow:0 0 6px {EVENT_COLORS[ev.level] ?? '#888'};"></span>
-          <div class="wm-story-body">
+    <div class="wm-ticker-track" aria-live="polite">
+      <div class="wm-ticker-reel">
+        {#each [...majorEvents, ...majorEvents] as ev, i}
+          <a href={ev.link} target="_blank" rel="noopener noreferrer" class="wm-story" aria-label="{ev.title}" aria-hidden={i >= majorEvents.length ? 'true' : undefined}>
+            <span class="wm-story-dot" style="background:{EVENT_COLORS[ev.level] ?? '#888'};box-shadow:0 0 5px {EVENT_COLORS[ev.level] ?? '#888'};"></span>
             <span class="wm-story-loc">{ev.location}</span>
             <span class="wm-story-title">{ev.title}</span>
-          </div>
-          <span class="wm-story-age">{ago(ev.pubDate)}</span>
-        </a>
-      {/each}
+            <span class="wm-story-age">{ago(ev.pubDate)}</span>
+            <span class="wm-story-sep" aria-hidden="true">◆</span>
+          </a>
+        {/each}
+      </div>
     </div>
   </div>
   {/if}
@@ -450,63 +451,81 @@
   }
   :global(.wm-hit) { cursor: pointer; }
 
-  /* ── MAJOR STORIES PANEL ────────────────────────────────── */
+  /* ── MAJOR STORIES TICKER ───────────────────────────────── */
   .wm-stories {
+    --ticker-duration: 40s;
     background: #0a1420;
     border: 1px solid rgba(0,200,255,0.18);
     border-top: none;
     border-radius: 0 0 10px 10px;
-    padding: 10px 14px 12px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    height: 38px;
   }
-  .wm-stories-head {
-    display: flex; align-items: center; gap: 8px; margin-bottom: 8px;
+  .wm-ticker-label {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 12px; flex-shrink: 0;
+    border-right: 1px solid rgba(0,200,255,0.18);
+    height: 100%;
+    background: rgba(0,200,255,0.05);
   }
   .wm-stories-title {
     font-size: .5rem; font-weight: 700; letter-spacing: .12em; color: rgba(0,200,255,0.6);
-    font-family: monospace;
+    font-family: monospace; white-space: nowrap;
   }
   .wm-stories-badge {
     font-size: .48rem; font-weight: 700; letter-spacing: .1em;
     padding: 1px 6px; border-radius: 3px;
     border: 1px solid rgba(239,68,68,.4); background: rgba(239,68,68,.12); color: #f87171;
-    animation: wm-badge-blink 2.2s ease-in-out infinite;
+    animation: wm-badge-blink 2.2s ease-in-out infinite; white-space: nowrap;
   }
   @keyframes wm-badge-blink { 0%,100%{opacity:1;} 50%{opacity:.5;} }
 
-  .wm-stories-list {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 6px;
+  .wm-ticker-track {
+    flex: 1; overflow: hidden; height: 100%;
+    display: flex; align-items: center;
   }
+  .wm-ticker-reel {
+    display: flex; align-items: center; gap: 0;
+    animation: wm-ticker-scroll var(--ticker-duration, 40s) linear infinite;
+    will-change: transform;
+    white-space: nowrap;
+  }
+  .wm-ticker-reel:hover { animation-play-state: paused; }
+  @keyframes wm-ticker-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
   .wm-story {
-    display: flex; align-items: flex-start; gap: 7px;
-    padding: 7px 9px; border-radius: 6px;
-    background: rgba(255,255,255,.025); border: 1px solid rgba(255,255,255,.06);
-    text-decoration: none; transition: background .2s, border-color .2s;
-    min-width: 0;
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 0 16px; text-decoration: none;
+    transition: background .2s;
+    height: 38px; flex-shrink: 0;
   }
-  .wm-story:hover { background: rgba(0,200,255,.06); border-color: rgba(0,200,255,.2); }
+  .wm-story:hover { background: rgba(0,200,255,.06); }
   .wm-story-dot {
-    width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 3px;
-  }
-  .wm-story-body {
-    display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1;
+    width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
   }
   .wm-story-loc {
     font-size: .52rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
-    color: rgba(0,200,255,.7); font-family: monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    color: rgba(0,200,255,.7); font-family: monospace; white-space: nowrap;
   }
   .wm-story-title {
-    font-size: .62rem; color: #b8c8d8; line-height: 1.4;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+    font-size: .62rem; color: #b8c8d8; white-space: nowrap;
+    max-width: 320px; overflow: hidden; text-overflow: ellipsis;
   }
   .wm-story-age {
     font-size: .5rem; color: rgba(255,255,255,.3); font-family: monospace;
-    flex-shrink: 0; margin-top: 2px; white-space: nowrap;
+    flex-shrink: 0; white-space: nowrap;
+  }
+  .wm-story-sep {
+    font-size: .45rem; color: rgba(0,200,255,.25); margin-left: 8px; flex-shrink: 0;
   }
 
   @media (max-width: 768px) {
     .wm-wrap { height: 340px; min-height: 340px; border-radius: 10px 10px 0 0; }
-    .wm-stories-list { grid-template-columns: 1fr; }
+    .wm-story-title { max-width: 200px; }
   }
 </style>

@@ -567,9 +567,18 @@
 
   <!-- Desktop nav — left-aligned after brand (Electric Xtra style) -->
   <nav class="page-nav desktop-only" aria-label="Main navigation">
-    <button class="nav-link" class:nav-link--active={$activeSection==='signal'}    on:click={()=>navigateTo('signal')}>₿ Signal</button>
-    <button class="nav-link" class:nav-link--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')}>↗ Portfolio</button>
-    <button class="nav-link" class:nav-link--active={$activeSection==='intel'}     on:click={()=>navigateTo('intel')}>◈ Intel</button>
+    <button class="nav-link" class:nav-link--active={$activeSection==='signal'}    on:click={()=>navigateTo('signal')}>
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M15.31 8h-6.62A1.5 1.5 0 0 0 7.5 10.5V11a2 2 0 0 0 2 2h5a2 2 0 0 1 2 2v.5a1.5 1.5 0 0 1-1.5 1.5H8.69"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
+      Signal
+    </button>
+    <button class="nav-link" class:nav-link--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')}>
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+      Portfolio
+    </button>
+    <button class="nav-link" class:nav-link--active={$activeSection==='intel'}     on:click={()=>navigateTo('intel')}>
+      <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Intel
+    </button>
   </nav>
 
   <!-- Spacer pushes right controls to far right on desktop -->
@@ -861,8 +870,9 @@
 
   /* Desktop nav — immediately after brand, left-aligned (Electric Xtra style) */
   .page-nav { display:flex; gap:4px; flex-shrink:0; }
+  .nav-icon { width:14px; height:14px; flex-shrink:0; vertical-align:middle; margin-right:5px; position:relative; z-index:1; }
   .nav-link {
-    padding:10px 18px; border-radius:3px;
+    padding:10px 18px; border-radius:3px; display:flex; align-items:center;
     font-family:'Poison',monospace; font-size:.8rem; font-weight:700;
     color:rgba(255,255,255,.78); text-decoration:none;
     text-transform:uppercase; letter-spacing:.08em;
