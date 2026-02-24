@@ -791,7 +791,7 @@
     <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">exchangerate-api</a> ·
     <a href="https://ghostfol.io" target="_blank" rel="noopener noreferrer">ghostfol.io</a> ·
     <a href="https://www.worldbank.org" target="_blank" rel="noopener noreferrer">worldbank</a> ·
-    <a href="https://acleddata.com" target="_blank" rel="noopener noreferrer">ACLED</a>
+    <a href="https://gdeltproject.org" target="_blank" rel="noopener noreferrer">GDELT</a>
   </span>
 </footer>
 
