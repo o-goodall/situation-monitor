@@ -312,7 +312,7 @@
         {/if}
       </div>
       <div class="btc-gold-range-row">
-        <span class="stat-l">Bitcoin in Gold</span>
+        <span class="stat-l">1 BTC <span class="price-label-sep">·</span> oz</span>
         {#if btcGoldPctChange !== null}
           <span class="btc-gold-pct" style="color:{btcGoldPctChange >= 0 ? 'var(--up)' : 'var(--dn)'}">{btcGoldPctChange >= 0 ? '+' : ''}{btcGoldPctChange.toFixed(1)}%</span>
         {:else if btcGoldRangeLoading}
@@ -326,11 +326,9 @@
       </div>
       {#if btcGoldRangeLoading}
         <span class="btc-gold-strip-spot muted">…</span>
-      {:else if btcInGoldOz !== null && btcGoldStartRatio !== null && btcGoldPctChange !== null}
+      {:else if btcGoldStartRatio !== null && btcGoldPctChange !== null}
         <span class="btc-gold-strip-spot">
-          {n(btcInGoldOz, 2)} oz
-          <span class="met-u">now</span>
-          &nbsp;|&nbsp;
+          {#if btcInGoldOz !== null}{n(btcInGoldOz, 2)} oz <span class="met-u">now</span> &nbsp;|&nbsp; {/if}
           {n(btcGoldStartRatio, 2)} oz
           <span class="met-u">{btcGoldRange}</span>
           &nbsp;|&nbsp;
