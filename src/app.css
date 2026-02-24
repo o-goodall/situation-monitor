@@ -320,11 +320,6 @@ body::after {
   html { scroll-padding-top: 0; }
 }
 
-@media (max-width:700px) {
-  /* Disable scroll-snap on mobile to allow natural free scrolling */
-  html { scroll-snap-type: none; }
-}
-
 /* ── LIGHT MODE GLOBAL OVERRIDES ══════════════════════════ */
 html.light body::before {
   background:
