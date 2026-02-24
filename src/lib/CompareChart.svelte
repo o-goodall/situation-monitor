@@ -5,7 +5,7 @@
   export let btc:   { t: number; p: number }[] = [];
   export let sp500: { t: number; p: number }[] = [];
   export let gold:  { t: number; p: number }[] = [];
-  export let range: '1D' | '1W' | '1Y' = '1Y';
+  export let range: '1D' | '1W' | '1Y' | '5Y' = '5Y';
 
   // ── Internal state ───────────────────────────────────────────
   let scaleMode: 'linear' | 'log' = 'linear';
@@ -66,7 +66,7 @@
   function fmtDate(t: number): string {
     const d = new Date(t);
     if (range === '1D') return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-    if (range === '1Y') return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+    if (range === '1Y' || range === '5Y') return d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
     return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   }
 

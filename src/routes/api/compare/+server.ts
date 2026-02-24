@@ -15,6 +15,7 @@ const BTC_DAYS: Record<string, string> = {
   '1d':  '1',
   '7d':  '7',
   '1y':  '365',
+  '5y':  '1825',
 };
 
 // Yahoo Finance range/interval per range
@@ -22,6 +23,7 @@ const YF_PARAMS: Record<string, { range: string; interval: string }> = {
   '1d':  { range: '1d',  interval: '30m' },
   '7d':  { range: '5d',  interval: '60m' },
   '1y':  { range: '1y',  interval: '1d'  },
+  '5y':  { range: '5y',  interval: '1wk' },
 };
 
 async function fetchBtcHistory(days: string): Promise<PricePoint[]> {
