@@ -18,7 +18,7 @@
   import CompareChart from '$lib/CompareChart.svelte';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
-  let btcChartRange: '1D' | '1W' | '1Y' = '1D';
+  let btcChartRange: '1D' | '1W' | '1Y' | '5Y' = '1D';
   let btcChartData: { t: number; p: number }[] = [];
   let btcChartLoading = false;
   let btcDayOpenPrice = 0; // price at start of today for daily % change
@@ -26,7 +26,7 @@
   async function fetchBtcChart(r = btcChartRange) {
     btcChartLoading = true;
     try {
-      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y' };
+      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y' };
       const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
       btcChartData = d.prices ?? [];
       if (r === '1D' && btcChartData.length > 0) btcDayOpenPrice = btcChartData[0].p;
@@ -34,7 +34,7 @@
     finally { btcChartLoading = false; }
   }
 
-  async function setBtcChartRange(r: '1D' | '1W' | '1Y') {
+  async function setBtcChartRange(r: '1D' | '1W' | '1Y' | '5Y') {
     btcChartRange = r;
     await fetchBtcChart(r);
     if (btcChartView === 'compare') await fetchCompareChart(r);
@@ -48,7 +48,7 @@
   async function fetchCompareChart(r = btcChartRange) {
     compareLoading = true;
     try {
-      const map: Record<string, string> = { '1D': '1d', '1W': '7d', '1Y': '1y' };
+      const map: Record<string, string> = { '1D': '1d', '1W': '7d', '1Y': '1y', '5Y': '5y' };
       const d = await fetch(`/api/compare?range=${map[r]}`).then(res => res.json());
       compareData = { btc: d.btc ?? [], sp500: d.sp500 ?? [], gold: d.gold ?? [] };
     } catch { compareData = { btc: [], sp500: [], gold: [] }; }
@@ -57,7 +57,10 @@
 
   async function setChartView(view: 'price' | 'compare') {
     btcChartView = view;
-    if (view === 'compare' && !compareData.btc.length) await fetchCompareChart();
+    if (view === 'compare') {
+      btcChartRange = '5Y';
+      await fetchCompareChart('5Y');
+    }
   }
 
   $: btcDayChangePct = btcDayOpenPrice > 0 && $btcPrice > 0
@@ -267,7 +270,7 @@
   }
 
   function btcApiRange(r = btcChartRange): string {
-    const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y' };
+    const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y' };
     return map[r] ?? '1d';
   }
 
@@ -854,6 +857,7 @@
           <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
           <button class="crb" class:crb--active={btcChartRange==='1W'} on:click={() => setBtcChartRange('1W')}>1W</button>
           <button class="crb" class:crb--active={btcChartRange==='1Y'} on:click={() => setBtcChartRange('1Y')}>1Y</button>
+          <button class="crb" class:crb--active={btcChartRange==='5Y'} on:click={() => setBtcChartRange('5Y')}>5Y</button>
         </div>
       </div>
     </div>
@@ -876,7 +880,7 @@
         <PriceChart
           prices={btcChartData}
           height={160}
-          range={btcChartRange === '1D' ? '1d' : btcChartRange === '1W' ? '7d' : '1y'}
+          range={btcApiRange()}
         />
       {:else}
         <p class="dim" style="text-align:center;padding:60px 0;">Loading chart data…</p>
