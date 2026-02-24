@@ -1,8 +1,8 @@
 <script lang="ts">
   import '../app.css';
   import { onMount, onDestroy } from 'svelte';
-  import { loadSettings, getEnabledFeedUrls, DEFAULT_THREATS } from '$lib/settings';
-  import type { FeedCategory, ThreatLevel } from '$lib/settings';
+  import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
+  import type { FeedCategory } from '$lib/settings';
   import {
     settings, showSettings, saved, time, lightMode, activeSection,
     btcPrice, prevPrice, priceFlash, priceHistory, btcBlock, btcFees,
@@ -258,24 +258,6 @@
   function toggleCategory(cat: FeedCategory) {
     const anyEnabled = $settings.news.defaultFeeds.some(f => f.category === cat && f.enabled);
     $settings.news.defaultFeeds = $settings.news.defaultFeeds.map(f => f.category === cat ? { ...f, enabled: !anyEnabled } : f);
-  }
-
-  /** Set conflict status for a threat location: 'off' disables it; ThreatLevel applies as an override */
-  function setThreatStatus(id: string, status: 'off' | 'default' | ThreatLevel) {
-    const threats = { ...$settings.threats };
-    // Remove any prior level override for this id
-    const { [id]: _removed, ...restLevels } = threats.threatLevels;
-    if (status === 'off') {
-      threats.disabledIds = [...new Set([...threats.disabledIds, id])];
-      threats.threatLevels = restLevels;
-    } else if (status === 'default') {
-      threats.disabledIds = threats.disabledIds.filter(d => d !== id);
-      threats.threatLevels = restLevels;
-    } else {
-      threats.disabledIds = threats.disabledIds.filter(d => d !== id);
-      threats.threatLevels = { ...restLevels, [id]: status };
-    }
-    $settings = { ...$settings, threats };
   }
 
   function handleScroll() { scrolled = window.scrollY > 40; }
@@ -717,23 +699,6 @@
         <label class="df"><span class="dlbl">Currency</span><input bind:value={$settings.ghostfolio.currency} placeholder="AUD" class="dinp" style="max-width:80px;"/></label>
       </div>
     </div>
-    <div class="dg"><p class="dg-hd">Global Threat Monitor <span class="dhint">set conflict status per location</span></p>
-      <div class="threat-list">
-        {#each DEFAULT_THREATS as threat}
-          {@const isOff = $settings.threats.disabledIds.includes(threat.id)}
-          {@const override = $settings.threats.threatLevels?.[threat.id]}
-          <div class="threat-row">
-            <span class="threat-name">{threat.name}</span>
-            <div class="threat-btns">
-              <button class="threat-btn" class:threat-btn--active={isOff} on:click={() => setThreatStatus(threat.id, 'off')} title="Hide this location">Off</button>
-              <button class="threat-btn threat-btn--low" class:threat-btn--active={!isOff && !override} on:click={() => setThreatStatus(threat.id, 'default')} title="Use default status">Default</button>
-              <button class="threat-btn threat-btn--amber" class:threat-btn--active={!isOff && override === 'elevated'} on:click={() => setThreatStatus(threat.id, 'elevated')} title="Tensions rising">Tensions</button>
-              <button class="threat-btn threat-btn--red" class:threat-btn--active={!isOff && override === 'critical'} on:click={() => setThreatStatus(threat.id, 'critical')} title="Active conflict">Conflict</button>
-            </div>
-          </div>
-        {/each}
-      </div>
-    </div>
     <button on:click={saveAll} class="btn-primary" class:d-save--ok={$saved}>{$saved?'✓ Saved':'Save Settings'}</button>
   </div>
 </div>
@@ -807,23 +772,6 @@
       <div class="dg"><p class="dg-hd">Ghostfolio Token</p>
         <label class="df"><span class="dlbl">Security token</span><input type="password" bind:value={$settings.ghostfolio.token} placeholder="your-security-token" class="dinp"/></label>
       </div>
-      <div class="dg"><p class="dg-hd">Global Threat Monitor <span class="dhint">conflict status</span></p>
-        <div class="threat-list">
-          {#each DEFAULT_THREATS as threat}
-            {@const isOff = $settings.threats.disabledIds.includes(threat.id)}
-            {@const override = $settings.threats.threatLevels?.[threat.id]}
-            <div class="threat-row">
-              <span class="threat-name">{threat.name}</span>
-              <div class="threat-btns">
-                <button class="threat-btn" class:threat-btn--active={isOff} on:click={() => setThreatStatus(threat.id, 'off')}>Off</button>
-                <button class="threat-btn threat-btn--low" class:threat-btn--active={!isOff && !override} on:click={() => setThreatStatus(threat.id, 'default')}>Default</button>
-                <button class="threat-btn threat-btn--amber" class:threat-btn--active={!isOff && override === 'elevated'} on:click={() => setThreatStatus(threat.id, 'elevated')}>Tensions</button>
-                <button class="threat-btn threat-btn--red" class:threat-btn--active={!isOff && override === 'critical'} on:click={() => setThreatStatus(threat.id, 'critical')}>Conflict</button>
-              </div>
-            </div>
-          {/each}
-        </div>
-      </div>
       <button on:click={() => { saveAll(); closeMobileMenu(); }} class="btn-primary" style="width:100%;">{$saved?'✓ Saved':'Save Settings'}</button>
     </div>
   </div>
@@ -842,7 +790,8 @@
     <a href="https://www.binance.com" target="_blank" rel="noopener noreferrer">binance</a> ·
     <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener noreferrer">exchangerate-api</a> ·
     <a href="https://ghostfol.io" target="_blank" rel="noopener noreferrer">ghostfol.io</a> ·
-    <a href="https://www.worldbank.org" target="_blank" rel="noopener noreferrer">worldbank</a>
+    <a href="https://www.worldbank.org" target="_blank" rel="noopener noreferrer">worldbank</a> ·
+    <a href="https://gdeltproject.org" target="_blank" rel="noopener noreferrer">GDELT</a>
   </span>
 </footer>
 
@@ -1220,33 +1169,6 @@
   .feed-cat-lbl { font-size:.65rem; font-weight:700; color:var(--t2); margin-top:10px; letter-spacing:.03em; }
   :global(html.light) .feed-toggle { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.08); }
   :global(html.light) .feed-toggle:hover { border-color:rgba(247,147,26,.3); }
-
-  /* ── THREAT LOCATION SETTINGS ─────────────────────────────── */
-  .threat-list { display:flex; flex-direction:column; gap:6px; }
-  .threat-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid rgba(255,255,255,.03); flex-wrap:wrap; }
-  .threat-row:last-child { border-bottom:none; }
-  .threat-name { font-size:.65rem; color:var(--t2); font-weight:500; min-width:90px; flex-shrink:0; }
-  .threat-btns { display:flex; gap:4px; flex-wrap:wrap; }
-  .threat-btn {
-    padding:3px 9px; font-size:.58rem; font-weight:600; font-family:'Poison',monospace;
-    letter-spacing:.05em; text-transform:uppercase; border-radius:3px; cursor:pointer;
-    border:1px solid rgba(255,255,255,.1); background:rgba(255,255,255,.04); color:rgba(255,255,255,.35);
-    transition:background .15s, border-color .15s, color .15s;
-  }
-  .threat-btn:hover { background:rgba(255,255,255,.08); color:rgba(255,255,255,.7); }
-  .threat-btn--active { background:rgba(255,255,255,.12)!important; color:rgba(255,255,255,.9)!important; border-color:rgba(255,255,255,.3)!important; }
-  .threat-btn--low.threat-btn--active { background:rgba(0,255,136,.12)!important; color:#00ff88!important; border-color:rgba(0,255,136,.35)!important; }
-  .threat-btn--amber { border-color:rgba(255,204,0,.2); color:rgba(255,204,0,.5); }
-  .threat-btn--amber:hover { background:rgba(255,204,0,.1); color:#ffcc00; border-color:rgba(255,204,0,.45); }
-  .threat-btn--amber.threat-btn--active { background:rgba(255,204,0,.15)!important; color:#ffcc00!important; border-color:rgba(255,204,0,.5)!important; }
-  .threat-btn--red { border-color:rgba(255,68,68,.2); color:rgba(255,68,68,.5); }
-  .threat-btn--red:hover { background:rgba(255,68,68,.1); color:#ff4444; border-color:rgba(255,68,68,.45); }
-  .threat-btn--red.threat-btn--active { background:rgba(255,68,68,.15)!important; color:#ff4444!important; border-color:rgba(255,68,68,.5)!important; }
-  :global(html.light) .threat-row { border-bottom-color:rgba(0,0,0,.06); }
-  :global(html.light) .threat-name { color:rgba(0,0,0,.6); }
-  :global(html.light) .threat-btn { background:rgba(0,0,0,.03); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.45); }
-  :global(html.light) .threat-btn:hover { background:rgba(0,0,0,.06); color:rgba(0,0,0,.7); }
-  :global(html.light) .threat-btn--active { background:rgba(0,0,0,.08)!important; color:rgba(0,0,0,.8)!important; }
 
   /* ── FOOTER ──────────────────────────────────────────────── */
   .site-footer {
