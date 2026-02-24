@@ -26,6 +26,45 @@ const YF_PARAMS: Record<string, { range: string; interval: string }> = {
   '5y':  { range: '5y',  interval: '1wk' },
 };
 
+// ── Yahoo Finance crumb authentication ────────────────────────────────────────
+// Yahoo Finance requires a session cookie + crumb token for API access.
+// Crumbs are cached in-memory for up to 1 hour per function instance.
+let _yfCrumb: string | null = null;
+let _yfCookie: string | null = null;
+let _yfCrumbTs = 0;
+const YF_CRUMB_TTL = 60 * 60 * 1000; // 1 hour
+
+async function ensureYahooCrumb(): Promise<{ crumb: string; cookie: string } | null> {
+  const now = Date.now();
+  if (_yfCrumb && _yfCookie && now - _yfCrumbTs < YF_CRUMB_TTL) {
+    return { crumb: _yfCrumb, cookie: _yfCookie };
+  }
+  try {
+    // Step 1: fetch Yahoo Finance home page to obtain session cookies
+    const initRes = await fetch('https://finance.yahoo.com/', { headers: HEADERS });
+    const rawCookies: string[] =
+      (initRes.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.() ??
+      (initRes.headers.get('set-cookie') ?? '').split(/,(?=[^ ])/).filter(Boolean);
+    const cookie = rawCookies.map(c => c.split(';')[0].trim()).filter(Boolean).join('; ');
+
+    // Step 2: use the session cookie to retrieve the crumb
+    const crumbRes = await fetch('https://query2.finance.yahoo.com/v1/test/getcrumb', {
+      headers: { ...HEADERS, Cookie: cookie },
+    });
+    if (!crumbRes.ok) return null;
+    const crumb = (await crumbRes.text()).trim();
+    // A valid crumb is a short alphanumeric token (≤20 chars); anything longer or starting with '<' is an error page
+    if (!crumb || crumb.startsWith('<') || crumb.length > 64) return null;
+
+    _yfCrumb = crumb;
+    _yfCookie = cookie;
+    _yfCrumbTs = now;
+    return { crumb, cookie };
+  } catch {
+    return null;
+  }
+}
+
 async function fetchBtcHistory(days: string): Promise<PricePoint[]> {
   try {
     const res = await fetch(
@@ -41,16 +80,19 @@ async function fetchBtcHistory(days: string): Promise<PricePoint[]> {
 }
 
 async function fetchYahooHistory(ticker: string, yfRange: string, yfInterval: string): Promise<PricePoint[]> {
+  const auth = await ensureYahooCrumb();
   const bases = [
     'https://query1.finance.yahoo.com',
     'https://query2.finance.yahoo.com',
   ];
-  const query = `range=${yfRange}&interval=${yfInterval}&includePrePost=false`;
+  const baseQuery = `range=${yfRange}&interval=${yfInterval}&includePrePost=false`;
+  const query = auth ? `${baseQuery}&crumb=${encodeURIComponent(auth.crumb)}` : baseQuery;
+  const cookieHdr = auth ? { Cookie: auth.cookie } : {};
   try {
     return await Promise.any(
       bases.map(async (base) => {
         const url = `${base}/v8/finance/chart/${ticker}?${query}`;
-        const res = await fetch(url, { headers: HEADERS });
+        const res = await fetch(url, { headers: { ...HEADERS, ...cookieHdr } });
         if (!res.ok) throw new Error(`${res.status}`);
         const d = await res.json();
         const timestamps: number[] = d?.chart?.result?.[0]?.timestamp ?? [];
@@ -80,7 +122,7 @@ export async function GET({ url }: RequestEvent) {
   const [btc, sp500, gold] = await Promise.all([
     fetchBtcHistory(btcDays),
     fetchYahooHistory('%5EGSPC', yfRange, yfInterval),
-    fetchYahooHistory('GC%3DF', yfRange, yfInterval),
+    fetchYahooHistory('GC=F', yfRange, yfInterval),
   ]);
 
   return json({ btc, sp500, gold });
