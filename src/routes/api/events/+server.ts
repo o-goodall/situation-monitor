@@ -136,28 +136,32 @@ export async function GET(_event: RequestEvent) {
 
     // Extract locations; only geocode items not already in cache to respect
     // Nominatim's rate limit of 1 request/second (1.1s delay between calls).
+    // Deduplicate unique uncached locations first so the same place name is
+    // never fetched more than once, then apply results to all matching items.
     // Limit total network geocode calls per invocation to cap worst-case latency.
     const withLocation = unique
       .map(item => ({ ...item, location: extractLocation(item.title) }))
       .filter((item): item is typeof item & { location: string } => item.location !== null);
 
-    const geocoded: (typeof withLocation[0] & { lat: number; lon: number } | null)[] = [];
-    let networkCallsMade = 0;
-    for (const item of withLocation) {
-      const alreadyCached = item.location in geoCache;
-      if (!alreadyCached && networkCallsMade >= MAX_GEOCODE_CALLS) {
-        // Skip further uncached lookups once we've hit the per-invocation cap
-        geocoded.push(null);
-        continue;
-      }
-      const geo = await geocode(item.location);
-      if (!alreadyCached) {
-        networkCallsMade++;
-        // Throttle only actual network requests to stay within 1 req/s
+    // Collect unique location names that aren't yet in the geocode cache
+    const uniqueUncached = [...new Set(
+      withLocation.map(i => i.location).filter(loc => !(loc in geoCache))
+    )].slice(0, MAX_GEOCODE_CALLS);
+
+    // Geocode each unique uncached location in sequence (respects 1 req/s limit)
+    for (let i = 0; i < uniqueUncached.length; i++) {
+      await geocode(uniqueUncached[i]);
+      // Throttle between calls but skip the delay after the last one
+      if (i < uniqueUncached.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 1100));
       }
-      geocoded.push(geo ? { ...item, ...geo } : null);
     }
+
+    // Apply cached results instantly — no further network calls needed
+    const geocoded = withLocation.map(item => {
+      const geo = geoCache[item.location];
+      return geo ? { ...item, ...geo } : null;
+    });
 
     // Build events array
     const events: ThreatEvent[] = geocoded
