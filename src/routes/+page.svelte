@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
   import {
     settings, btcPrice, priceFlash, priceHistory, btcBlock, btcFees,
     halvingBlocksLeft, halvingDays, halvingDate, halvingProgress,
@@ -85,7 +85,7 @@
   $: hashrateMA7  = hashrateData.length >= 7  ? computeMA(hashrateData, 7)  : [];
   $: hashrateMA30 = hashrateData.length >= 30 ? computeMA(hashrateData, 30) : [];
 
-  let intelView: 'cutting-edge'|'classic'|'globe' = 'classic';
+  let intelView: 'cutting-edge'|'classic'|'globe' = 'globe';
   let intelTransitioning = false;
   const BLUR_DURATION_MS = 400;   // blur phase before content swap
   const REVEAL_DURATION_MS = 600; // reveal phase after content swap
@@ -190,21 +190,9 @@
 
   const fmtPct = (v: number) => (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
 
-  let _mqHandler: ((e: MediaQueryListEvent) => void) | null = null;
-  let _mq: MediaQueryList | null = null;
-
   onMount(() => {
     fetchBtcChart();
     fetchHashrateChart();
-    // Globe is desktop-only — switch back to classic if user loads on mobile
-    _mq = window.matchMedia('(max-width: 768px)');
-    if (_mq.matches && intelView === 'globe') intelView = 'classic';
-    _mqHandler = (e: MediaQueryListEvent) => { if (e.matches && intelView === 'globe') { intelView = 'classic'; } };
-    _mq.addEventListener('change', _mqHandler);
-  });
-
-  onDestroy(() => {
-    if (_mq && _mqHandler) _mq.removeEventListener('change', _mqHandler);
   });
 </script>
 
@@ -705,7 +693,7 @@
     <div class="intel-toggle-wrap" role="group" aria-label="Intel view">
       <button class="crb" class:crb--active={intelView==='cutting-edge'} on:click={() => switchIntelView('cutting-edge')} aria-pressed={intelView === 'cutting-edge'} title="Cutting Edge — prediction markets">◈ Markets</button>
       <button class="crb" class:crb--active={intelView==='classic'} on:click={() => switchIntelView('classic')} aria-pressed={intelView === 'classic'} title="Classic — news feed">☰ News</button>
-      <button class="crb globe-toggle-btn" class:crb--active={intelView==='globe'} on:click={() => switchIntelView('globe')} aria-pressed={intelView === 'globe'} title="Globe — live world events map (desktop only)">🌐 Globe</button>
+      <button class="crb globe-toggle-btn" class:crb--active={intelView==='globe'} on:click={() => switchIntelView('globe')} aria-pressed={intelView === 'globe'} title="Globe — live world events map">🌐 Globe</button>
     </div>
   </div>
 
@@ -822,7 +810,7 @@
 
 <style>
   /* ── LAYOUT ──────────────────────────────────────────────── */
-  .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; min-height: 100vh; scroll-snap-align: start; scroll-snap-stop: always; position: relative; overflow: clip; }
+  .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; min-height: 100vh; position: relative; overflow: clip; }
   .section::before { content: ''; position: absolute; inset: -20% 0; z-index: -1; background: radial-gradient(ellipse at 50% 30%, rgba(247,147,26,.04) 0%, transparent 70%); transform: translateY(0); transition: transform 0.6s ease-out; pointer-events: none; }
   .section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
 
@@ -837,7 +825,7 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:700px) {
-    .section { padding:20px 14px 0; min-height:100vh; scroll-snap-align:start; width:100%; }
+    .section { padding:20px 14px 0; min-height:100vh; width:100%; }
     .section-header {
       margin-bottom:16px;
     }
@@ -1393,11 +1381,6 @@
   /* ── INTEL CONSISTENT GC CONTAINER ─────────────────────── */
   .intel-gc { min-height:280px; }
   .globe-gc { min-height:unset; }
-
-  /* ── GLOBE DESKTOP-ONLY ──────────────────────────────────── */
-  @media (max-width: 768px) {
-    .globe-toggle-btn { display: none; }
-  }
 
   /* ── GLOBE LIVE BADGE ───────────────────────────────────── */
   .globe-badge {
