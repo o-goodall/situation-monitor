@@ -9,7 +9,7 @@
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfFirstOrderDate, gfOrdersCount,
-    markets, newsItems, breakingNewsLinks, btcDisplayPrice, btcWsConnected,
+    markets, marketsUpdated, newsItems, breakingNewsLinks, btcDisplayPrice, btcWsConnected,
     btcHashrate, gfPortfolioChart
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
@@ -723,7 +723,7 @@
       <div class="gc-head" style="margin-bottom:16px;">
         <div>
           <p class="gc-title">Geopolitics</p>
-          <p class="dim" style="margin-top:3px;">Live prediction markets · what the crowd expects</p>
+          {#if $marketsUpdated}<span class="dim" aria-label="Markets last refreshed at {$marketsUpdated}">{$marketsUpdated}</span>{/if}
         </div>
         <a href="https://polymarket.com/markets/geopolitics" target="_blank" rel="noopener noreferrer" class="btn-ghost" aria-label="Open Polymarket Geopolitics in new tab">polymarket.com ↗</a>
       </div>

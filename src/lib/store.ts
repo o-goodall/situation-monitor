@@ -44,6 +44,7 @@ export const btcHashrate    = writable<number|null>(null); // network hash rate 
 // ── MARKETS / NEWS ────────────────────────────────────────────
 export type Market = { id:string; question:string; topOutcome:string; probability:number; outcomes:{name:string;probability:number}[]; volume:number; volume24hr:number; liquidity:number; endDate:string; startDate:string; tag:string; url:string; pinned:boolean; trending:boolean; daysLeft:number|null };
 export const markets = writable<Market[]>([]);
+export const marketsUpdated = writable<string>('');
 export type NewsItem = { title:string; link:string; source:string; pubDate:string; description:string; image:string };
 export const newsItems = writable<NewsItem[]>([]);
 // Links of items that arrived in the most-recent news fetch (cleared after 3 min)

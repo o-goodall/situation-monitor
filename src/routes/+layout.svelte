@@ -9,7 +9,7 @@
     halvingBlocksLeft, halvingDays, halvingDate, halvingProgress,
     latestBlock, mempoolStats,
     fearGreed, fearGreedLabel, difficultyChange, fundingRate, audUsd, dcaUpdated,
-    markets, newsItems, breakingNewsLinks,
+    markets, marketsUpdated, newsItems, breakingNewsLinks,
     goldPriceUsd, goldYtdPct, sp500Price, sp500YtdPct, cpiAnnual, btcYtdPct,
     gfNetWorth, gfTotalInvested, gfNetGainPct, gfNetGainYtdPct,
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
@@ -165,6 +165,7 @@
     try {
       const kw = encodeURIComponent(JSON.stringify($settings.polymarket.keywords));
       $markets = (await fetch(`/api/polymarket?keywords=${kw}`).then(r=>r.json())).markets ?? [];
+      $marketsUpdated = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
     } catch {}
   }
 
