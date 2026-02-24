@@ -648,6 +648,52 @@
     <h2 class="sect-title">Portfolio</h2>
   </div>
 
+  <!-- MOBILE ONLY: merged portfolio summary tile -->
+  <div class="gc mobile-port-summary">
+    <div class="gc-head" style="margin-bottom:16px;">
+      <p class="gc-title">Portfolio</p>
+      <div style="display:flex;align-items:center;gap:8px;">
+        {#if $gfLoading}<span class="live-dot blink" role="status" aria-label="Loading portfolio data"></span>{/if}
+        {#if $gfUpdated && !$gfLoading && $settings.ghostfolio?.token}<span class="ts">{$gfUpdated}</span>{/if}
+      </div>
+    </div>
+    {#if $settings.ghostfolio?.token && !$gfError && $gfNetWorth !== null}
+      <div class="mps-nw-block">
+        <p class="eyebrow" style="margin-bottom:6px;">Net Worth</p>
+        <p class="mps-nw">{$gfNetWorth !== null ? '$'+n($gfNetWorth,0) : '—'}</p>
+        <p class="eyebrow" style="margin-top:4px;">{$settings.ghostfolio?.currency||'AUD'}</p>
+      </div>
+      <div class="mps-perf-row">
+        <div class="mps-perf-item">
+          <p class="eyebrow">Today</p>
+          <p class="mps-perf-v" style="color:{sc($gfTodayChangePct)};">{pct($gfTodayChangePct)}</p>
+        </div>
+        <div class="mps-perf-item">
+          <p class="eyebrow">YTD</p>
+          <p class="mps-perf-v" style="color:{sc($gfNetGainYtdPct)};">{pct($gfNetGainYtdPct)}</p>
+        </div>
+        <div class="mps-perf-item">
+          <p class="eyebrow">All-time</p>
+          <p class="mps-perf-v" style="color:{sc($gfNetGainPct)};">{pct($gfNetGainPct)}</p>
+        </div>
+      </div>
+    {/if}
+    <!-- Compact asset comparison: BTC / Gold / SPX -->
+    <div class="mps-assets" class:mps-assets--solo={!($settings.ghostfolio?.token && !$gfError && $gfNetWorth !== null)}>
+      {#each [
+        {ticker:'BTC', icon:'₿', pct:$btcYtdPct,   color:'#f7931a'},
+        {ticker:'XAU', icon:'◈', pct:$goldYtdPct,  color:'#c9a84c'},
+        {ticker:'SPX', icon:'↗', pct:$sp500YtdPct, color:'#888'},
+      ] as a}
+        <div class="mps-asset-item">
+          <p class="mps-asset-ticker" style="color:{a.color};">{a.icon} {a.ticker}</p>
+          <p class="mps-asset-pct" style="color:{a.pct===null?a.color:a.pct>=0?'var(--up)':'var(--dn)'};">{a.pct !== null ? (a.pct >= 0 ? '+' : '') + a.pct.toFixed(1) + '%' : '—'}</p>
+          <p class="eyebrow">YTD</p>
+        </div>
+      {/each}
+    </div>
+  </div>
+
   <div class="port-grid">
 
     <!-- ASSET COMPARISON -->
@@ -1132,7 +1178,42 @@
     .btc-hashrate-card { display:none; }
     /* Show BTC price chart on mobile — collapse to single-chart layout */
     .btc-chart-card { margin-top:10px; }
+    /* DCA signal: only show the amount to buy on mobile */
+    .signal-card .vband,
+    .signal-card .sigs,
+    .dca-info-btn { display:none; }
+    .dca-hero { padding:20px 0 16px; }
+    /* Portfolio: hide detailed tiles, show merged summary only */
+    .port-grid { display:none; }
+    .mobile-port-summary { display:block; }
   }
+
+  /* ── MOBILE MERGED PORTFOLIO SUMMARY ─────────────────────── */
+  /* Hidden on desktop — shown only on mobile via the rule above */
+  .mobile-port-summary { display:none; }
+  .mps-nw-block { text-align:center; padding:10px 0 8px; }
+  .mps-nw { font-size:2.8rem; font-weight:700; letter-spacing:-.04em; line-height:1; margin-bottom:4px; }
+  .mps-perf-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:12px 0 16px; }
+  .mps-perf-item {
+    display:flex; flex-direction:column; gap:4px; text-align:center;
+    background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06);
+    border-radius:8px; padding:10px 6px;
+  }
+  .mps-perf-v { font-size:.9rem; font-weight:700; line-height:1; }
+  .mps-assets {
+    display:grid; grid-template-columns:repeat(3,1fr); gap:8px;
+    padding-top:12px; border-top:1px solid rgba(255,255,255,.06);
+  }
+  .mps-assets--solo { padding-top:0; border-top:none; }
+  .mps-asset-item {
+    display:flex; flex-direction:column; gap:3px; text-align:center;
+    background:rgba(255,255,255,.02); border:1px solid rgba(255,255,255,.06);
+    border-radius:8px; padding:12px 8px;
+  }
+  .mps-asset-ticker { font-size:.72rem; font-weight:700; margin-bottom:4px; }
+  .mps-asset-pct { font-size:1.1rem; font-weight:800; line-height:1; letter-spacing:-.02em; }
+  :global(html.light) .mps-perf-item,
+  :global(html.light) .mps-asset-item { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.07); }
 
   /* ── ATOMS ──────────────────────────────────────────────── */
   .eyebrow { font-size:.58rem; font-weight:500; text-transform:uppercase; letter-spacing:.12em; color:var(--t2); }
