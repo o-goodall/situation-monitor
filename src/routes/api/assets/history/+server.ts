@@ -51,23 +51,29 @@ async function fetchYahooHistory(
   ];
 
   for (const query of queries) {
-    for (const base of bases) {
-      try {
-        const url = `${base}/v8/finance/chart/${ticker}?${query}`;
-        const res = await fetch(url, { headers: HEADERS });
-        if (!res.ok) continue;
-        const d = await res.json();
-        const timestamps: number[] = d?.chart?.result?.[0]?.timestamp ?? [];
-        const closes: (number | null)[] = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
-        const result: { t: number; p: number }[] = [];
-        for (let i = 0; i < timestamps.length; i++) {
-          const p = closes[i];
-          if (p === null || p === undefined || isNaN(p)) continue;
-          result.push({ t: timestamps[i] * 1000, p });
-        }
-        if (result.length > 1) return result;
-      } catch { continue; }
-    }
+    // Race both Yahoo Finance mirror hosts for the same query; the first
+    // successful response wins, halving latency when one host is slow.
+    try {
+      const result = await Promise.any(
+        bases.map(async (base) => {
+          const url = `${base}/v8/finance/chart/${ticker}?${query}`;
+          const res = await fetch(url, { headers: HEADERS });
+          if (!res.ok) throw new Error(`${res.status}`);
+          const d = await res.json();
+          const timestamps: number[] = d?.chart?.result?.[0]?.timestamp ?? [];
+          const closes: (number | null)[] = d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close ?? [];
+          const pts: { t: number; p: number }[] = [];
+          for (let i = 0; i < timestamps.length; i++) {
+            const p = closes[i];
+            if (p === null || p === undefined || isNaN(p)) continue;
+            pts.push({ t: timestamps[i] * 1000, p });
+          }
+          if (pts.length > 1) return pts;
+          throw new Error('insufficient data');
+        })
+      );
+      return result;
+    } catch { continue; }
   }
   return [];
 }
