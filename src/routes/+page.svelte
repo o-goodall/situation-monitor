@@ -998,7 +998,24 @@
     box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:700px) {
-    .section { padding:20px 14px 0; min-height:unset; width:100%; }
+    .section {
+      padding:20px 14px 0;
+      /* Fallback for browsers without svh support */
+      min-height:100vh;
+      /* svh = small viewport height, excludes browser UI chrome on mobile */
+      min-height:100svh;
+      width:100%;
+    }
+    /* Fade the bottom of each section so the next section stays hidden until scrolled into view */
+    .section::after {
+      content:''; pointer-events:none;
+      position:sticky; bottom:0; left:0; right:0;
+      display:block;
+      /* Height large enough to cover any accidental section peek-through */
+      height:64px;
+      background:linear-gradient(to bottom, transparent, var(--bg));
+      margin-top:-64px;
+    }
     .section-header {
       margin-bottom:16px;
     }
@@ -1885,4 +1902,8 @@
   :global(html.light) .gc:hover { border-color:rgba(0,0,0,.12); }
   :global(html.light) .gf-perf { border-top-color:rgba(0,0,0,.08); }
   :global(html.light) .gfp { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
+  /* Light-mode: override section bottom-fade to use light background */
+  @media (max-width:700px) {
+    :global(html.light) .section::after { background:linear-gradient(to bottom, transparent, #f0f0f1); }
+  }
 </style>
