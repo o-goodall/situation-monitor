@@ -17,7 +17,7 @@
     persistSettings, fxRates, btcWsConnected, btcMa200, btcHashrate, gfPortfolioChart
   } from '$lib/store';
 
-  let newKeyword = '', newSource = '', newSourceName = '';
+  let newSource = '', newSourceName = '';
   let clockInterval: ReturnType<typeof setInterval>;
   let intervals: ReturnType<typeof setInterval>[] = [];
   let scrolled = false;
@@ -245,10 +245,6 @@
     if ($settings.ghostfolio?.token) fetchGhostfolio();
   }
 
-  function handleAddKeyword() {
-    if (newKeyword.trim()) { $settings.polymarket.keywords = [...$settings.polymarket.keywords, newKeyword.trim()]; newKeyword = ''; }
-  }
-  function removeKeyword(i:number) { $settings.polymarket.keywords = $settings.polymarket.keywords.filter((_,j)=>j!==i); }
   function handleAddSource() {
     if (newSource.trim()) {
       const name = newSourceName.trim() || (() => { try { return new URL(newSource.trim()).hostname.replace('www.','').replace('feeds.',''); } catch { return 'Custom'; } })();
@@ -257,8 +253,11 @@
     }
   }
   function removeSource(i:number) { $settings.news.customFeeds = $settings.news.customFeeds.filter((_,j)=>j!==i); }
-  function toggleDefaultFeed(i:number) { $settings.news.defaultFeeds[i].enabled = !$settings.news.defaultFeeds[i].enabled; $settings.news.defaultFeeds = [...$settings.news.defaultFeeds]; }
   function toggleCustomFeed(i:number) { $settings.news.customFeeds[i].enabled = !$settings.news.customFeeds[i].enabled; $settings.news.customFeeds = [...$settings.news.customFeeds]; }
+  function toggleCategory(cat: FeedCategory) {
+    const anyEnabled = $settings.news.defaultFeeds.some(f => f.category === cat && f.enabled);
+    $settings.news.defaultFeeds = $settings.news.defaultFeeds.map(f => f.category === cat ? { ...f, enabled: !anyEnabled } : f);
+  }
 
   function handleScroll() { scrolled = window.scrollY > 40; }
   function toggleMobileMenu() { mobileMenuOpen = !mobileMenuOpen; if (mobileMenuOpen) $showSettings = false; }
@@ -639,8 +638,6 @@
       <div class="dfields">
         <label class="df"><span class="dlbl">Start date</span><input type="date" bind:value={$settings.dca.startDate} class="dinp"/></label>
         <label class="df"><span class="dlbl">Daily AUD</span><input type="number" bind:value={$settings.dca.dailyAmount} class="dinp"/></label>
-        <label class="df"><span class="dlbl">BTC held</span><input type="number" step="0.00000001" bind:value={$settings.dca.btcHeld} class="dinp"/></label>
-        <label class="df"><span class="dlbl">Goal BTC</span><input type="number" step="0.001" bind:value={$settings.dca.goalBtc} class="dinp"/></label>
         <label class="df"><span class="dlbl">Low Price (USD)</span><input type="number" bind:value={$settings.dca.lowPrice} class="dinp"/></label>
         <label class="df"><span class="dlbl">High Price (USD)</span><input type="number" bind:value={$settings.dca.highPrice} class="dinp"/></label>
         <label class="df"><span class="dlbl">Max DCA (AUD)</span><input type="number" bind:value={$settings.dca.maxDcaAud} class="dinp"/></label>
@@ -668,28 +665,19 @@
         </div>
       </div>
     </div>
-    <div class="dg"><p class="dg-hd">Watchlist <span class="dhint">pinned in markets</span></p>
-      <div class="dtags">{#each $settings.polymarket.keywords as kw,i}<span class="dtag">{kw}<button on:click={()=>removeKeyword(i)} class="dtag-x">×</button></span>{/each}</div>
-      <div class="dinp-row"><input bind:value={newKeyword} on:keydown={(e)=>e.key==='Enter'&&handleAddKeyword()} placeholder="Add keyword…" class="dinp"/><button on:click={handleAddKeyword} class="btn-ghost" style="white-space:nowrap;">Add</button></div>
-    </div>
-    <div class="dg"><p class="dg-hd">News Feeds <span class="dhint">toggle on/off · add custom</span></p>
-      {#each FEED_CATEGORIES as cat}
-        {@const catFeeds = $settings.news.defaultFeeds.map((f,i)=>({f,i})).filter(({f})=>f.category===cat.key)}
-        {#if catFeeds.length > 0}
-        <p class="dlbl feed-cat-lbl" style="margin-bottom:4px;">{cat.label} <span class="dhint">{cat.hint}</span></p>
-        <div class="feed-list" style="margin-bottom:10px;">
-          {#each catFeeds as {f, i}}
-            <label class="feed-toggle">
-              <input type="checkbox" checked={f.enabled} on:change={()=>toggleDefaultFeed(i)} />
-              <span class="feed-name">{f.name}</span>
-            </label>
-          {/each}
-        </div>
-        {/if}
-      {/each}
+    <div class="dg"><p class="dg-hd">News Feeds <span class="dhint">toggle categories on/off · add custom sources</span></p>
+      <div class="feed-list" style="margin-bottom:12px;">
+        {#each FEED_CATEGORIES as cat}
+          {@const anyEnabled = $settings.news.defaultFeeds.some(f => f.category === cat.key && f.enabled)}
+          <label class="feed-toggle" title={cat.hint}>
+            <input type="checkbox" checked={anyEnabled} on:change={() => toggleCategory(cat.key)} />
+            <span class="feed-name">{cat.label}</span>
+          </label>
+        {/each}
+      </div>
       {#if $settings.news.customFeeds.length>0}
-      <p class="dlbl" style="margin:12px 0 6px;">Custom Feeds</p>
-      <div class="feed-list">
+      <p class="dlbl" style="margin:0 0 6px;">Custom Feeds</p>
+      <div class="feed-list" style="margin-bottom:10px;">
         {#each $settings.news.customFeeds as feed, i}
           <div class="feed-custom">
             <label class="feed-toggle">
@@ -743,8 +731,6 @@
         <div class="dfields">
           <label class="df"><span class="dlbl">Start date</span><input type="date" bind:value={$settings.dca.startDate} class="dinp"/></label>
           <label class="df"><span class="dlbl">Daily AUD</span><input type="number" bind:value={$settings.dca.dailyAmount} class="dinp"/></label>
-          <label class="df"><span class="dlbl">BTC held</span><input type="number" step="0.00000001" bind:value={$settings.dca.btcHeld} class="dinp"/></label>
-          <label class="df"><span class="dlbl">Goal BTC</span><input type="number" step="0.001" bind:value={$settings.dca.goalBtc} class="dinp"/></label>
           <label class="df"><span class="dlbl">Low Price (USD)</span><input type="number" bind:value={$settings.dca.lowPrice} class="dinp"/></label>
           <label class="df"><span class="dlbl">High Price (USD)</span><input type="number" bind:value={$settings.dca.highPrice} class="dinp"/></label>
           <label class="df"><span class="dlbl">Max DCA (AUD)</span><input type="number" bind:value={$settings.dca.maxDcaAud} class="dinp"/></label>
@@ -758,21 +744,16 @@
           </label>
         </div>
       </div>
-      <div class="dg"><p class="dg-hd">News Feeds</p>
-        {#each FEED_CATEGORIES as cat}
-          {@const catFeeds = $settings.news.defaultFeeds.map((f,i)=>({f,i})).filter(({f})=>f.category===cat.key)}
-          {#if catFeeds.length > 0}
-          <p class="dlbl feed-cat-lbl" style="margin-bottom:4px;">{cat.label}</p>
-          <div class="feed-list" style="margin-bottom:8px;">
-            {#each catFeeds as {f, i}}
-              <label class="feed-toggle">
-                <input type="checkbox" checked={f.enabled} on:change={()=>toggleDefaultFeed(i)} />
-                <span class="feed-name">{f.name}</span>
-              </label>
-            {/each}
-          </div>
-          {/if}
-        {/each}
+      <div class="dg"><p class="dg-hd">News Feeds <span class="dhint">toggle categories on/off</span></p>
+        <div class="feed-list" style="margin-bottom:8px;">
+          {#each FEED_CATEGORIES as cat}
+            {@const anyEnabled = $settings.news.defaultFeeds.some(f => f.category === cat.key && f.enabled)}
+            <label class="feed-toggle" title={cat.hint}>
+              <input type="checkbox" checked={anyEnabled} on:change={() => toggleCategory(cat.key)} />
+              <span class="feed-name">{cat.label}</span>
+            </label>
+          {/each}
+        </div>
         {#if $settings.news.customFeeds.length>0}
         <div class="feed-list" style="margin-top:6px;">
           {#each $settings.news.customFeeds as feed, i}
