@@ -72,6 +72,16 @@
   let legendAutoHideTimer: ReturnType<typeof setTimeout> | null = null;
   const LEGEND_AUTO_HIDE_DELAY_MS = 1500;
 
+  // Live-refresh state — threats are re-fetched every 5 minutes to keep
+  // country colours and hotspot markers up to date without reloading the page.
+  const THREAT_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+  let refreshTimer: ReturnType<typeof setInterval> | null = null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let countryPaths: any = null; // D3 selection retained for live colour updates
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let threatGroup: any = null; // Dedicated SVG group for hotspot markers
+  let countryLevelMap = new Map<string, string>(); // countryId → ThreatLevel
+
   const MAX_MAJOR_EVENTS = 8;
 
   const THREAT_COLORS: Record<string, string> = {
@@ -89,7 +99,34 @@
     low:      '#0088ff',
   };
 
-  const CONFLICT_COUNTRY_FILL = 'rgba(255,68,68,0.28)';
+  /** Semi-transparent country fill colours keyed by threat level */
+  const COUNTRY_THREAT_FILLS: Record<string, string> = {
+    critical: 'rgba(255,68,68,0.35)',
+    high:     'rgba(255,136,0,0.28)',
+    elevated: 'rgba(255,204,0,0.18)',
+    low:      'rgba(0,255,136,0.12)',
+    info:     'rgba(0,204,255,0.10)',
+  };
+
+  function getCountryFill(level: string): string {
+    return COUNTRY_THREAT_FILLS[level] ?? COUNTRY_THREAT_FILLS.elevated;
+  }
+
+  /** Priority order for threat levels (higher = more severe) */
+  const LEVEL_PRIORITY: Record<string, number> = { critical: 4, high: 3, elevated: 2, low: 1, info: 0 };
+
+  /** Builds a countryId → highest ThreatLevel map, keeping the most severe level per country */
+  function buildCountryLevelMap(threats: Threat[]): Map<string, string> {
+    const map = new Map<string, string>();
+    for (const t of threats) {
+      if (!t.countryId) continue;
+      const existing = map.get(t.countryId);
+      if (!existing || (LEVEL_PRIORITY[t.level] ?? 0) > (LEVEL_PRIORITY[existing] ?? 0)) {
+        map.set(t.countryId, t.level as string);
+      }
+    }
+    return map;
+  }
 
   function showTip(e: MouseEvent, title: string, color: string, lines: string[] = []) {
     if (!mapContainer) return;
@@ -137,8 +174,10 @@
       ]);
       d3Module = d3;
 
-      const { threats, conflictCountryIds, updatedAt } = threatData;
-      const conflictIds = new Set(conflictCountryIds);
+      const { threats, updatedAt } = threatData;
+      // Build a map from ISO numeric country ID → highest threat level so country
+      // fills can be coloured by severity rather than a single flat conflict colour.
+      countryLevelMap = buildCountryLevelMap(threats);
       threatsUpdatedAt = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
       // Store major events (critical + high only) for the story panel
@@ -186,15 +225,21 @@
         .attr('fill', '#0d1b2a')
         .attr('stroke', 'none');
 
-      // Countries
+      // Countries — shaded by live threat level so severity is immediately visible
       mapGroup.selectAll('path.wm-country')
         .data(countries.features)
         .enter().append('path')
         .attr('class', 'wm-country')
         .attr('d', path as unknown as string)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .attr('fill', (d: any) => conflictIds.has(String(d.id)) ? CONFLICT_COUNTRY_FILL : '#1e3248')
+        .attr('fill', (d: any) => {
+          const level = countryLevelMap.get(String(d.id));
+          return level ? getCountryFill(level) : '#1e3248';
+        })
         .attr('stroke', 'none');
+
+      // Retain selection so live refreshes can update fills in-place
+      countryPaths = mapGroup.selectAll('path.wm-country');
 
       // Country borders
       mapGroup.append('path')
@@ -251,33 +296,9 @@
           .on('mouseleave', hideTip);
       }
 
-      // ── Static threat markers ───────────────────────────────────
-      for (const h of threats) {
-        const pos = projection([h.lon, h.lat]);
-        if (!pos) continue;
-        const [x, y] = pos;
-        const col = THREAT_COLORS[h.level] ?? '#aaa';
-
-        // pulse ring
-        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 7)
-          .attr('fill', col).attr('fill-opacity', 0.18).attr('class', 'wm-pulse')
-          .attr('stroke', col).attr('stroke-width', 0.8).attr('stroke-opacity', 0.5);
-        // inner dot
-        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 3.5)
-          .attr('fill', col);
-        // label
-        mapGroup.append('text')
-          .attr('x', x + 6).attr('y', y + 4)
-          .attr('fill', col).attr('font-size', '7.5px').attr('font-family', 'monospace')
-          .attr('pointer-events', 'none')
-          .text(h.name);
-        // hit area
-        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 12)
-          .attr('fill', 'transparent').attr('class', 'wm-hit')
-          .on('mouseenter', (e: MouseEvent) => showTip(e, h.desc, col))
-          .on('mousemove', moveTip)
-          .on('mouseleave', hideTip);
-      }
+      // ── Threat hotspot markers (in a dedicated group for live re-renders) ──
+      threatGroup = mapGroup.append('g').attr('id', 'wm-threats-group');
+      renderThreatMarkers(threats);
 
       // Create a dedicated group for polymarket markers (so they can be updated independently)
       polyGroup = mapGroup.append('g').attr('id', 'wm-poly-group');
@@ -334,6 +355,68 @@
   // Re-render polymarket markers whenever the prop changes (after map is initialised)
   $: if (polyGroup) renderPolyMarkers();
 
+  /** Clears and redraws all threat hotspot markers into the dedicated threat group */
+  function renderThreatMarkers(threats: Threat[]) {
+    if (!threatGroup || !projection) return;
+    threatGroup.selectAll('*').remove();
+
+    for (const h of threats) {
+      const pos = projection([h.lon, h.lat]);
+      if (!pos) continue;
+      const [x, y] = pos;
+      const col = THREAT_COLORS[h.level] ?? '#aaa';
+
+      // pulse ring
+      threatGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 7)
+        .attr('fill', col).attr('fill-opacity', 0.18).attr('class', 'wm-pulse')
+        .attr('stroke', col).attr('stroke-width', 0.8).attr('stroke-opacity', 0.5);
+      // inner dot
+      threatGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 3.5)
+        .attr('fill', col);
+      // label
+      threatGroup.append('text')
+        .attr('x', x + 6).attr('y', y + 4)
+        .attr('fill', col).attr('font-size', '7.5px').attr('font-family', 'monospace')
+        .attr('pointer-events', 'none')
+        .text(h.name);
+      // hit area
+      threatGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 12)
+        .attr('fill', 'transparent').attr('class', 'wm-hit')
+        .on('mouseenter', (e: MouseEvent) => showTip(e, h.desc, col))
+        .on('mousemove', moveTip)
+        .on('mouseleave', hideTip);
+    }
+  }
+
+  /**
+   * Re-fetches live threat data and updates country fills + hotspot markers
+   * in-place, without tearing down and rebuilding the whole map.
+   */
+  async function refreshThreats() {
+    if (!countryPaths || !threatGroup || !projection) return;
+    try {
+      const { threats, updatedAt } = await fetchThreats();
+
+      // Rebuild country-level map from latest data, keeping highest severity per country
+      countryLevelMap = buildCountryLevelMap(threats);
+
+      // Update every country fill to reflect the new threat levels
+      countryPaths.attr('fill', (d: { id: unknown }) => {
+        const level = countryLevelMap.get(String(d.id));
+        return level ? getCountryFill(level) : '#1e3248';
+      });
+
+      // Re-render hotspot markers with latest positions + levels
+      renderThreatMarkers(threats);
+
+      threatsUpdatedAt = updatedAt
+        ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        : '';
+    } catch (err) {
+      console.error('Threat refresh failed', err);
+    }
+  }
+
   function calcTerminator(): [number, number][] {
     const now = new Date();
     // Day of year (1-based): Jan 1 = 1, Dec 31 = 365/366
@@ -368,8 +451,13 @@
     initMap();
     // Auto-minimize legend after LEGEND_AUTO_HIDE_DELAY_MS
     legendAutoHideTimer = setTimeout(() => { legendMinimized = true; }, LEGEND_AUTO_HIDE_DELAY_MS);
+    // Periodically refresh live threat data (country colours + hotspot markers)
+    refreshTimer = setInterval(refreshThreats, THREAT_REFRESH_INTERVAL_MS);
   });
-  onDestroy(() => { if (legendAutoHideTimer) clearTimeout(legendAutoHideTimer); });
+  onDestroy(() => {
+    if (legendAutoHideTimer) clearTimeout(legendAutoHideTimer);
+    if (refreshTimer) clearInterval(refreshTimer);
+  });
 
   function ago(d: string): string {
     try {
@@ -417,6 +505,7 @@
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ff8800;"></span>High</div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span>Elevated</div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
+      <div class="wm-leg-row wm-leg-row--sub"><span class="wm-dot wm-dot--sq" style="background:rgba(255,68,68,0.35);"></span><span class="wm-leg-sub">Country shaded by level</span></div>
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       {#if polymarketThreats.length > 0}
@@ -519,7 +608,10 @@
   .wm-leg-title { font-size: .52rem; color: var(--t3); letter-spacing: .08em; margin-bottom: 2px; display: flex; align-items: center; }
   .wm-legend--min .wm-leg-title { margin-bottom: 0; }
   .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .56rem; color: #8ab; font-family: monospace; }
+  .wm-leg-row--sub { opacity: .7; }
+  .wm-leg-sub { font-size: .5rem; }
   .wm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .wm-dot--sq { border-radius: 2px; }
   .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.15); margin: 3px 0; }
   .wm-leg-ts { font-size: .48rem; color: var(--t3); font-family: monospace; }
 
