@@ -174,15 +174,22 @@
 
   // Only mark items as breaking if they are genuinely major events
   const BREAKING_MAJOR_KEYWORDS = /war|conflict|attack|airstrike|missile|bomb|invasion|troops|military|ceasefire|killed|killing|coup|president|prime minister|chancellor|tariff|sanction|nuclear|election|elected|leader|treaty|genocide|massacre|offensive|explosion|assassination|crisis/i;
+  // Entertainment/media noise — exclude items where conflict keywords appear only in fictional/documentary context
+  const ENTERTAINMENT_NOISE_RE = /\b(documentary|film(?:\s+review|\s+about|\s+on)?|movie(?:\s+review|\s+about)?|tv\s+series|miniseries|streaming|trailer|premiere|screening|biopic|retelling|book\s+review|memoir|podcast\s+episode|awards?|Oscars?|Emmys?|bafta|episode\s+\d|season\s+\d|binge[- ]watch|cast|actor|actress|director|cinema)\b/i;
 
   async function fetchNews() {
     try {
       const urls = getEnabledFeedUrls($settings.news);
       const src = encodeURIComponent(JSON.stringify(urls));
       const items = (await fetch(`/api/news?sources=${src}`).then(r=>r.json())).items ?? [];
+      // Filter out entertainment/media noise so documentaries about conflicts don't appear as real threats
+      const filteredItems = items.filter((item: { title?: string; description?: string }) => {
+        const text = (item.title ?? '') + ' ' + (item.description ?? '');
+        return !ENTERTAINMENT_NOISE_RE.test(text);
+      });
       // Detect newly-arrived links for major events only
       const newLinks = new Set<string>();
-      for (const item of items) {
+      for (const item of filteredItems) {
         if (!item.link || _prevNewsLinks.has(item.link)) continue;
         const text = (item.title ?? '') + ' ' + (item.description ?? '');
         if (BREAKING_MAJOR_KEYWORDS.test(text)) newLinks.add(item.link);
@@ -193,8 +200,8 @@
         if (_breakingTimer) clearTimeout(_breakingTimer);
         _breakingTimer = setTimeout(() => { $breakingNewsLinks = new Set(); _breakingTimer = null; }, BREAKING_NEWS_TIMEOUT_MS);
       }
-      _prevNewsLinks = new Set(items.map((i: { link: string }) => i.link));
-      $newsItems = items;
+      _prevNewsLinks = new Set(filteredItems.map((i: { link: string }) => i.link));
+      $newsItems = filteredItems;
     } catch {}
   }
 

@@ -337,7 +337,7 @@
             </span>
           </div>
           <div class="au-strip-row">
-            <span class="au-strip-label">Med. House</span>
+            <span class="au-strip-label">🇦🇺 Med. House</span>
             <span class="au-strip-val">
               {auMedianHouse !== null ? '$' + Math.round(auMedianHouse / 1000) + 'k' : '$815k'}
               {#if auHousePct !== null}<span class="au-chg" style="color:{auHousePct >= 0 ? 'var(--up)' : 'var(--dn)'}">{auHousePct >= 0 ? '+' : ''}{auHousePct.toFixed(1)}%</span>{/if}
@@ -1067,10 +1067,7 @@
   .price-alt { font-size:1.4rem; font-weight:700; letter-spacing:-.025em; line-height:1.1; }
   .price-label-usd {
     font-weight: 700;
-    background: linear-gradient(105deg, #ef4444 0%, #f8f8f8 50%, #3b82f6 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: #22c55e;
   }
   .price-label-sep { color:var(--t3); margin-right:3px; }
   .price-label-cur { color:#22c55e; font-weight:700; }
@@ -1871,7 +1868,7 @@
   :global(html.light) .news-img-overlay { background:linear-gradient(180deg, rgba(0,0,0,.08) 0%, rgba(0,0,0,.6) 70%, rgba(0,0,0,.82) 100%); }
 
   /* ── LIGHT MODE OVERRIDES (page-level) ────────────────── */
-  :global(html.light) .price-label-usd { background: none; -webkit-background-clip: unset; background-clip: unset; -webkit-text-fill-color: #1d4ed8; color: #1d4ed8; }
+  :global(html.light) .price-label-usd { color: #22c55e; }
   :global(html.light) .sats-cur { color:#111; }
   :global(html.light) .sats-label-sats { -webkit-text-fill-color:unset; background:none; color:#c77a10; animation:none; }
   :global(html.light) .sats-label-cur  { color:#16a34a; }
