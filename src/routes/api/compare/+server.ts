@@ -126,14 +126,47 @@ const BINANCE_PARAMS: Record<string, { interval: string; limit: number }> = {
   '5y':  { interval: '1w',  limit: 260 }, // 260 × 1 w  =  5 y
 };
 
+// Kraken OHLC interval in minutes per range
+const KRAKEN_PARAMS: Record<string, { interval: number }> = {
+  '1d':  { interval: 30    }, // 30 min candles
+  '7d':  { interval: 60    }, // 60 min candles
+  '1y':  { interval: 1440  }, // daily candles
+  '5y':  { interval: 10080 }, // weekly candles — Kraken returns up to 720, covering ~13.8 y
+};
+
+async function fetchKrakenBtcHistory(range: string): Promise<PricePoint[]> {
+  const { interval } = KRAKEN_PARAMS[range] ?? KRAKEN_PARAMS['1y'];
+  try {
+    const url = `https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=${interval}`;
+    const res = await fetch(url, { headers: HEADERS });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (data.error?.length) return [];
+    const ohlc: unknown[] = data.result?.XXBTZUSD ?? [];
+    if (!Array.isArray(ohlc)) return [];
+    const pts: PricePoint[] = [];
+    for (const candle of ohlc) {
+      if (!Array.isArray(candle) || candle.length < 5) continue;
+      if (typeof candle[0] !== 'number') continue;
+      const t = candle[0] * 1000; // Unix seconds → ms
+      const p = parseFloat(String(candle[4])); // close price (Kraken returns strings)
+      if (isNaN(t) || isNaN(p)) continue;
+      pts.push({ t, p });
+    }
+    return pts.length > 1 ? pts : [];
+  } catch {
+    return [];
+  }
+}
+
 async function fetchBinanceBtcHistory(range: string): Promise<PricePoint[]> {
   const { interval, limit } = BINANCE_PARAMS[range] ?? BINANCE_PARAMS['1y'];
   try {
     const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`;
     const res = await fetch(url, { headers: HEADERS });
-    if (!res.ok) return [];
+    if (!res.ok) return fetchKrakenBtcHistory(range);
     const data = await res.json();
-    if (!Array.isArray(data)) return [];
+    if (!Array.isArray(data)) return fetchKrakenBtcHistory(range);
     const pts: PricePoint[] = [];
     for (const k of data) {
       const t = k[0] as number;
@@ -141,9 +174,9 @@ async function fetchBinanceBtcHistory(range: string): Promise<PricePoint[]> {
       if (isNaN(p) || isNaN(t)) continue;
       pts.push({ t, p });
     }
-    return pts.length > 1 ? pts : [];
+    return pts.length > 1 ? pts : fetchKrakenBtcHistory(range);
   } catch {
-    return [];
+    return fetchKrakenBtcHistory(range);
   }
 }
 
