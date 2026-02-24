@@ -116,17 +116,48 @@ async function ensureYahooCrumb(): Promise<{ crumb: string; cookie: string } | n
   }
 }
 
-async function fetchBtcHistory(days: string): Promise<PricePoint[]> {
+// Binance klines params per range — limit = candles needed to cover the period
+const BINANCE_PARAMS: Record<string, { interval: string; limit: number }> = {
+  '1d':  { interval: '30m', limit: 48  }, // 48 × 30 min = 24 h
+  '7d':  { interval: '1h',  limit: 168 }, // 168 × 1 h  =  7 d
+  '1y':  { interval: '1d',  limit: 365 }, // 365 × 1 d  =  1 y
+  '5y':  { interval: '1w',  limit: 260 }, // 260 × 1 w  =  5 y
+};
+
+async function fetchBinanceBtcHistory(range: string): Promise<PricePoint[]> {
+  const { interval, limit } = BINANCE_PARAMS[range] ?? BINANCE_PARAMS['1y'];
+  try {
+    const url = `https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=${interval}&limit=${limit}`;
+    const res = await fetch(url, { headers: HEADERS });
+    if (!res.ok) return [];
+    const data = await res.json();
+    if (!Array.isArray(data)) return [];
+    const pts: PricePoint[] = [];
+    for (const k of data) {
+      const t = k[0] as number;
+      const p = parseFloat(k[4] as string);
+      if (isNaN(p) || isNaN(t)) continue;
+      pts.push({ t, p });
+    }
+    return pts.length > 1 ? pts : [];
+  } catch {
+    return [];
+  }
+}
+
+async function fetchBtcHistory(days: string, range: string): Promise<PricePoint[]> {
   try {
     const res = await fetch(
       `https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=${days}`,
       { headers: HEADERS }
     );
-    if (!res.ok) return [];
+    if (!res.ok) throw new Error(`${res.status}`);
     const data = await res.json();
-    return (data.prices ?? []).map(([t, p]: [number, number]) => ({ t, p }));
+    const pts = (data.prices ?? []).map(([t, p]: [number, number]) => ({ t, p }));
+    if (pts.length > 1) return pts;
+    throw new Error('insufficient data');
   } catch {
-    return [];
+    return fetchBinanceBtcHistory(range);
   }
 }
 
@@ -172,7 +203,7 @@ export async function GET({ url }: RequestEvent) {
   const { range: yfRange, interval: yfInterval } = YF_PARAMS[safeRange];
 
   const [btc, sp500, gold] = await Promise.all([
-    fetchBtcHistory(btcDays),
+    fetchBtcHistory(btcDays, safeRange),
     fetchYahooHistory('%5EGSPC', yfRange, yfInterval),
     fetchYahooHistory('GC=F', yfRange, yfInterval),
   ]);

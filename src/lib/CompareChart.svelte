@@ -14,9 +14,9 @@
   type SeriesKey = 'btc' | 'sp500' | 'gold';
 
   const SERIES_CFG: { key: SeriesKey; label: string; color: string; strokeWidth: number }[] = [
-    { key: 'btc',   label: 'BTC',   color: '#F7931A', strokeWidth: 2.5 },
-    { key: 'sp500', label: 'S&P',   color: 'rgba(255,255,255,0.85)', strokeWidth: 1.8 },
-    { key: 'gold',  label: 'Gold',  color: 'rgba(255,255,255,0.55)', strokeWidth: 1.8 },
+    { key: 'btc',   label: 'BTC',   color: '#f7931a', strokeWidth: 2.5 },
+    { key: 'sp500', label: 'S&P',   color: '#888',    strokeWidth: 1.8 },
+    { key: 'gold',  label: 'Gold',  color: '#c9a84c', strokeWidth: 1.8 },
   ];
 
   // ── Normalise to 100 at first data point ────────────────────
