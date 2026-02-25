@@ -454,8 +454,12 @@ async function fetchUcdpThreats(): Promise<Map<string, UcdpEntry>> {
   async function tryYear(year: number): Promise<UcdpEvent[]> {
     const res = await fetch(`${UCDP_BASE}${year}${UCDP_PARAMS}`, { headers: FETCH_HEADERS });
     if (!res.ok) return [];
-    const body: UcdpResponse = await res.json();
-    return body.Result ?? [];
+    try {
+      const body: UcdpResponse = await res.json();
+      return body.Result ?? [];
+    } catch {
+      return [];
+    }
   }
 
   let events = await tryYear(UCDP_YEAR);
