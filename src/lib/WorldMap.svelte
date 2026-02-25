@@ -121,10 +121,45 @@
     'Mozambique': '508', 'Iran': '364', 'Uganda': '800', 'Israel': '376',
     'Peru': '604', 'Ghana': '288', 'Indonesia': '360', 'Chile': '152',
     'South Africa': '710', 'Nepal': '524', 'Belize': '084', 'Chad': '148',
+    // World countries
+    'United States': '840', 'Canada': '124', 'Cuba': '192', 'Dominican Republic': '214',
+    'El Salvador': '222', 'Nicaragua': '558', 'Panama': '591', 'Costa Rica': '188',
+    'Argentina': '032', 'Bolivia': '068', 'Paraguay': '600', 'Uruguay': '858',
+    'Guyana': '328', 'Suriname': '740',
+    'United Kingdom': '826', 'France': '250', 'Germany': '276', 'Spain': '724',
+    'Italy': '380', 'Poland': '616', 'Serbia': '688', 'Kosovo': '383',
+    'Moldova': '498', 'Belarus': '112', 'Georgia': '268', 'Azerbaijan': '031',
+    'Armenia': '051', 'Turkey': '792', 'Greece': '300', 'Romania': '642',
+    'Hungary': '348', 'Czech Republic': '203', 'Croatia': '191', 'Bosnia': '070',
+    'Albania': '008', 'North Macedonia': '807', 'Bulgaria': '100',
+    'Sweden': '752', 'Finland': '246', 'Norway': '578', 'Denmark': '208',
+    'Netherlands': '528', 'Belgium': '056', 'Switzerland': '756', 'Austria': '040',
+    'Portugal': '620',
+    'Saudi Arabia': '682', 'Jordan': '400', 'Kuwait': '414', 'Qatar': '634',
+    'Bahrain': '048', 'Oman': '512', 'UAE': '784',
+    'Egypt': '818', 'Algeria': '012', 'Tunisia': '788', 'Morocco': '504',
+    'Senegal': '686', 'Guinea': '324', "Côte d'Ivoire": '384', 'Liberia': '430',
+    'Sierra Leone': '694', 'Togo': '768', 'Benin': '204', 'Tanzania': '834',
+    'Rwanda': '646', 'Malawi': '454', 'Zambia': '894', 'Zimbabwe': '716',
+    'Angola': '024', 'Namibia': '516', 'Botswana': '072', 'Lesotho': '426',
+    'Eswatini': '748', 'Madagascar': '450', 'Djibouti': '262', 'Eritrea': '232',
+    'Gambia': '270', 'Gabon': '266', 'Republic of Congo': '178',
+    'Equatorial Guinea': '226', 'Guinea-Bissau': '624', 'Cape Verde': '132',
+    'China': '156', 'Japan': '392', 'South Korea': '410', 'North Korea': '408',
+    'Taiwan': '158', 'Vietnam': '704', 'Thailand': '764', 'Cambodia': '116',
+    'Laos': '418', 'Malaysia': '458', 'Singapore': '702', 'Brunei': '096',
+    'Timor-Leste': '626', 'Papua New Guinea': '598', 'Fiji': '242',
+    'Sri Lanka': '144', 'Maldives': '462', 'Bhutan': '064',
+    'Kazakhstan': '398', 'Uzbekistan': '860', 'Kyrgyzstan': '417',
+    'Tajikistan': '762', 'Turkmenistan': '795', 'Mongolia': '496',
+    'Australia': '036', 'New Zealand': '554',
+    'Solomon Islands': '090', 'Vanuatu': '548', 'Samoa': '882', 'Tonga': '776',
   };
 
   /** ISO numeric ID → global-threat severity (highest for that country) */
   let globalThreatCountryFills = new Map<string, string>();
+  /** ISO numeric ID of the currently trending country (for glow effect) */
+  let trendingIsoId: string | null = null;
 
   /** Country names the user has already hovered (persisted in localStorage) */
   const SEEN_KEY = 'wm-seen-global-threats';
@@ -142,6 +177,7 @@
 
   /** Returns the fill for a country based on global-threat severity */
   function getCountryFillById(id: string): string {
+    if (id === trendingIsoId) return 'rgba(255,20,20,0.55)'; // trending: strong red
     const gtSeverity = globalThreatCountryFills.get(id);
     if (gtSeverity) return GLOBAL_THREAT_COUNTRY_FILLS[gtSeverity] ?? '#1e3248';
     return '#1e3248';
@@ -196,11 +232,15 @@
       // Load seen-country keys from localStorage so "New" badges reflect fresh visits
       seenCountries = loadSeenIds();
 
-      // Build global-threat country fill map: ISO ID → severity (from Al Jazeera RSS)
+      // Build global-threat country fill map: ISO ID → severity (from multi-source RSS)
       globalThreatCountryFills = new Map<string, string>();
+      trendingIsoId = null;
       for (const ct of globalThreatData.threats) {
         const isoId = LOCATION_TO_ISO_ID[ct.country];
-        if (isoId) globalThreatCountryFills.set(isoId, ct.severity);
+        if (isoId) {
+          globalThreatCountryFills.set(isoId, ct.severity);
+          if (ct.isTrending) trendingIsoId = isoId;
+        }
       }
       threats = globalThreatData.threats;
       threatsUpdatedAt = globalThreatData.updatedAt ? new Date(globalThreatData.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
@@ -254,7 +294,7 @@
       mapGroup.selectAll('path.wm-country')
         .data(countries.features)
         .enter().append('path')
-        .attr('class', 'wm-country')
+        .attr('class', (d: any) => String(d.id) === trendingIsoId ? 'wm-country wm-country--trending' : 'wm-country')
         .attr('d', path as unknown as string)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         .attr('fill', (d: any) => getCountryFillById(String(d.id)))
@@ -319,16 +359,26 @@
       }
 
       // ── Global conflict event markers (one solid dot per country) ───
-      // Only rendered when Al Jazeera has an active story for this zone.
+      // Only rendered when there is an active story for this zone.
       for (const ct of globalThreatData.threats) {
         if (ct.stories.length === 0) continue;
         const pos = projection([ct.lon, ct.lat]);
         if (!pos) continue;
         const [x, y] = pos;
-        const col = GLOBAL_THREAT_COLORS[ct.severity] ?? '#ffcc00';
+        const col = ct.isTrending ? '#ff2200' : (GLOBAL_THREAT_COLORS[ct.severity] ?? '#ffcc00');
         const r = ct.severity === 'extreme' ? 5.5 : ct.severity === 'high' ? 4 : 3;
 
-        // Solid core dot — no glow ring, no labels
+        // Trending country: pulsing red glow rings
+        if (ct.isTrending) {
+          mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 10)
+            .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1.5)
+            .attr('class', 'wm-trending-ring wm-trending-ring--outer');
+          mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 5)
+            .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1)
+            .attr('class', 'wm-trending-ring');
+        }
+
+        // Solid core dot
         mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
           .attr('fill', col).attr('fill-opacity', 0.85);
 
@@ -342,10 +392,8 @@
             .attr('fill', '#F7931A').attr('pointer-events', 'none');
         }
 
-        // Build tooltip lines: severity label, then each story
-        const severityLabel = ct.severity === 'extreme' ? 'Extreme'
-          : ct.severity === 'high' ? 'High'
-          : 'Turbulent';
+        // Build tooltip lines: severity label (or trending label), then each story
+        const severityLabel = ct.isTrending ? '🔥 Trending (24 h)' : ct.severity === 'extreme' ? 'Extreme' : ct.severity === 'high' ? 'High' : 'Turbulent';
         const tipLines: string[] = [`Severity: ${severityLabel}`];
         for (const s of ct.stories) {
           tipLines.push(`▸ ${s.title.slice(0, 70)}`);
@@ -443,16 +491,22 @@
     try {
       const { threats: globalThreats, updatedAt } = await fetchGlobalThreats();
 
-      // Rebuild global-threat country fill map from latest Al Jazeera data
+      // Rebuild global-threat country fill map and trending marker
       globalThreatCountryFills = new Map<string, string>();
+      trendingIsoId = null;
       for (const ct of globalThreats) {
         const isoId = LOCATION_TO_ISO_ID[ct.country];
-        if (isoId) globalThreatCountryFills.set(isoId, ct.severity);
+        if (isoId) {
+          globalThreatCountryFills.set(isoId, ct.severity);
+          if (ct.isTrending) trendingIsoId = isoId;
+        }
       }
       threats = globalThreats;
 
-      // Update every country fill to reflect the new threat levels
-      countryPaths.attr('fill', (d: { id: unknown }) => getCountryFillById(String(d.id)));
+      // Update every country fill and trending class to reflect the new threat levels
+      countryPaths
+        .attr('fill', (d: { id: unknown }) => getCountryFillById(String(d.id)))
+        .classed('wm-country--trending', (d: { id: unknown }) => String(d.id) === trendingIsoId);
 
       threatsUpdatedAt = updatedAt
         ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -513,8 +567,27 @@
     } catch { return ''; }
   }
 
-  $: activeZones = threats.filter(t => t.stories.length > 0);
-  $: moniteredCount = threats.length;
+  $: tickerItems = (() => {
+    // Combine events and recent threat stories from all sources (BBC, Reuters, Al Jazeera)
+    const seen = new Set<string>();
+    const items: { link: string; location: string; title: string; pubDate: string; dotColor: string }[] = [];
+    for (const ev of majorEvents) {
+      if (seen.has(ev.link)) continue;
+      seen.add(ev.link);
+      items.push({ link: ev.link, location: ev.location, title: ev.title, pubDate: ev.pubDate, dotColor: EVENT_COLORS[ev.level] ?? '#888' });
+    }
+    const now24 = Date.now() - 24 * 60 * 60 * 1000;
+    for (const ct of threats) {
+      const col = ct.isTrending ? '#ff2200' : (GLOBAL_THREAT_COLORS[ct.severity] ?? '#ffcc00');
+      for (const s of ct.stories) {
+        if (seen.has(s.link)) continue;
+        if (new Date(s.date).getTime() < now24) continue;
+        seen.add(s.link);
+        items.push({ link: s.link, location: ct.country, title: s.title, pubDate: s.date, dotColor: col });
+      }
+    }
+    return items.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()).slice(0, 30);
+  })();
 </script>
 
 <div class="wm-outer">
@@ -556,21 +629,19 @@
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>Extreme</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ffaa00;"></span><span>High</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span><span>Turbulent</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;box-shadow:0 0 4px #ff2200;"></span><span style="color:#ff6655;">Trending 24h</span></div>
       {#if polymarketThreats.length > 0}
         <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #f59e0b;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#f59e0b;">Market signals</span></div>
       {/if}
       {#if threatsUpdatedAt}
         <div class="wm-leg-sep"></div>
         <div class="wm-leg-ts">Updated {threatsUpdatedAt}</div>
-        {#if moniteredCount > 0}
-          <div class="wm-leg-ts">{moniteredCount} zones monitored · {activeZones.length} active</div>
-        {/if}
       {/if}
       {/if}
     </button>
   </div>
 
-  {#if majorEvents.length > 0}
+  {#if tickerItems.length > 0}
   <div class="wm-stories" aria-label="Major developing stories">
     <div class="wm-ticker-label">
       <span class="wm-stories-title">BREAKING</span>
@@ -578,12 +649,12 @@
     </div>
     <div class="wm-ticker-track" aria-live="polite">
       <div class="wm-ticker-reel">
-        {#each [...majorEvents, ...majorEvents] as ev, i}
-          <a href={ev.link} target="_blank" rel="noopener noreferrer" class="wm-story" aria-label="{ev.title}" aria-hidden={i >= majorEvents.length ? 'true' : undefined}>
-            <span class="wm-story-dot" style="background:{EVENT_COLORS[ev.level] ?? '#888'};box-shadow:0 0 5px {EVENT_COLORS[ev.level] ?? '#888'};"></span>
-            <span class="wm-story-loc">{ev.location}</span>
-            <span class="wm-story-title">{ev.title}</span>
-            <span class="wm-story-age">{ago(ev.pubDate)}</span>
+        {#each [...tickerItems, ...tickerItems] as item, i}
+          <a href={item.link} target="_blank" rel="noopener noreferrer" class="wm-story" aria-label="{item.title}" aria-hidden={i >= tickerItems.length ? 'true' : undefined}>
+            <span class="wm-story-dot" style="background:{item.dotColor};box-shadow:0 0 5px {item.dotColor};"></span>
+            <span class="wm-story-loc">{item.location}</span>
+            <span class="wm-story-title">{item.title}</span>
+            <span class="wm-story-age">{ago(item.pubDate)}</span>
             <span class="wm-story-sep" aria-hidden="true">◆</span>
           </a>
         {/each}
@@ -678,6 +749,22 @@
   @keyframes wm-new-badge-blink {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.55; }
+  }
+  /* Trending country — pulsing red glow rings on the SVG marker */
+  :global(.wm-trending-ring) { animation: wm-trending-ring-pulse 1.6s ease-in-out infinite; }
+  :global(.wm-trending-ring--outer) { animation: wm-trending-ring-pulse 1.6s ease-in-out infinite .4s; }
+  @keyframes wm-trending-ring-pulse {
+    0%, 100% { opacity: 0.8; }
+    50%       { opacity: 0.15; }
+  }
+  /* Trending country fill — pulsing red glow on the country shape */
+  :global(.wm-country--trending) {
+    animation: wm-country-trending 1.8s ease-in-out infinite;
+    filter: drop-shadow(0 0 4px rgba(255,20,20,0.6));
+  }
+  @keyframes wm-country-trending {
+    0%, 100% { opacity: 0.75; }
+    50%       { opacity: 1; }
   }
 
   /* ── MAJOR STORIES TICKER ───────────────────────────────── */
