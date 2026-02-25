@@ -1,11 +1,5 @@
 import { json } from '@sveltejs/kit';
-
-const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'application/json,text/plain,*/*',
-  'Accept-Language': 'en-US,en;q=0.9',
-  'Cache-Control': 'no-cache',
-};
+import { HEADERS } from '$lib/fetch-headers';
 
 // Fallback static values — updated to latest available published data
 // Median total income (ABS, FY2023): ~$67,600 pa; full-time average ~$100,028 (AWE Nov 2024)
