@@ -2,6 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import type { Threat } from '$lib/settings';
   import type { ThreatEvent } from '../routes/api/events/+server';
+  import type { GlobalThreatEvent } from '../routes/api/global-threats/+server';
 
   export let polymarketThreats: { question: string; url: string; probability: number; topOutcome: string }[] = [];
 
@@ -99,6 +100,13 @@
     low:      '#0088ff',
   };
 
+  /** Colour scheme for global-threat markers keyed by severity (casualty-based) */
+  const GLOBAL_THREAT_COLORS: Record<string, string> = {
+    major:  '#ff2200',   // 200+ casualties — red
+    medium: '#ffaa00',   // 50–199 casualties — orange/amber
+    minor:  '#00cc44',   // <50 casualties / keyword only — green
+  };
+
   /** Semi-transparent country fill colours keyed by threat level */
   const COUNTRY_THREAT_FILLS: Record<string, string> = {
     critical: 'rgba(255,68,68,0.35)',
@@ -162,15 +170,23 @@
     return res.json();
   }
 
+  /** Fetch serious global conflict events from trusted RSS sources */
+  async function fetchGlobalThreats(): Promise<{ events: GlobalThreatEvent[]; updatedAt: string }> {
+    const res = await fetch('/api/global-threats');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  }
+
   async function initMap() {
     mapLoading = true;
     mapError   = '';
 
     try {
-      const [[d3, topojson], threatData, eventData] = await Promise.all([
+      const [[d3, topojson], threatData, eventData, globalThreatData] = await Promise.all([
         Promise.all([import('d3'), import('topojson-client')]),
         fetchThreats(),
         fetchEvents(),
+        fetchGlobalThreats().catch(() => ({ events: [] as GlobalThreatEvent[], updatedAt: '' })),
       ]);
       d3Module = d3;
 
@@ -294,6 +310,37 @@
           .on('mouseenter', (e: MouseEvent) => showTip(e, ev.location, col, [ev.title]))
           .on('mousemove', moveTip)
           .on('mouseleave', hideTip);
+      }
+
+      // ── Global conflict event markers (from trusted RSS sources) ───
+      // Rendered in a separate layer; size reflects severity (casualty-based).
+      // Colors: green = minor (<50 / keyword), orange = medium (50–199), red = major (200+)
+      for (const gev of globalThreatData.events) {
+        const pos = projection([gev.lon, gev.lat]);
+        if (!pos) continue;
+        const [x, y] = pos;
+        const col = GLOBAL_THREAT_COLORS[gev.severity] ?? '#00cc44';
+        const r = gev.severity === 'major' ? 5.5 : gev.severity === 'medium' ? 4 : 3;
+
+        // Outer glow ring
+        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 4)
+          .attr('fill', col).attr('fill-opacity', 0.10)
+          .attr('stroke', col).attr('stroke-width', 0.6).attr('stroke-opacity', 0.35)
+          .attr('class', 'wm-pulse');
+        // Core dot
+        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
+          .attr('fill', col).attr('fill-opacity', 0.7);
+        // Hit area with tooltip
+        const tipLines: string[] = [gev.title];
+        if (gev.casualties !== null) tipLines.push(`Casualties: ~${gev.casualties}`);
+        if (gev.summary) tipLines.push(gev.summary.slice(0, 120));
+        tipLines.push(`Source: ${gev.source} · ${new Date(gev.pubDate).toLocaleDateString()}`);
+        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 6)
+          .attr('fill', 'transparent').attr('class', 'wm-hit')
+          .on('mouseenter', (e: MouseEvent) => showTip(e, gev.location, col, tipLines))
+          .on('mousemove', moveTip)
+          .on('mouseleave', hideTip)
+          .on('click', () => window.open(gev.link, '_blank', 'noopener,noreferrer'));
       }
 
       // ── Threat hotspot markers (in a dedicated group for live re-renders) ──
@@ -526,6 +573,10 @@
       <div class="wm-leg-row wm-leg-row--sub"><span class="wm-dot wm-dot--sq" style="background:rgba(255,68,68,0.35);"></span><span class="wm-leg-sub">Country shaded by level</span></div>
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
+      <div class="wm-leg-sep"></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>Major conflict (200+)</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffaa00;"></span><span>Medium (50–199)</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#00cc44;"></span><span>Minor (&lt;50)</span></div>
       {#if polymarketThreats.length > 0}
         <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #f59e0b;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#f59e0b;">Market signals</span></div>
       {/if}
