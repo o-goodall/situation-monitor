@@ -1043,7 +1043,7 @@
       {:else if btcChartData.length >= 2}
         <PriceChart
           prices={btcChartData}
-          height={160}
+          fillParent={true}
           range={btcApiRange()}
         />
       {:else}
@@ -1385,6 +1385,7 @@
 
   /* ── BTC PRICE CHART CARD ───────────────────────────────── */
   .btc-chart-card { padding:16px 18px; margin-bottom:14px; }
+  .btc-chart-card .chart-container { height:160px; }
   .chart-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px; }
   .chart-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
   .overlay-btns { display:flex; gap:4px; }
@@ -1459,13 +1460,23 @@
   @media (max-width:768px) {
     .btc-network-card,
     .btc-hashrate-card { display:none; }
-    /* Show BTC price chart on mobile — collapse to single-chart layout */
-    .btc-chart-card { margin-top:10px; }
-    /* DCA signal: only show the amount to buy on mobile */
-    .signal-card .vband,
-    .signal-card .sigs,
-    .dca-info-btn { display:none; }
+    /* Show BTC price chart on mobile — expand to fill remaining viewport */
+    .btc-chart-card {
+      margin-top:10px;
+      display:flex; flex-direction:column;
+      min-height: calc(100svh - 430px);
+      max-height: 600px;
+    }
+    .btc-chart-card .chart-container { flex:1; min-height:180px; height:auto; }
+    :global(.btc-chart-card .cc-wrap) { height:100%; }
+    /* DCA signal: hide only the price band on mobile; show signals and formula button */
+    .signal-card .vband { display:none; }
     .dca-hero { padding:20px 0 16px; }
+    /* Expand DCA signal card to fill empty space on mobile */
+    .signal-card {
+      min-height: calc(100svh - 380px);
+      max-height: 700px;
+    }
     /* Portfolio: hide detailed tiles, show merged summary only */
     .port-grid { display:none; }
     .mobile-port-summary { display:block; }
