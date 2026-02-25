@@ -1,16 +1,10 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
+import { HEADERS } from '$lib/fetch-headers';
 
 type PricePoint = { t: number; p: number };
 
 const MS_PER_DAY = 86400000;
-
-const HEADERS = {
-  'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Accept': 'application/json,text/plain,*/*',
-  'Accept-Language': 'en-US,en;q=0.9',
-  'Cache-Control': 'no-cache',
-};
 
 // CoinGecko days param per range
 const BTC_DAYS: Record<string, string> = {
