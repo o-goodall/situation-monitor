@@ -107,6 +107,43 @@
     minor:  '#00cc44',   // <50 casualties / keyword only — green
   };
 
+  /** Semi-transparent fills matching GLOBAL_THREAT_COLORS for country shading */
+  const GLOBAL_THREAT_COUNTRY_FILLS: Record<string, string> = {
+    major:  'rgba(255,34,0,0.32)',
+    medium: 'rgba(255,170,0,0.25)',
+    minor:  'rgba(0,204,68,0.15)',
+  };
+
+  /** Maps global-threat location names to ISO 3166-1 numeric country IDs (topojson) */
+  const LOCATION_TO_ISO_ID: Record<string, string> = {
+    'Ukraine': '804', 'Gaza': '275', 'Palestine': '275', 'Israel': '376',
+    'Syria': '760', 'Yemen': '887', 'Sudan': '729', 'Somalia': '706',
+    'Afghanistan': '004', 'Iraq': '368', 'Iran': '364', 'Myanmar': '104',
+    'Ethiopia': '231', 'DR Congo': '180', 'Mali': '466', 'Burkina Faso': '854',
+    'Nigeria': '566', 'Libya': '434', 'Haiti': '332', 'Lebanon': '422',
+    'Pakistan': '586', 'India': '356', 'Kashmir': '356', 'North Korea': '408',
+    'Taiwan': '158', 'Cameroon': '120', 'Mozambique': '508', 'South Sudan': '728',
+    'Colombia': '170', 'Mexico': '484', 'Venezuela': '862', 'Chad': '148',
+    'Central African Republic': '140',
+  };
+
+  /** ISO numeric ID → global-threat severity (highest for that country) */
+  let globalThreatCountryFills = new Map<string, string>();
+
+  /** IDs of global-threat events the user has already hovered (persisted in localStorage) */
+  const SEEN_KEY = 'wm-seen-global-threats';
+  function loadSeenIds(): Set<string> {
+    if (typeof localStorage === 'undefined') return new Set();
+    try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]')); } catch { return new Set(); }
+  }
+  function markEventSeen(id: string, seenIds: Set<string>) {
+    seenIds.add(id);
+    if (typeof localStorage !== 'undefined') {
+      try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seenIds])); } catch { /* ignore */ }
+    }
+  }
+  let seenEventIds = new Set<string>();
+
   /** Semi-transparent country fill colours keyed by threat level */
   const COUNTRY_THREAT_FILLS: Record<string, string> = {
     critical: 'rgba(255,68,68,0.35)',
@@ -118,6 +155,14 @@
 
   function getCountryFill(level: string): string {
     return COUNTRY_THREAT_FILLS[level] ?? COUNTRY_THREAT_FILLS.elevated;
+  }
+
+  /** Returns the fill for a country, preferring global-threat severity when available */
+  function getCountryFillById(id: string): string {
+    const gtSeverity = globalThreatCountryFills.get(id);
+    if (gtSeverity) return GLOBAL_THREAT_COUNTRY_FILLS[gtSeverity] ?? GLOBAL_THREAT_COUNTRY_FILLS.minor;
+    const level = countryLevelMap.get(id);
+    return level ? getCountryFill(level) : '#1e3248';
   }
 
   /** Priority order for threat levels (higher = more severe) */
@@ -190,11 +235,31 @@
       ]);
       d3Module = d3;
 
+      // Load seen-event IDs from localStorage so "New" badges reflect fresh visits
+      seenEventIds = loadSeenIds();
+
       const { threats, updatedAt } = threatData;
       // Build a map from ISO numeric country ID → highest threat level so country
       // fills can be coloured by severity rather than a single flat conflict colour.
       countryLevelMap = buildCountryLevelMap(threats);
       threatsUpdatedAt = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+
+      // Build global-threat country fill map: ISO ID → highest severity from global events
+      // Deduplicate to one event per country (highest severity) for both fills and markers.
+      const SEVERITY_RANK: Record<string, number> = { major: 2, medium: 1, minor: 0 };
+      const countryEventMap = new Map<string, GlobalThreatEvent>();
+      for (const gev of globalThreatData.events) {
+        const existing = countryEventMap.get(gev.location);
+        if (!existing || (SEVERITY_RANK[gev.severity] ?? 0) > (SEVERITY_RANK[existing.severity] ?? 0)) {
+          countryEventMap.set(gev.location, gev);
+        }
+      }
+      globalThreatCountryFills = new Map<string, string>();
+      for (const [location, gev] of countryEventMap) {
+        const isoId = LOCATION_TO_ISO_ID[location];
+        if (isoId) globalThreatCountryFills.set(isoId, gev.severity);
+      }
+      const dedupedGlobalEvents = Array.from(countryEventMap.values());
 
       // Store major events (critical + high only) for the story panel
       majorEvents = eventData.events.filter(e => e.level === 'critical' || e.level === 'high').slice(0, MAX_MAJOR_EVENTS);
@@ -248,10 +313,7 @@
         .attr('class', 'wm-country')
         .attr('d', path as unknown as string)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .attr('fill', (d: any) => {
-          const level = countryLevelMap.get(String(d.id));
-          return level ? getCountryFill(level) : '#1e3248';
-        })
+        .attr('fill', (d: any) => getCountryFillById(String(d.id)))
         .attr('stroke', 'none');
 
       // Retain selection so live refreshes can update fills in-place
@@ -313,9 +375,8 @@
       }
 
       // ── Global conflict event markers (from trusted RSS sources) ───
-      // Rendered in a separate layer; size reflects severity (casualty-based).
-      // Colors: green = minor (<50 / keyword), orange = medium (50–199), red = major (200+)
-      for (const gev of globalThreatData.events) {
+      // One marker per country (highest severity); color: red/orange/green per severity.
+      for (const gev of dedupedGlobalEvents) {
         const pos = projection([gev.lon, gev.lat]);
         if (!pos) continue;
         const [x, y] = pos;
@@ -330,6 +391,22 @@
         // Core dot
         mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
           .attr('fill', col).attr('fill-opacity', 0.7);
+
+        // "New" badge — shown until the user hovers; tracks seen state in localStorage
+        const isNew = !seenEventIds.has(gev.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let badgeGroup: any = null;
+        if (isNew) {
+          badgeGroup = mapGroup.append('g').attr('class', 'wm-new-badge')
+            .attr('transform', `translate(${x + r + 1},${y - r - 5})`);
+          badgeGroup.append('rect').attr('x', 0).attr('y', -7).attr('width', 20).attr('height', 8)
+            .attr('rx', 2).attr('fill', '#22c55e').attr('fill-opacity', 0.92);
+          badgeGroup.append('text').attr('x', 10).attr('y', -1)
+            .attr('fill', '#fff').attr('font-size', '5.5px').attr('font-family', 'monospace')
+            .attr('font-weight', 'bold').attr('text-anchor', 'middle')
+            .attr('pointer-events', 'none').text('NEW');
+        }
+
         // Hit area with tooltip
         const tipLines: string[] = [gev.title];
         if (gev.casualties !== null) tipLines.push(`Casualties: ~${gev.casualties}`);
@@ -337,7 +414,10 @@
         tipLines.push(`Source: ${gev.source} · ${new Date(gev.pubDate).toLocaleDateString()}`);
         mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 6)
           .attr('fill', 'transparent').attr('class', 'wm-hit')
-          .on('mouseenter', (e: MouseEvent) => showTip(e, gev.location, col, tipLines))
+          .on('mouseenter', (e: MouseEvent) => {
+            if (badgeGroup) { badgeGroup.remove(); badgeGroup = null; markEventSeen(gev.id, seenEventIds); }
+            showTip(e, gev.location, col, tipLines);
+          })
           .on('mousemove', moveTip)
           .on('mouseleave', hideTip)
           .on('click', () => window.open(gev.link, '_blank', 'noopener,noreferrer'));
@@ -466,10 +546,7 @@
       countryLevelMap = buildCountryLevelMap(threats);
 
       // Update every country fill to reflect the new threat levels
-      countryPaths.attr('fill', (d: { id: unknown }) => {
-        const level = countryLevelMap.get(String(d.id));
-        return level ? getCountryFill(level) : '#1e3248';
-      });
+      countryPaths.attr('fill', (d: { id: unknown }) => getCountryFillById(String(d.id)));
 
       // Re-render hotspot markers with latest positions + levels
       renderThreatMarkers(threats);
@@ -570,7 +647,7 @@
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ff8800;"></span>High</div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span>Elevated</div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
-      <div class="wm-leg-row wm-leg-row--sub"><span class="wm-dot wm-dot--sq" style="background:rgba(255,68,68,0.35);"></span><span class="wm-leg-sub">Country shaded by level</span></div>
+      <div class="wm-leg-row wm-leg-row--sub"><span class="wm-dot wm-dot--sq" style="background:rgba(255,34,0,0.32);"></span><span class="wm-leg-sub">Country shaded by conflict</span></div>
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       <div class="wm-leg-sep"></div>
@@ -694,6 +771,11 @@
   @keyframes wm-poly-pulse {
     0%, 100% { opacity: .5; }
     50%       { opacity: 1; }
+  }
+  :global(.wm-new-badge) { animation: wm-new-badge-blink 1.6s ease-in-out infinite; }
+  @keyframes wm-new-badge-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.55; }
   }
 
   /* ── MAJOR STORIES TICKER ───────────────────────────────── */

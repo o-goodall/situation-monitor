@@ -143,8 +143,8 @@ export interface GlobalThreatEvent {
   source: string;
 }
 
-// ── Recency filter ─────────────────────────────────────────────
-const RECENCY_HOURS = 72;
+// ── Recency filter (7-day TTL per spec) ───────────────────────
+const RECENCY_HOURS = 168;
 function isRecent(pubDate: string): boolean {
   return Date.now() - new Date(pubDate).getTime() <= RECENCY_HOURS * 3_600_000;
 }
