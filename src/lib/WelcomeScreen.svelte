@@ -6,16 +6,59 @@
   let taglineVisible = false;
   let hintVisible = false;
 
+  const SLOGAN = 'Everything. At a Glance.';
+  const LEET: Record<string, string> = {
+    'E': '3', 'e': '3',
+    'A': '4', 'a': '4',
+    'T': '7', 't': '7',
+    'I': '1', 'i': '1',
+    'G': '6', 'g': '6',
+  };
+
+  type CharState = { orig: string; disp: string; state: 'normal' | 'leet' | 'done' };
+  let chars: CharState[] = SLOGAN.split('').map(c => ({ orig: c, disp: c, state: 'normal' }));
+
+  let leetInterval: ReturnType<typeof setInterval> | null = null;
+
   onMount(() => {
     // Show tagline after 0.5s delay
     setTimeout(() => { taglineVisible = true; }, 500);
     // Show hint after 1.8s
     setTimeout(() => { hintVisible = true; }, 1800);
+
+    // Start leet sweep 0.7s after mount (0.2s after tagline begins fading in)
+    // Step every 85ms so 24 chars completes in ~2s alongside the logo animation
+    setTimeout(() => {
+      if (dismissed) return;
+      let i = 0;
+      leetInterval = setInterval(() => {
+        if (dismissed || i >= chars.length) {
+          clearInterval(leetInterval!);
+          leetInterval = null;
+          return;
+        }
+        const idx = i++;
+        const orig = chars[idx].orig;
+        const leetChar = LEET[orig];
+        if (leetChar) {
+          chars[idx] = { orig, disp: leetChar, state: 'leet' };
+          chars = [...chars];
+          setTimeout(() => {
+            chars[idx] = { orig, disp: orig, state: 'done' };
+            chars = [...chars];
+          }, 65);
+        }
+      }, 85);
+    }, 700);
   });
 
   function dismiss() {
     if (dismissed) return;
     dismissed = true;
+    if (leetInterval) {
+      clearInterval(leetInterval);
+      leetInterval = null;
+    }
     setTimeout(() => { visible = false; }, 350);
   }
 </script>
@@ -62,9 +105,13 @@
         </div>
       </div>
 
-      <!-- Tagline — fade in after delay -->
+      <!-- Tagline — fade in after delay, leet sweep left to right -->
       <p class="welcome-tagline" class:tagline-visible={taglineVisible} aria-live="polite">
-        Everything. At a Glance.
+        {#each chars as char}<span
+          class="slogan-char"
+          class:slogan-leet={char.state === 'leet'}
+          class:slogan-done={char.state === 'done'}
+        >{char.disp}</span>{/each}
       </p>
 
       <!-- Hint -->
@@ -175,6 +222,19 @@
     .welcome-tagline.tagline-visible {
       opacity: 1;
       text-shadow: 0 0 16px rgba(247,147,26,0.4), 0 0 32px rgba(247,147,26,0.15);
+    }
+
+    /* Per-character leet sweep */
+    .slogan-char {
+      display: inline;
+      color: inherit;
+      transition: color 0.06s ease;
+    }
+    .slogan-char.slogan-leet {
+      color: #f7931a;
+    }
+    .slogan-char.slogan-done {
+      color: #ffffff;
     }
 
     /* Hint text */
