@@ -123,7 +123,7 @@ const BINANCE_PARAMS: Record<string, { interval: string; limit: number }> = {
   '1d':  { interval: '30m', limit: 48  }, // 48 × 30 min = 24 h
   '7d':  { interval: '1h',  limit: 168 }, // 168 × 1 h  =  7 d
   '1y':  { interval: '1d',  limit: 365 }, // 365 × 1 d  =  1 y
-  '5y':  { interval: '1w',  limit: 260 }, // 260 × 1 w  =  5 y
+  '5y':  { interval: '1w',  limit: 265 }, // 265 × 1 w ≈ 5.1 y (slight buffer for clipping)
 };
 
 // Kraken OHLC interval in minutes per range
@@ -303,17 +303,41 @@ export async function GET({ url }: RequestEvent) {
     fetchYahooHistory('GC=F', yfRange, yfInterval),
   ]);
 
-  // Clip all series to the requested window so data from further back
-  // (e.g. Kraken returning 13+ years of weekly candles) is not included.
-  if (safeRange === '5y') {
-    const cutoff = Date.now() - 5 * 365 * MS_PER_DAY;
-    const clip = (pts: PricePoint[]) => {
-      const idx = pts.findIndex(pt => pt.t >= cutoff);
+  // ── Window clip: discard any data outside the requested time window ────────
+  // This corrects cases where a fallback source (e.g. Stooq returning 10 days
+  // of daily close prices when a 1-day range is requested) would otherwise set
+  // its normalisation base at a date far outside the visible chart window.
+  const WINDOW_MS: Record<string, number> = {
+    '1d': 1 * MS_PER_DAY,
+    '7d': 7 * MS_PER_DAY,
+    '1y': 366 * MS_PER_DAY,          // slight buffer for non-trading days
+    '5y': (5 * 365 + 2) * MS_PER_DAY, // slight buffer for leap years
+  };
+  const windowCutoff = Date.now() - (WINDOW_MS[safeRange] ?? WINDOW_MS['1y']);
+  const clipToWindow = (pts: PricePoint[]) => {
+    const idx = pts.findIndex(pt => pt.t >= windowCutoff);
+    return idx >= 0 ? pts.slice(idx) : pts;
+  };
+  btc   = clipToWindow(btc);
+  sp500 = clipToWindow(sp500);
+  gold  = clipToWindow(gold);
+
+  // ── Start-date alignment: ensure all series normalise from the same date ──
+  // Different data sources can return slightly different first timestamps
+  // (e.g. Binance weekly candles vs Yahoo Finance weekly closes).  Without
+  // alignment each series is set to 100 at a different date, making the
+  // percentage-return comparison misleading.
+  const nonEmpty = [btc, sp500, gold].filter(s => s.length > 0);
+  if (nonEmpty.length > 1) {
+    const commonStart = Math.max(...nonEmpty.map(s => s[0].t));
+    const alignToStart = (pts: PricePoint[]) => {
+      if (!pts.length) return pts;
+      const idx = pts.findIndex(pt => pt.t >= commonStart);
       return idx >= 0 ? pts.slice(idx) : pts;
     };
-    btc   = clip(btc);
-    sp500 = clip(sp500);
-    gold  = clip(gold);
+    btc   = alignToStart(btc);
+    sp500 = alignToStart(sp500);
+    gold  = alignToStart(gold);
   }
 
   return json({ btc, sp500, gold });
