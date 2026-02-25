@@ -7,13 +7,14 @@ import nlp from 'compromise';
 const parser = new Parser();
 
 // ── RSS feeds to scrape ────────────────────────────────────────
+// Narrowed to direct physical violence signals only (no diplomatic/political chatter)
 const RSS_FEEDS = [
-  'https://news.google.com/rss/search?q=war+OR+missile+OR+airstrike&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=explosion+OR+attack+OR+conflict&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=military+clashes&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=ceasefire+OR+sanctions+OR+troops+deployed&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=coup+OR+civil+war+OR+insurgency&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=humanitarian+crisis+OR+drone+strike&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=airstrike+OR+missile+strike+killed&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=armed+attack+civilians+killed&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=military+assault+fatalities&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=bombing+casualties+dead&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=massacre+OR+genocide+OR+mass+killing&hl=en-US&gl=US&ceid=US:en',
+  'https://news.google.com/rss/search?q=insurgency+attack+killed+OR+wounded&hl=en-US&gl=US&ceid=US:en',
 ];
 
 const ARTICLES_PER_FEED = 8;
@@ -21,10 +22,47 @@ const ARTICLES_PER_FEED = 8;
 // ── Max geocode calls per invocation (caps worst-case latency) ─
 const MAX_GEOCODE_CALLS = 12;
 
+// ── Validation configuration ───────────────────────────────────
+/** Events older than this threshold are rejected (recency constraint) */
+const RECENCY_HOURS = 72;
+
+/** Minimum severity score required for an event to be included in the map feed */
+const SEVERE_THRESHOLD = 8;
+
+/**
+ * Enable debug mode to log rejection reasons to the server console.
+ * Set to true during threshold tuning; leave false in production.
+ */
+const DEBUG_EVENTS = false;
+
+/**
+ * Contextual noise keywords — titles containing these are likely book reviews,
+ * documentaries, historical discussions, or other non-event narratives.
+ * Events matching these are rejected UNLESS fatalities > 0.
+ */
+const NOISE_KEYWORDS = [
+  'book',
+  'novel',
+  'documentary',
+  'film',
+  'anniversary',
+  'museum',
+  'exhibition',
+  'history of',
+];
+
 // ── Severity keywords ──────────────────────────────────────────
 const SEVERITY_CRITICAL = /\b(missile|airstrike|nuclear|chemical|massacre|genocide)\b/i;
 const SEVERITY_HIGH     = /\b(war|attack|explosion|bombing|killed|death|casualties)\b/i;
 const SEVERITY_ELEVATED = /\b(conflict|clashes|military|tension|troops|invasion)\b/i;
+
+/** Per-level weights for severity scoring (fatalities unavailable from RSS) */
+const SEVERITY_WEIGHTS: Record<string, number> = {
+  critical: 20,
+  high:     15,
+  elevated:  8,
+  low:       2,
+};
 
 export type EventLevel = 'critical' | 'high' | 'elevated' | 'low';
 
@@ -97,6 +135,42 @@ function timeDecayScore(pubDate: string, level: EventLevel): number {
   return +(decay * levelBoost[level]).toFixed(3);
 }
 
+// ── Event validation helpers ───────────────────────────────────
+
+/**
+ * Returns true if the event title contains contextual noise keywords indicating
+ * a book review, documentary, historical discussion, or other non-event narrative.
+ * Events matching noise keywords are always rejected (fatalities from RSS are unknown).
+ */
+function isContextualNoise(title: string): boolean {
+  const lower = title.toLowerCase();
+  return NOISE_KEYWORDS.some(kw => lower.includes(kw));
+}
+
+/** Returns true if the event was published within the recency window */
+function isRecent(pubDate: string): boolean {
+  const ageMs = Date.now() - new Date(pubDate).getTime();
+  return ageMs <= RECENCY_HOURS * 3_600_000;
+}
+
+/**
+ * Severity scoring model:
+ *   severityScore = (fatalities * 5) + highSeverityEventWeight + (eventFrequencyDelta * 2)
+ *
+ * For RSS-derived events, fatalities and eventFrequencyDelta are not available from
+ * the feed; the weight of the classified severity level is used as the primary signal.
+ */
+function computeSeverityScore(level: EventLevel, fatalities = 0, eventFrequencyDelta = 0): number {
+  return (fatalities * 5) + (SEVERITY_WEIGHTS[level] ?? 0) + (eventFrequencyDelta * 2);
+}
+
+/** Log a rejection reason to the server console when DEBUG_EVENTS is enabled */
+function debugReject(id: string, source: string, rule: string): void {
+  if (DEBUG_EVENTS) {
+    console.log(`[events:reject] id=${id} source=${source} rule="${rule}"`);
+  }
+}
+
 // ── Main handler ───────────────────────────────────────────────
 export async function GET(_event: RequestEvent) {
   // Serve from module-level cache if still fresh
@@ -134,10 +208,25 @@ export async function GET(_event: RequestEvent) {
       return true;
     });
 
+    // ── Pre-geocode validation: apply recency and contextual noise filters
+    // before geocoding to avoid wasting Nominatim API calls on rejected events.
+    const preValidated = unique.filter(item => {
+      const id = Buffer.from(item.title.slice(0, 40)).toString('base64');
+      if (!isRecent(item.pubDate)) {
+        debugReject(id, item.link, `recency: older than ${RECENCY_HOURS}h`);
+        return false;
+      }
+      if (isContextualNoise(item.title)) {
+        debugReject(id, item.link, 'noise: contextual non-event keyword detected');
+        return false;
+      }
+      return true;
+    });
+
     // Extract locations; only geocode items not already in cache to respect
     // Nominatim's rate limit of 1 request/second (1.1s delay between calls).
     // Limit total network geocode calls per invocation to cap worst-case latency.
-    const withLocation = unique
+    const withLocation = preValidated
       .map(item => ({ ...item, location: extractLocation(item.title) }))
       .filter((item): item is typeof item & { location: string } => item.location !== null);
 
@@ -159,13 +248,19 @@ export async function GET(_event: RequestEvent) {
       geocoded.push(geo ? { ...item, ...geo } : null);
     }
 
-    // Build events array
+    // Build events array — only include events that meet the severity threshold
     const events: ThreatEvent[] = geocoded
       .filter((e): e is NonNullable<typeof e> => e !== null)
-      .map(e => {
+      .flatMap(e => {
         const level = classifySeverity(e.title);
-        return {
-          id:       Buffer.from(e.title.slice(0, 40)).toString('base64'),
+        const id = Buffer.from(e.title.slice(0, 40)).toString('base64');
+        const severityScore = computeSeverityScore(level);
+        if (severityScore < SEVERE_THRESHOLD) {
+          debugReject(id, e.link, `severity: score ${severityScore} < threshold ${SEVERE_THRESHOLD} (level=${level})`);
+          return [];
+        }
+        return [{
+          id,
           title:    e.title,
           location: e.location,
           lat:      e.lat,
@@ -174,7 +269,7 @@ export async function GET(_event: RequestEvent) {
           score:    timeDecayScore(e.pubDate, level),
           pubDate:  e.pubDate,
           link:     e.link,
-        };
+        }];
       })
       .sort((a, b) => b.score - a.score);
 
