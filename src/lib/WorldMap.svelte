@@ -305,6 +305,16 @@
       renderPolyMarkers();
 
       mapLoading = false;
+
+      // On mobile, apply a slightly higher default zoom so the map is easier to read
+      if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+        const s = 1.5;
+        const w = mapContainer?.clientWidth  ?? 375;
+        const h = mapContainer?.clientHeight ?? 320;
+        svg.call(zoom.transform, d3Module.zoomIdentity
+          .translate(w / 2 * (1 - s), h / 2 * (1 - s))
+          .scale(s));
+      }
     } catch (err) {
       console.error('WorldMap init failed', err);
       mapError = 'Failed to load world map data.';
@@ -709,7 +719,12 @@
   }
 
   @media (max-width: 768px) {
-    .wm-wrap { height: 340px; min-height: 340px; border-radius: 10px 10px 0 0; }
+    .wm-wrap {
+      height: calc(100svh - 260px);
+      min-height: 300px;
+      max-height: 480px;
+      border-radius: 10px 10px 0 0;
+    }
     .wm-story-title { max-width: 200px; }
   }
 </style>

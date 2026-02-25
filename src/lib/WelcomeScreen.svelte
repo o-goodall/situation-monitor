@@ -27,7 +27,7 @@
     setTimeout(() => { hintVisible = true; }, 1800);
 
     // Start leet sweep at 300ms — independent of eye animation
-    // Step every 80ms so orange letters wash continuously left → right
+    // Step every 110ms so orange letters wash smoothly left → right
     setTimeout(() => {
       let i = 0;
       leetInterval = setInterval(() => {
@@ -45,8 +45,8 @@
         setTimeout(() => {
           chars[idx] = { orig, disp: orig, state: 'done' };
           chars = [...chars];
-        }, 100);
-      }, 80);
+        }, 150);
+      }, 110);
     }, 300);
   });
 
@@ -226,14 +226,14 @@
     .slogan-char {
       display: inline;
       color: inherit;
-      transition: color 0.12s ease;
+      transition: color 0.18s ease;
     }
     .slogan-char.slogan-leet {
       color: #f7931a;
     }
     .slogan-char.slogan-done {
       color: #ffffff;
-      transition: color 0.18s ease;
+      transition: color 0.28s ease;
     }
 
     /* Hint text */

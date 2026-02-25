@@ -36,7 +36,7 @@
 </script>
 
 <div class="pg-wrap" aria-label="Personal greeting">
-  <p class="pg-greeting">{greeting}, {username}.</p>
+  <p class="pg-greeting">{greeting}, <span class="pg-name">{username}</span>.</p>
   {#if weather}
     <p class="pg-weather">
       {#if weather.city}{weather.city} · {/if}{weather.temp}°C · {weather.condition}
@@ -60,6 +60,9 @@
     line-height: 1.3;
     color: rgba(255, 255, 255, 0.92);
   }
+  .pg-name {
+    color: #F7931A;
+  }
   .pg-weather {
     margin: 0;
     font-size: 13px;
@@ -73,5 +76,6 @@
 
   /* Light mode overrides */
   :global(.light-mode) .pg-greeting { color: rgba(0, 0, 0, 0.85); }
+  :global(.light-mode) .pg-name     { color: #c77a10; }
   :global(.light-mode) .pg-weather  { color: rgba(0, 0, 0, 0.55); }
 </style>
