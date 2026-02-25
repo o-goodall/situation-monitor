@@ -85,6 +85,48 @@ const ESCALATING_THRESHOLD  = 20;
  */
 const DEBUG_THREATS = false;
 
+// ── 14 Major Conflict Seeds ────────────────────────────────────
+// These 14 verified high-severity conflicts are seeded with preliminary status = "active".
+// Their severityScore is updated dynamically from live event data (GDELT + secondary sources).
+// Conflicts are automatically removed from the map when their score decays below ACTIVE_THRESHOLD.
+interface MajorConflict {
+  name: string;
+  canonical: string; // matches a key in COUNTRY_INDEX for GDELT score boosting
+  lat: number;
+  lon: number;
+  countryId?: string;
+}
+
+const MAJOR_CONFLICTS: MajorConflict[] = [
+  { name: 'Russia–Ukraine War',      canonical: 'Ukraine',     lat: 49.0, lon:  31.5, countryId: '804' },
+  { name: 'Sudan Civil War',         canonical: 'Sudan',       lat: 15.5, lon:  30.0, countryId: '729' },
+  { name: 'Gaza War',                canonical: 'Palestine',   lat: 31.5, lon:  34.5, countryId: '275' },
+  { name: 'Yemen Civil War',         canonical: 'Yemen',       lat: 15.3, lon:  44.2, countryId: '887' },
+  { name: 'DR Congo – M23',          canonical: 'DR Congo',    lat: -4.0, lon:  21.8, countryId: '180' },
+  { name: 'Ethiopia Conflict',       canonical: 'Ethiopia',    lat:  9.1, lon:  40.5, countryId: '231' },
+  { name: 'Myanmar Civil War',       canonical: 'Myanmar',     lat: 19.7, lon:  96.1, countryId: '104' },
+  { name: 'Haiti – Gang Violence',   canonical: 'Haiti',       lat: 18.9, lon: -72.3, countryId: '332' },
+  { name: 'Cameroon – Anglophone',   canonical: 'Cameroon',    lat:  3.9, lon:  11.5, countryId: '120' },
+  { name: 'Colombia – Armed Groups', canonical: 'Colombia',    lat:  4.6, lon: -74.1, countryId: '170' },
+  { name: 'Mexico Drug War',         canonical: 'Mexico',      lat: 23.6, lon:-102.6, countryId: '484' },
+  { name: 'South Sudan',             canonical: 'South Sudan', lat:  7.9, lon:  30.2, countryId: '728' },
+  { name: 'Northern Triangle',       canonical: 'Honduras',    lat: 14.1, lon: -87.2                   },
+  { name: 'Kashmir Tensions',        canonical: 'Kashmir',     lat: 34.0, lon:  74.0, countryId: '356' },
+];
+
+// Daily decay rate applied to seed scores when no new GDELT events are detected.
+// After 30 days without events: 0.97^30 ≈ 0.40 of original score.
+const DECAY_RATE         = 0.97;
+const DECAY_INTERVAL_MS  = 24 * 60 * 60 * 1000; // 1 day
+
+// Baseline score for fresh seed conflicts (above ESCALATING_THRESHOLD so they appear on map).
+const SEED_INITIAL_SCORE = ESCALATING_THRESHOLD + 5; // 25
+
+// Module-level seed score tracker — persists across cache cycles within the same server instance.
+// canonical → current severityScore (float; rounded when used in Threat)
+const _seedScores       = new Map<string, number>();
+let   _lastDecayApplied = 0; // Unix ms timestamp of last daily decay pass
+
 // Acceleration Modifier bounds and weight:
 //   NEW_SIGNAL_RATE: assumed 50% growth when a country first appears (no prior data)
 //   ACCEL_WEIGHT:    converts raw acceleration rate to a score modifier (30%)
@@ -147,6 +189,10 @@ const COUNTRY_INDEX: [RegExp, CountryInfo][] = [
   [/\bkenya\b/i,                { id: '404', lat:  -1.3, lon:  36.8, canonical: 'Kenya' }],
   [/\bchad\b/i,                 { id: '148', lat:  15.5, lon:  18.7, canonical: 'Chad' }],
   [/senegal/i,                  { id: '686', lat:  14.7, lon: -17.4, canonical: 'Senegal' }],
+  [/honduras/i,                 { id: '340', lat:  14.1, lon: -87.2, canonical: 'Honduras' }],
+  [/guatemala/i,                { id: '320', lat:  15.8, lon: -90.2, canonical: 'Guatemala' }],
+  [/el\s*salvador/i,            { id: '222', lat:  13.8, lon: -88.9, canonical: 'El Salvador' }],
+  [/kashmir/i,                  { id: '356', lat:  34.0, lon:  74.0, canonical: 'Kashmir' }],
 ];
 
 function matchCountry(name: string): CountryInfo | null {
@@ -584,7 +630,36 @@ export async function GET(_event: RequestEvent) {
     const currentMap = aggregateByCountry(currentFeatures, batchTimestamp);
     const priorMap   = aggregateByCountry(priorFeatures, batchTimestamp);
 
-    if (currentMap.size === 0) throw new Error('GDELT returned no matching conflict locations');
+    // ── Step 1: Apply daily decay to seed scores ──────────────────────────────
+    // Seeds are initialized at SEED_INITIAL_SCORE on first load, then decay at
+    // DECAY_RATE per day when no GDELT events are detected for that conflict.
+    const nowMs = Date.now();
+    if (_lastDecayApplied === 0) _lastDecayApplied = nowMs;
+    const decayDays = Math.floor((nowMs - _lastDecayApplied) / DECAY_INTERVAL_MS);
+    const decayFactor = decayDays > 0 ? Math.pow(DECAY_RATE, decayDays) : 1;
+    if (decayDays > 0) {
+      for (const [canonical, score] of _seedScores) {
+        _seedScores.set(canonical, score * decayFactor);
+      }
+      _lastDecayApplied += decayDays * DECAY_INTERVAL_MS;
+      if (DEBUG_THREATS) console.log(`[threats:decay] Applied ${decayDays} decay step(s), factor=${decayFactor.toFixed(4)}`);
+    }
+    // Ensure all major conflict seeds are initialised
+    for (const seed of MAJOR_CONFLICTS) {
+      if (!_seedScores.has(seed.canonical)) {
+        _seedScores.set(seed.canonical, SEED_INITIAL_SCORE);
+      }
+    }
+
+    // ── Step 2: Boost seed scores from GDELT event counts ────────────────────
+    for (const [canonical, { count }] of currentMap) {
+      if (_seedScores.has(canonical)) {
+        const priorCount = priorMap.get(canonical)?.count ?? 0;
+        const { score: gdeltScore } = computeScore(count, priorCount);
+        // Take the higher of the current seed score and GDELT-derived score
+        _seedScores.set(canonical, Math.max(_seedScores.get(canonical)!, gdeltScore));
+      }
+    }
 
     // Build initial threat map from GDELT (Layer 1 — Raw Event Stream → Layer 2 Signal Engine)
     // Only conflicts meeting ACTIVE_THRESHOLD are included; lower-signal countries are dropped.
@@ -621,6 +696,54 @@ export async function GET(_event: RequestEvent) {
         lastEventTimestamp,
         conflictState,
       });
+    }
+
+    // ── Step 3: Merge major conflict seeds into threatMap ─────────────────────
+    // For each of the 14 major conflicts:
+    //   • If GDELT already detected it (via canonical name match), rename the entry to the
+    //     seed's descriptive name so the map shows "Russia–Ukraine War" not just "Ukraine".
+    //   • If GDELT did not detect it, add a seed entry if its decayed score is still active.
+    //     This ensures all 14 conflicts stay visible until fighting stops.
+    for (const seed of MAJOR_CONFLICTS) {
+      const seedScore     = _seedScores.get(seed.canonical) ?? SEED_INITIAL_SCORE;
+      const conflictState = computeConflictState(Math.round(seedScore));
+
+      const gdeltEntry = threatMap.get(seed.canonical);
+      if (gdeltEntry) {
+        // Enrich GDELT entry with the seed's descriptive name
+        gdeltEntry.name = seed.name;
+        gdeltEntry.id   = seed.name.toLowerCase().replace(/[\s–—]+/g, '-').replace(/[^a-z0-9-]/g, '');
+        gdeltEntry.desc = gdeltEntry.desc.replace(seed.canonical, seed.name);
+        // Ensure countryId is set (GDELT uses info.id which may differ from seed.countryId)
+        if (seed.countryId && !gdeltEntry.countryId) gdeltEntry.countryId = seed.countryId;
+      } else {
+        // Seed not found in GDELT — add from seed state if still active
+        if (conflictState === 'inactive') {
+          if (DEBUG_THREATS) {
+            console.log(`[threats:seed-decay] ${seed.name} score=${seedScore.toFixed(1)} < threshold=${ACTIVE_THRESHOLD} — removed from map`);
+          }
+          continue;
+        }
+        const level: ThreatLevel =
+          seedScore >= SCORE_CRITICAL ? 'critical' :
+          seedScore >= SCORE_HIGH     ? 'high' :
+          seedScore >= SCORE_ELEVATED ? 'elevated' : 'low';
+        threatMap.set(seed.canonical, {
+          id:                 seed.name.toLowerCase().replace(/[\s–—]+/g, '-').replace(/[^a-z0-9-]/g, ''),
+          name:               seed.name,
+          lat:                seed.lat,
+          lon:                seed.lon,
+          level,
+          desc:               `${seed.name} — ${riskLabel(level)} · Active conflict`,
+          countryId:          seed.countryId,
+          score:              Math.round(seedScore),
+          direction:          '→',
+          accelerationPct:    0,
+          recentEventCount:   0,
+          lastEventTimestamp: batchTimestamp,
+          conflictState,
+        });
+      }
     }
 
     // Merge secondary sources — each enriches or adds to the GDELT baseline

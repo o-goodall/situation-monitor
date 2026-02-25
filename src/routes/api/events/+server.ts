@@ -15,6 +15,8 @@ const RSS_FEEDS = [
   'https://news.google.com/rss/search?q=bombing+casualties+dead&hl=en-US&gl=US&ceid=US:en',
   'https://news.google.com/rss/search?q=massacre+OR+genocide+OR+mass+killing&hl=en-US&gl=US&ceid=US:en',
   'https://news.google.com/rss/search?q=insurgency+attack+killed+OR+wounded&hl=en-US&gl=US&ceid=US:en',
+  // Al Jazeera — primary source for live conflict news (per spec)
+  'https://www.aljazeera.com/xml/rss/all.xml',
 ];
 
 const ARTICLES_PER_FEED = 8;
