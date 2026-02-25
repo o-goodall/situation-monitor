@@ -157,6 +157,10 @@
     top_conflicts: TopConflict[];
     event_count: number;
     sources_used: string[];
+    defcon_description: string;
+    source_url: string;
+    updated_month: string;
+    from_live_source: boolean;
   }
   let conflictSummary: ConflictSummary | null = null;
   let conflictLoading = false;
@@ -1110,7 +1114,7 @@
       <button class="crb globe-toggle-btn" class:crb--active={intelView==='globe'} on:click={() => switchIntelView('globe')} aria-pressed={intelView === 'globe'} title="Globe — live world events map">🌐 Globe</button>
       <button class="crb" class:crb--active={intelView==='classic'} on:click={() => switchIntelView('classic')} aria-pressed={intelView === 'classic'} title="Classic — news feed">☰ News</button>
       <button class="crb" class:crb--active={intelView==='cutting-edge'} on:click={() => switchIntelView('cutting-edge')} aria-pressed={intelView === 'cutting-edge'} title="Cutting Edge — prediction markets">◈ Markets</button>
-      <button class="crb" class:crb--active={intelView==='conflict'} on:click={() => switchIntelView('conflict')} aria-pressed={intelView === 'conflict'} title="Conflict Summary — DEFCON-style global threat level">⚔️ Conflict</button>
+      <button class="crb" class:crb--active={intelView==='conflict'} on:click={() => switchIntelView('conflict')} aria-pressed={intelView === 'conflict'} title="DEFCON — live global threat level from defconlevel.com">🛡️ DEFCON</button>
     </div>
   </div>
 
@@ -1212,12 +1216,12 @@
     </div>
 
     {:else if intelView === 'conflict'}
-    <!-- ── CONFLICT SUMMARY: DEFCON-style global threat level ── -->
+    <!-- ── DEFCON: Live global threat level from defconlevel.com ── -->
     <div class="gc intel-gc globe-gc" style="padding:20px 18px;">
       <div class="gc-head" style="margin-bottom:14px;">
         <div>
-          <p class="gc-title">Global Conflict Summary</p>
-          {#if conflictSummary}<p class="dim" style="margin-top:3px;">Updated {conflictSummary.date}</p>{/if}
+          <p class="gc-title">Live Threat Intelligence{#if conflictSummary} · Updated {conflictSummary.updated_month}{/if}</p>
+          <p class="dim" style="margin-top:3px;">Current DEFCON Level {new Date().getFullYear()} | Today's Alert Status</p>
         </div>
         <div style="display:flex;align-items:center;gap:8px;">
           <span class="globe-badge" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.12);color:#f87171;">DAILY</span>
@@ -1243,7 +1247,7 @@
           </div>
           <div class="conflict-hero-info">
             <p class="conflict-score-label">Global Score <span class="conflict-score-val" style="color:{col};">{conflictSummary.global_score}<span style="font-size:.7em;font-weight:500;color:var(--t3);">/100</span></span></p>
-            <p class="conflict-summary-text">{conflictSummary.summary}</p>
+            <p class="conflict-summary-text">{conflictSummary.defcon_description || conflictSummary.summary}</p>
             <div class="conflict-score-bar-wrap">
               <div class="conflict-score-bar" style="width:{conflictSummary.global_score}%;background:{col};"></div>
             </div>
@@ -1274,12 +1278,15 @@
           </div>
         {/if}
 
-        <!-- Footer: sources -->
-        {#if conflictSummary.sources_used.length > 0}
-          <p class="dim" style="margin-top:14px;font-size:.6rem;letter-spacing:.04em;">
+        <!-- Footer: source attribution -->
+        <p class="dim" style="margin-top:14px;font-size:.6rem;letter-spacing:.04em;">
+          {#if conflictSummary.from_live_source}
+            Source: <a href={conflictSummary.source_url} target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">{conflictSummary.source_url}</a>
+            {#if conflictSummary.sources_used.length > 0} · {conflictSummary.sources_used.join(' · ')} · {conflictSummary.event_count} events analysed{/if}
+          {:else if conflictSummary.sources_used.length > 0}
             Sources: {conflictSummary.sources_used.join(' · ')} · {conflictSummary.event_count} events analysed
-          </p>
-        {/if}
+          {/if}
+        </p>
       {/if}
     </div>
 
