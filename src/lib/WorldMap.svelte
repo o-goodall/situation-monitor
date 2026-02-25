@@ -319,8 +319,9 @@
       }
 
       // ── Global conflict event markers (one solid dot per country) ───
-      // Color matches country severity fill. No glow rings, no labels.
+      // Only rendered when Al Jazeera has an active story for this zone.
       for (const ct of globalThreatData.threats) {
+        if (ct.stories.length === 0) continue;
         const pos = projection([ct.lon, ct.lat]);
         if (!pos) continue;
         const [x, y] = pos;
@@ -342,9 +343,9 @@
         }
 
         // Build tooltip lines: severity label, then each story
-        const severityLabel = ct.severity === 'extreme' ? 'EXTREME — CLED top tier'
-          : ct.severity === 'high' ? 'HIGH — CLED second tier'
-          : 'TURBULENT — CLED monitored';
+        const severityLabel = ct.severity === 'extreme' ? 'Extreme'
+          : ct.severity === 'high' ? 'High'
+          : 'Turbulent';
         const tipLines: string[] = [`Severity: ${severityLabel}`];
         for (const s of ct.stories) {
           tipLines.push(`▸ ${s.title.slice(0, 70)}`);
@@ -552,9 +553,9 @@
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>Extreme (CLED)</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffaa00;"></span><span>High (CLED)</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span><span>Turbulent (CLED)</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>Extreme</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffaa00;"></span><span>High</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span><span>Turbulent</span></div>
       {#if polymarketThreats.length > 0}
         <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #f59e0b;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#f59e0b;">Market signals</span></div>
       {/if}

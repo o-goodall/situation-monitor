@@ -7,15 +7,9 @@ import nlp from 'compromise';
 const parser = new Parser();
 
 // ── RSS feeds to scrape ────────────────────────────────────────
-// Narrowed to direct physical violence signals only (no diplomatic/political chatter)
+// Al Jazeera is the exclusive source for live geopolitical/conflict events.
 const RSS_FEEDS = [
-  'https://news.google.com/rss/search?q=airstrike+OR+missile+strike+killed&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=armed+attack+civilians+killed&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=military+assault+fatalities&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=bombing+casualties+dead&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=massacre+OR+genocide+OR+mass+killing&hl=en-US&gl=US&ceid=US:en',
-  'https://news.google.com/rss/search?q=insurgency+attack+killed+OR+wounded&hl=en-US&gl=US&ceid=US:en',
-  // Al Jazeera — primary source for live conflict news (per spec)
+  'https://www.aljazeera.com/xml/rss/subjects/conflict.xml',
   'https://www.aljazeera.com/xml/rss/all.xml',
 ];
 
