@@ -7,37 +7,27 @@ const parser = new Parser();
 /**
  * GET /api/global-threats
  *
- * Fetches serious global conflict events from trusted RSS sources:
- *   1. Al Jazeera – Conflict Section
- *   2. ReliefWeb – UN OCHA Conflicts & Crises
- *
- * Events are filtered by conflict keywords and casualty threshold,
- * geocoded via Nominatim, and returned as GlobalThreatEvent[].
+ * Fetches serious global conflict events from Al Jazeera Conflict RSS feed.
+ * Events are filtered by conflict keywords and casualty threshold (≥10),
+ * geocoded via Nominatim, aggregated by country, and returned as CountryThreat[].
  *
  * Intended to be called by the Vercel cron job every 30 minutes
  * (configured in vercel.json).
  */
 
-// ── Trusted RSS sources (per spec) ────────────────────────────
-const RSS_FEEDS = [
-  { url: 'https://www.aljazeera.com/xml/rss/subjects/conflict.xml', source: 'Al Jazeera' },
-  { url: 'https://reliefweb.int/updates/rss.xml',                   source: 'ReliefWeb'  },
-];
-
-const ARTICLES_PER_FEED = 15;
+// ── Single trusted RSS source ──────────────────────────────────
+const RSS_URL = 'https://www.aljazeera.com/xml/rss/subjects/conflict.xml';
+const ARTICLES_LIMIT = 20;
 
 // ── Conflict keyword filter ────────────────────────────────────
-// Only events matching at least one of these keywords are retained.
 const CONFLICT_KEYWORDS = [
-  'killed', 'dead', 'attack', 'bombing', 'shelling', 'massacre',
-  'clashes', 'casualties', 'war', 'conflict', 'airstrike', 'air strike',
-  'militants', 'rebels', 'displaced', 'violence', 'explosion', 'strike',
-  'offensive', 'assault', 'troops', 'military', 'gunfire', 'artillery',
+  'killed', 'dead', 'bombing', 'airstrike', 'attack',
+  'massacre', 'clashes', 'shelling', 'war', 'invasion',
+  'militants', 'rebels', 'siege', 'offensive',
 ];
 const CONFLICT_KW_RE = new RegExp(`\\b(${CONFLICT_KEYWORDS.join('|')})\\b`, 'i');
 
-// ── Casualty extraction (rough) ───────────────────────────────
-// Matches patterns like "killed 45", "45 killed", "150 dead", "over 200 casualties"
+// ── Casualty extraction ────────────────────────────────────────
 const CASUALTY_RE = /(?:(\d{1,5})\s+(?:killed|dead|casualties|deaths|wounded|injured))|(?:(?:killed|dead|casualties|deaths|wounded|injured)\s+(\d{1,5}))/gi;
 
 function extractCasualties(text: string): number | null {
@@ -53,12 +43,14 @@ function extractCasualties(text: string): number | null {
 }
 
 // ── Severity classification ────────────────────────────────────
-export type GlobalThreatSeverity = 'major' | 'medium' | 'minor';
+export type GlobalThreatSeverity = 'red' | 'orange' | 'green';
+
+const SEVERITY_RANK: Record<GlobalThreatSeverity, number> = { red: 2, orange: 1, green: 0 };
 
 function classifySeverity(casualties: number | null): GlobalThreatSeverity {
-  if (casualties !== null && casualties >= 200) return 'major';
-  if (casualties !== null && casualties >= 50)  return 'medium';
-  return 'minor';
+  if (casualties !== null && casualties >= 200) return 'red';
+  if (casualties !== null && casualties >= 50)  return 'orange';
+  return 'green';
 }
 
 // ── Geocode cache + Nominatim helper ──────────────────────────
@@ -74,7 +66,7 @@ async function geocode(place: string): Promise<{ lat: number; lon: number } | nu
     );
     if (!res.ok) { geoCache[place] = null; return null; }
     const data: Array<{ lat: string; lon: string }> = await res.json();
-    if (!data.length)  { geoCache[place] = null; return null; }
+    if (!data.length) { geoCache[place] = null; return null; }
     const result = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
     geoCache[place] = result;
     return result;
@@ -84,42 +76,41 @@ async function geocode(place: string): Promise<{ lat: number; lon: number } | nu
   }
 }
 
-// ── Location extraction — simple country/city name lookup ─────
-// Matches known high-risk country names in the title/summary.
+// ── Location extraction ────────────────────────────────────────
 const KNOWN_LOCATIONS: [RegExp, string][] = [
-  [/\bukraine\b/i,            'Ukraine'],
-  [/\bgaza\b/i,               'Gaza'],
-  [/\bpalestine\b/i,          'Palestine'],
-  [/\bisrael\b/i,             'Israel'],
-  [/\bsyria\b/i,              'Syria'],
-  [/\byemen\b/i,              'Yemen'],
-  [/\bsudan\b/i,              'Sudan'],
-  [/\bsomalia\b/i,            'Somalia'],
-  [/\bafghanistan\b/i,        'Afghanistan'],
-  [/\biraq\b/i,               'Iraq'],
-  [/\biran\b/i,               'Iran'],
-  [/\bmyanmar\b|burma/i,      'Myanmar'],
-  [/\bethiopia\b/i,           'Ethiopia'],
-  [/\bdrc\b|congo\b/i,        'DR Congo'],
-  [/\bmali\b/i,               'Mali'],
-  [/\bburnkina\s*faso\b|burkina/i, 'Burkina Faso'],
-  [/\bnigeria\b/i,            'Nigeria'],
-  [/\bliby/i,                 'Libya'],
-  [/\bhaiti\b/i,              'Haiti'],
-  [/\blebanon\b/i,            'Lebanon'],
-  [/\bpakistan\b/i,           'Pakistan'],
-  [/\bindia\b/i,              'India'],
-  [/\bkashmir\b/i,            'Kashmir'],
-  [/\bnorth\s*korea\b/i,      'North Korea'],
-  [/\btaiwan\b/i,             'Taiwan'],
-  [/\bcameroon\b/i,           'Cameroon'],
-  [/\bmozambique\b/i,         'Mozambique'],
-  [/south\s*sudan/i,          'South Sudan'],
-  [/\bcolumbia\b|\bcolombia\b/i, 'Colombia'],
-  [/\bmexico\b/i,             'Mexico'],
-  [/\bvenezuela\b/i,          'Venezuela'],
-  [/\bchad\b/i,               'Chad'],
-  [/central\s*african\s*republic\b/i, 'Central African Republic'],
+  [/\bukraine\b/i,                       'Ukraine'],
+  [/\bgaza\b/i,                          'Gaza'],
+  [/\bpalestine\b/i,                     'Palestine'],
+  [/\bisrael\b/i,                        'Israel'],
+  [/\bsyria\b/i,                         'Syria'],
+  [/\byemen\b/i,                         'Yemen'],
+  [/\bsudan\b/i,                         'Sudan'],
+  [/\bsomalia\b/i,                       'Somalia'],
+  [/\bafghanistan\b/i,                   'Afghanistan'],
+  [/\biraq\b/i,                          'Iraq'],
+  [/\biran\b/i,                          'Iran'],
+  [/\bmyanmar\b|burma/i,                 'Myanmar'],
+  [/\bethiopia\b/i,                      'Ethiopia'],
+  [/\bdrc\b|congo\b/i,                   'DR Congo'],
+  [/\bmali\b/i,                          'Mali'],
+  [/\bburnkina\s*faso\b|burkina/i,       'Burkina Faso'],
+  [/\bnigeria\b/i,                       'Nigeria'],
+  [/\bliby/i,                            'Libya'],
+  [/\bhaiti\b/i,                         'Haiti'],
+  [/\blebanon\b/i,                       'Lebanon'],
+  [/\bpakistan\b/i,                      'Pakistan'],
+  [/\bindia\b/i,                         'India'],
+  [/\bkashmir\b/i,                       'Kashmir'],
+  [/\bnorth\s*korea\b/i,                 'North Korea'],
+  [/\btaiwan\b/i,                        'Taiwan'],
+  [/\bcameroon\b/i,                      'Cameroon'],
+  [/\bmozambique\b/i,                    'Mozambique'],
+  [/south\s*sudan/i,                     'South Sudan'],
+  [/\bcolumbia\b|\bcolombia\b/i,         'Colombia'],
+  [/\bmexico\b/i,                        'Mexico'],
+  [/\bvenezuela\b/i,                     'Venezuela'],
+  [/\bchad\b/i,                          'Chad'],
+  [/central\s*african\s*republic\b/i,    'Central African Republic'],
 ];
 
 function extractLocation(text: string): string | null {
@@ -129,58 +120,65 @@ function extractLocation(text: string): string | null {
   return null;
 }
 
-export interface GlobalThreatEvent {
-  id: string;
+// ── TTL constants ──────────────────────────────────────────────
+const TTL_MS       = 7 * 24 * 3600 * 1000; // 7-day TTL per spec
+const NEW_STORY_MS = 2 * 3600 * 1000;      // story is "new" if published within 2 hours
+
+// ── Output types ───────────────────────────────────────────────
+export interface StoryEntry {
   title: string;
   summary: string;
-  location: string;
-  lat: number;
-  lon: number;
   casualties: number | null;
-  severity: GlobalThreatSeverity;
-  pubDate: string;
+  date: string;
   link: string;
   source: string;
+  createdAt: string;
+  expiresAt: string;
 }
 
-// ── Recency filter (7-day TTL per spec) ───────────────────────
-const RECENCY_HOURS = 168;
-function isRecent(pubDate: string): boolean {
-  return Date.now() - new Date(pubDate).getTime() <= RECENCY_HOURS * 3_600_000;
+export interface CountryThreat {
+  country: string;
+  severity: GlobalThreatSeverity;
+  lat: number;
+  lon: number;
+  hasNew: boolean;
+  stories: StoryEntry[];
 }
 
 // ── Module-level response cache (30-minute TTL) ────────────────
-let _cachedResponse: { events: GlobalThreatEvent[]; updatedAt: string } | null = null;
+let _cachedResponse: { threats: CountryThreat[]; updatedAt: string } | null = null;
 let _cacheExpiresAt = 0;
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes (matches cron schedule)
+const CACHE_TTL_MS = 30 * 60 * 1000;
 
 // ── Main handler ───────────────────────────────────────────────
 export async function GET(_event: RequestEvent) {
   if (_cachedResponse && Date.now() < _cacheExpiresAt) {
-    return json(_cachedResponse, { headers: { 'Cache-Control': 's-maxage=1800, stale-while-revalidate=120' } });
+    // Filter expired stories before returning cached response
+    const now = Date.now();
+    const threats = _cachedResponse.threats
+      .map(ct => ({ ...ct, stories: ct.stories.filter(s => now < new Date(s.expiresAt).getTime()) }))
+      .filter(ct => ct.stories.length > 0);
+    return json(
+      { threats, updatedAt: _cachedResponse.updatedAt },
+      { headers: { 'Cache-Control': 's-maxage=1800, stale-while-revalidate=120' } }
+    );
   }
 
   try {
-    const feedResults = await Promise.allSettled(
-      RSS_FEEDS.map(f => parser.parseURL(f.url).then(feed => ({ feed, source: f.source })))
-    );
+    const feed = await parser.parseURL(RSS_URL);
+    const now = Date.now();
 
-    // Collect raw items from all feeds
-    interface RawItem { title: string; link: string; summary: string; pubDate: string; source: string }
+    // Collect raw items
+    interface RawItem { title: string; link: string; summary: string; pubDate: string }
     const raw: RawItem[] = [];
-    for (const result of feedResults) {
-      if (result.status !== 'fulfilled') continue;
-      const { feed, source } = result.value;
-      for (const item of feed.items.slice(0, ARTICLES_PER_FEED)) {
-        if (!item.title || !item.link) continue;
-        raw.push({
-          title:   item.title,
-          link:    item.link,
-          summary: item.contentSnippet ?? item.summary ?? item.content ?? '',
-          pubDate: item.pubDate ?? new Date().toISOString(),
-          source,
-        });
-      }
+    for (const item of feed.items.slice(0, ARTICLES_LIMIT)) {
+      if (!item.title || !item.link) continue;
+      raw.push({
+        title:   item.title,
+        link:    item.link,
+        summary: item.contentSnippet ?? item.summary ?? item.content ?? '',
+        pubDate: item.pubDate ?? new Date().toISOString(),
+      });
     }
 
     // Deduplicate by title prefix
@@ -192,14 +190,14 @@ export async function GET(_event: RequestEvent) {
       return true;
     });
 
-    // Filter: recency + conflict keyword match
+    // Filter: within 7-day TTL + conflict keyword match
     const filtered = unique.filter(item => {
-      if (!isRecent(item.pubDate)) return false;
-      const text = `${item.title} ${item.summary}`;
-      return CONFLICT_KW_RE.test(text);
+      const age = now - new Date(item.pubDate).getTime();
+      if (age > TTL_MS) return false;
+      return CONFLICT_KW_RE.test(`${item.title} ${item.summary}`);
     });
 
-    // Extract location + casualties, keep only events with a known location
+    // Extract location + casualties; discard events without a known location or <10 casualties
     const withMeta = filtered
       .map(item => {
         const text = `${item.title} ${item.summary}`;
@@ -207,10 +205,14 @@ export async function GET(_event: RequestEvent) {
         const casualties = extractCasualties(text);
         return { ...item, location, casualties };
       })
-      .filter((item): item is typeof item & { location: string } => item.location !== null);
+      .filter((item): item is typeof item & { location: string } => {
+        if (item.location === null) return false;
+        if (item.casualties !== null && item.casualties < 10) return false;
+        return true;
+      });
 
-    // Geocode (use cache-first approach; throttle actual network calls)
-    const events: GlobalThreatEvent[] = [];
+    // Geocode (cache-first; throttle network calls)
+    const countryMap = new Map<string, { geo: { lat: number; lon: number }; items: typeof withMeta }>();
     let networkCalls = 0;
 
     for (const item of withMeta) {
@@ -220,47 +222,64 @@ export async function GET(_event: RequestEvent) {
       const geo = await geocode(item.location);
       if (!alreadyCached) {
         networkCalls++;
-        await new Promise(resolve => setTimeout(resolve, 1100)); // respect 1 req/s
+        await new Promise(resolve => setTimeout(resolve, 1100));
       }
       if (!geo) continue;
 
-      // Apply casualty threshold: require ≥10 casualties OR keyword match at severity level
-      if (item.casualties !== null && item.casualties < 10) continue;
-
-      const severity = classifySeverity(item.casualties);
-      const id = Buffer.from(item.title.slice(0, 40)).toString('base64');
-
-      events.push({
-        id,
-        title:     item.title,
-        summary:   item.summary.slice(0, 300),
-        location:  item.location,
-        lat:       geo.lat,
-        lon:       geo.lon,
-        casualties: item.casualties,
-        severity,
-        pubDate:   item.pubDate,
-        link:      item.link,
-        source:    item.source,
-      });
+      const existing = countryMap.get(item.location);
+      if (existing) {
+        existing.items.push(item);
+      } else {
+        countryMap.set(item.location, { geo, items: [item] });
+      }
     }
 
-    // Sort: major first, then by recency
-    events.sort((a, b) => {
-      const severityOrder: Record<GlobalThreatSeverity, number> = { major: 2, medium: 1, minor: 0 };
-      const sd = severityOrder[b.severity] - severityOrder[a.severity];
+    // Build aggregated CountryThreat objects
+    const createdAt = new Date(now).toISOString();
+    const expiresAt = new Date(now + TTL_MS).toISOString();
+
+    const threats: CountryThreat[] = [];
+    for (const [country, { geo, items }] of countryMap) {
+      const stories: StoryEntry[] = items.map(item => ({
+        title:      item.title,
+        summary:    item.summary.slice(0, 300),
+        casualties: item.casualties,
+        date:       item.pubDate,
+        link:       item.link,
+        source:     'Al Jazeera',
+        createdAt,
+        expiresAt,
+      }));
+
+      // Highest severity across all stories for this country
+      const severity = stories.reduce<GlobalThreatSeverity>((best, s) => {
+        const sv = classifySeverity(s.casualties);
+        return SEVERITY_RANK[sv] > SEVERITY_RANK[best] ? sv : best;
+      }, 'green');
+
+      // hasNew: true if any story was published within the last 2 hours
+      const hasNew = stories.some(s => now - new Date(s.date).getTime() < NEW_STORY_MS);
+
+      threats.push({ country, severity, lat: geo.lat, lon: geo.lon, hasNew, stories });
+    }
+
+    // Sort: highest severity first, then most-recent story first
+    threats.sort((a, b) => {
+      const sd = SEVERITY_RANK[b.severity] - SEVERITY_RANK[a.severity];
       if (sd !== 0) return sd;
-      return new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime();
+      const aLatest = Math.max(...a.stories.map(s => new Date(s.date).getTime()));
+      const bLatest = Math.max(...b.stories.map(s => new Date(s.date).getTime()));
+      return bLatest - aLatest;
     });
 
-    const payload = { events, updatedAt: new Date().toISOString() };
+    const payload = { threats, updatedAt: new Date().toISOString() };
     _cachedResponse = payload;
-    _cacheExpiresAt = Date.now() + CACHE_TTL_MS;
+    _cacheExpiresAt = now + CACHE_TTL_MS;
 
     return json(payload, { headers: { 'Cache-Control': 's-maxage=1800, stale-while-revalidate=120' } });
   } catch {
     return json(
-      { events: [], updatedAt: new Date().toISOString() },
+      { threats: [], updatedAt: new Date().toISOString() },
       { headers: { 'Cache-Control': 's-maxage=60' } }
     );
   }

@@ -2,7 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import type { Threat } from '$lib/settings';
   import type { ThreatEvent } from '../routes/api/events/+server';
-  import type { GlobalThreatEvent } from '../routes/api/global-threats/+server';
+  import type { CountryThreat } from '../routes/api/global-threats/+server';
 
   export let polymarketThreats: { question: string; url: string; probability: number; topOutcome: string }[] = [];
 
@@ -100,18 +100,18 @@
     low:      '#0088ff',
   };
 
-  /** Colour scheme for global-threat markers keyed by severity (casualty-based) */
+  /** Colour scheme for global-threat markers keyed by severity */
   const GLOBAL_THREAT_COLORS: Record<string, string> = {
-    major:  '#ff2200',   // 200+ casualties — red
-    medium: '#ffaa00',   // 50–199 casualties — orange/amber
-    minor:  '#00cc44',   // <50 casualties / keyword only — green
+    red:    '#ff2200',   // 200+ casualties
+    orange: '#ffaa00',   // 50–199 casualties
+    green:  '#00cc44',   // 10–49 casualties
   };
 
   /** Semi-transparent fills matching GLOBAL_THREAT_COLORS for country shading */
   const GLOBAL_THREAT_COUNTRY_FILLS: Record<string, string> = {
-    major:  'rgba(255,34,0,0.32)',
-    medium: 'rgba(255,170,0,0.25)',
-    minor:  'rgba(0,204,68,0.15)',
+    red:    'rgba(255,34,0,0.32)',
+    orange: 'rgba(255,170,0,0.25)',
+    green:  'rgba(0,204,68,0.15)',
   };
 
   /** Maps global-threat location names to ISO 3166-1 numeric country IDs (topojson) */
@@ -130,19 +130,19 @@
   /** ISO numeric ID → global-threat severity (highest for that country) */
   let globalThreatCountryFills = new Map<string, string>();
 
-  /** IDs of global-threat events the user has already hovered (persisted in localStorage) */
+  /** Country names the user has already hovered (persisted in localStorage) */
   const SEEN_KEY = 'wm-seen-global-threats';
   function loadSeenIds(): Set<string> {
     if (typeof localStorage === 'undefined') return new Set();
     try { return new Set(JSON.parse(localStorage.getItem(SEEN_KEY) ?? '[]')); } catch { return new Set(); }
   }
-  function markEventSeen(id: string, seenIds: Set<string>) {
-    seenIds.add(id);
+  function markCountrySeen(country: string, seenIds: Set<string>) {
+    seenIds.add(country);
     if (typeof localStorage !== 'undefined') {
       try { localStorage.setItem(SEEN_KEY, JSON.stringify([...seenIds])); } catch { /* ignore */ }
     }
   }
-  let seenEventIds = new Set<string>();
+  let seenCountries = new Set<string>();
 
   /** Semi-transparent country fill colours keyed by threat level */
   const COUNTRY_THREAT_FILLS: Record<string, string> = {
@@ -215,8 +215,8 @@
     return res.json();
   }
 
-  /** Fetch serious global conflict events from trusted RSS sources */
-  async function fetchGlobalThreats(): Promise<{ events: GlobalThreatEvent[]; updatedAt: string }> {
+  /** Fetch serious global conflict events from Al Jazeera RSS (aggregated by country) */
+  async function fetchGlobalThreats(): Promise<{ threats: CountryThreat[]; updatedAt: string }> {
     const res = await fetch('/api/global-threats');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
@@ -231,12 +231,12 @@
         Promise.all([import('d3'), import('topojson-client')]),
         fetchThreats(),
         fetchEvents(),
-        fetchGlobalThreats().catch(() => ({ events: [] as GlobalThreatEvent[], updatedAt: '' })),
+        fetchGlobalThreats().catch(() => ({ threats: [] as CountryThreat[], updatedAt: '' })),
       ]);
       d3Module = d3;
 
-      // Load seen-event IDs from localStorage so "New" badges reflect fresh visits
-      seenEventIds = loadSeenIds();
+      // Load seen-country keys from localStorage so "New" badges reflect fresh visits
+      seenCountries = loadSeenIds();
 
       const { threats, updatedAt } = threatData;
       // Build a map from ISO numeric country ID → highest threat level so country
@@ -244,22 +244,12 @@
       countryLevelMap = buildCountryLevelMap(threats);
       threatsUpdatedAt = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
-      // Build global-threat country fill map: ISO ID → highest severity from global events
-      // Deduplicate to one event per country (highest severity) for both fills and markers.
-      const SEVERITY_RANK: Record<string, number> = { major: 2, medium: 1, minor: 0 };
-      const countryEventMap = new Map<string, GlobalThreatEvent>();
-      for (const gev of globalThreatData.events) {
-        const existing = countryEventMap.get(gev.location);
-        if (!existing || (SEVERITY_RANK[gev.severity] ?? 0) > (SEVERITY_RANK[existing.severity] ?? 0)) {
-          countryEventMap.set(gev.location, gev);
-        }
-      }
+      // Build global-threat country fill map: ISO ID → severity (from aggregated API)
       globalThreatCountryFills = new Map<string, string>();
-      for (const [location, gev] of countryEventMap) {
-        const isoId = LOCATION_TO_ISO_ID[location];
-        if (isoId) globalThreatCountryFills.set(isoId, gev.severity);
+      for (const ct of globalThreatData.threats) {
+        const isoId = LOCATION_TO_ISO_ID[ct.country];
+        if (isoId) globalThreatCountryFills.set(isoId, ct.severity);
       }
-      const dedupedGlobalEvents = Array.from(countryEventMap.values());
 
       // Store major events (critical + high only) for the story panel
       majorEvents = eventData.events.filter(e => e.level === 'critical' || e.level === 'high').slice(0, MAX_MAJOR_EVENTS);
@@ -374,53 +364,53 @@
           .on('mouseleave', hideTip);
       }
 
-      // ── Global conflict event markers (from trusted RSS sources) ───
-      // One marker per country (highest severity); color: red/orange/green per severity.
-      for (const gev of dedupedGlobalEvents) {
-        const pos = projection([gev.lon, gev.lat]);
+      // ── Global conflict event markers (one solid dot per country) ───
+      // Color matches country severity fill. No glow rings, no labels.
+      for (const ct of globalThreatData.threats) {
+        const pos = projection([ct.lon, ct.lat]);
         if (!pos) continue;
         const [x, y] = pos;
-        const col = GLOBAL_THREAT_COLORS[gev.severity] ?? '#00cc44';
-        const r = gev.severity === 'major' ? 5.5 : gev.severity === 'medium' ? 4 : 3;
+        const col = GLOBAL_THREAT_COLORS[ct.severity] ?? '#00cc44';
+        const r = ct.severity === 'red' ? 5.5 : ct.severity === 'orange' ? 4 : 3;
 
-        // Outer glow ring
-        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 4)
-          .attr('fill', col).attr('fill-opacity', 0.10)
-          .attr('stroke', col).attr('stroke-width', 0.6).attr('stroke-opacity', 0.35)
-          .attr('class', 'wm-pulse');
-        // Core dot
+        // Solid core dot — no glow ring, no labels
         mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
-          .attr('fill', col).attr('fill-opacity', 0.7);
+          .attr('fill', col).attr('fill-opacity', 0.85);
 
-        // "New" badge — shown until the user hovers; tracks seen state in localStorage
-        const isNew = !seenEventIds.has(gev.id);
+        // "New" badge — subtle circular dot in Bitcoin orange, disappears on hover
+        const isNew = ct.hasNew && !seenCountries.has(ct.country);
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let badgeGroup: any = null;
+        let badge: any = null;
         if (isNew) {
-          badgeGroup = mapGroup.append('g').attr('class', 'wm-new-badge')
-            .attr('transform', `translate(${x + r + 1},${y - r - 5})`);
-          badgeGroup.append('rect').attr('x', 0).attr('y', -7).attr('width', 20).attr('height', 8)
-            .attr('rx', 2).attr('fill', '#22c55e').attr('fill-opacity', 0.92);
-          badgeGroup.append('text').attr('x', 10).attr('y', -1)
-            .attr('fill', '#fff').attr('font-size', '5.5px').attr('font-family', 'monospace')
-            .attr('font-weight', 'bold').attr('text-anchor', 'middle')
-            .attr('pointer-events', 'none').text('NEW');
+          badge = mapGroup.append('circle')
+            .attr('cx', x + r + 2).attr('cy', y - r - 2).attr('r', 3)
+            .attr('fill', '#F7931A').attr('pointer-events', 'none');
         }
 
+        // Build tooltip lines: severity label, then each story
+        const severityLabel = ct.severity === 'red' ? 'HIGH — 200+ casualties'
+          : ct.severity === 'orange' ? 'MEDIUM — 50–199 casualties'
+          : 'LOW — notable conflict';
+        const tipLines: string[] = [`Severity: ${severityLabel}`];
+        for (const s of ct.stories) {
+          tipLines.push(`▸ ${s.title.slice(0, 70)}`);
+          const dateStr = new Date(s.date).toLocaleDateString();
+          const casStr  = s.casualties !== null ? ` · ~${s.casualties} casualties` : '';
+          tipLines.push(`  ${dateStr}${casStr}`);
+          if (s.summary) tipLines.push(`  ${s.summary.slice(0, 100)}`);
+        }
+        const firstLink = ct.stories[0]?.link;
+
         // Hit area with tooltip
-        const tipLines: string[] = [gev.title];
-        if (gev.casualties !== null) tipLines.push(`Casualties: ~${gev.casualties}`);
-        if (gev.summary) tipLines.push(gev.summary.slice(0, 120));
-        tipLines.push(`Source: ${gev.source} · ${new Date(gev.pubDate).toLocaleDateString()}`);
         mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 6)
           .attr('fill', 'transparent').attr('class', 'wm-hit')
           .on('mouseenter', (e: MouseEvent) => {
-            if (badgeGroup) { badgeGroup.remove(); badgeGroup = null; markEventSeen(gev.id, seenEventIds); }
-            showTip(e, gev.location, col, tipLines);
+            if (badge) { badge.remove(); badge = null; markCountrySeen(ct.country, seenCountries); }
+            showTip(e, ct.country, col, tipLines);
           })
           .on('mousemove', moveTip)
           .on('mouseleave', hideTip)
-          .on('click', () => window.open(gev.link, '_blank', 'noopener,noreferrer'));
+          .on('click', () => firstLink && window.open(firstLink, '_blank', 'noopener,noreferrer'));
       }
 
       // ── Threat hotspot markers (in a dedicated group for live re-renders) ──
@@ -651,9 +641,9 @@
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>Major conflict (200+)</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>High conflict (200+)</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ffaa00;"></span><span>Medium (50–199)</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#00cc44;"></span><span>Minor (&lt;50)</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#00cc44;"></span><span>Low (10–49)</span></div>
       {#if polymarketThreats.length > 0}
         <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #f59e0b;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#f59e0b;">Market signals</span></div>
       {/if}
