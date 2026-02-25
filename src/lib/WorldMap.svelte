@@ -2,7 +2,6 @@
   import { onMount, onDestroy } from 'svelte';
   import type { ThreatEvent } from '../routes/api/events/+server';
   import type { CountryThreat } from '../routes/api/global-threats/+server';
-  import type { OngoingConflict } from '../routes/api/ongoing-conflicts/+server';
 
   export let polymarketThreats: { question: string; url: string; probability: number; topOutcome: string }[] = [];
 
@@ -174,23 +173,15 @@
     return res.json();
   }
 
-  /** Fetch dynamically-detected ongoing conflict zones (ICG + Army Recognition RSS) */
-  async function fetchOngoingConflicts(): Promise<{ conflicts: OngoingConflict[]; updatedAt: string }> {
-    const res = await fetch('/api/ongoing-conflicts');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  }
-
   async function initMap() {
     mapLoading = true;
     mapError   = '';
 
     try {
-      const [[d3, topojson], eventData, globalThreatData, ongoingData] = await Promise.all([
+      const [[d3, topojson], eventData, globalThreatData] = await Promise.all([
         Promise.all([import('d3'), import('topojson-client')]),
         fetchEvents(),
         fetchGlobalThreats().catch(() => ({ threats: [] as CountryThreat[], updatedAt: '' })),
-        fetchOngoingConflicts().catch(() => ({ conflicts: [] as OngoingConflict[], updatedAt: '' })),
       ]);
       d3Module = d3;
 
@@ -369,49 +360,6 @@
 
       // Create a dedicated group for polymarket markers (so they can be updated independently)
       polyGroup = mapGroup.append('g').attr('id', 'wm-poly-group');
-
-      // ── Ongoing conflict zone markers (pulsing halos) ───────────────
-      // These are long-running conflicts dynamically sourced from ICG and
-      // Army Recognition RSS.  They appear as semi-transparent pulsing rings
-      // drawn *behind* fresh event markers so they don't obscure them.
-      const ongoingGroup = mapGroup.append('g').attr('id', 'wm-ongoing-group');
-      for (const oc of ongoingData.conflicts) {
-        const pos = projection([oc.lon, oc.lat]);
-        if (!pos) continue;
-        const [x, y] = pos;
-        const col = GLOBAL_THREAT_COLORS[oc.severity] ?? '#00cc44';
-        const rInner = oc.severity === 'red' ? 7 : oc.severity === 'orange' ? 5.5 : 4;
-        const rOuter = rInner + 5;
-
-        // Outer pulsing halo ring (CSS animation added via class)
-        ongoingGroup.append('circle')
-          .attr('cx', x).attr('cy', y).attr('r', rOuter)
-          .attr('fill', 'none')
-          .attr('stroke', col).attr('stroke-width', 1.2)
-          .attr('stroke-opacity', 0.5)
-          .attr('class', 'wm-ongoing-ring');
-
-        // Semi-transparent filled core
-        ongoingGroup.append('circle')
-          .attr('cx', x).attr('cy', y).attr('r', rInner)
-          .attr('fill', col).attr('fill-opacity', 0.22)
-          .attr('stroke', col).attr('stroke-width', 0.8)
-          .attr('stroke-opacity', 0.55);
-
-        // Tooltip hit area
-        const lastSeenStr = new Date(oc.lastSeen).toLocaleDateString();
-        const tipLines = [
-          `Ongoing: ${oc.name}`,
-          `Last reported: ${lastSeenStr}`,
-          `Severity: ${oc.severity === 'red' ? 'Major (200+)' : oc.severity === 'orange' ? 'Medium (50–199)' : 'Notable'}`,
-        ];
-        ongoingGroup.append('circle')
-          .attr('cx', x).attr('cy', y).attr('r', rOuter + 4)
-          .attr('fill', 'transparent').attr('class', 'wm-hit')
-          .on('mouseenter', (e: MouseEvent) => showTip(e, oc.country, col, tipLines))
-          .on('mousemove', moveTip)
-          .on('mouseleave', hideTip);
-      }
 
       renderPolyMarkers();
 
@@ -593,9 +541,7 @@
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>High conflict (200+)</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ffaa00;"></span><span>Medium (50–199)</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#00cc44;"></span><span>Low (10–49)</span></div>
-      <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1.5px solid rgba(255,170,0,0.6);border-radius:50%;flex-shrink:0;"></span><span style="color:rgba(255,200,80,0.8);">Ongoing conflicts</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#00cc44;"></span><span>Low / monitored</span></div>
       {#if polymarketThreats.length > 0}
         <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #f59e0b;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#f59e0b;">Market signals</span></div>
       {/if}
@@ -713,11 +659,6 @@
   @keyframes wm-new-badge-blink {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.55; }
-  }
-  :global(.wm-ongoing-ring) { animation: wm-ongoing-pulse 2.8s ease-in-out infinite; }
-  @keyframes wm-ongoing-pulse {
-    0%, 100% { opacity: .35; }
-    50%       { opacity: .75; }
   }
 
   /* ── MAJOR STORIES TICKER ───────────────────────────────── */
