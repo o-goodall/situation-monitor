@@ -139,11 +139,11 @@ async function fetchKrakenBtcHistory(range: string): Promise<PricePoint[]> {
   try {
     const url = `https://api.kraken.com/0/public/OHLC?pair=XBTUSD&interval=${interval}`;
     const res = await fetch(url, { headers: HEADERS });
-    if (!res.ok) return [];
+    if (!res.ok) return fetchCoinbaseBtcHistory(range);
     const data = await res.json();
-    if (data.error?.length) return [];
+    if (data.error?.length) return fetchCoinbaseBtcHistory(range);
     const ohlc: unknown[] = data.result?.XXBTZUSD ?? [];
-    if (!Array.isArray(ohlc)) return [];
+    if (!Array.isArray(ohlc)) return fetchCoinbaseBtcHistory(range);
     const pts: PricePoint[] = [];
     for (const candle of ohlc) {
       if (!Array.isArray(candle) || candle.length < 5) continue;
@@ -153,6 +153,60 @@ async function fetchKrakenBtcHistory(range: string): Promise<PricePoint[]> {
       if (isNaN(t) || isNaN(p)) continue;
       pts.push({ t, p });
     }
+    return pts.length > 1 ? pts : fetchCoinbaseBtcHistory(range);
+  } catch {
+    return fetchCoinbaseBtcHistory(range);
+  }
+}
+
+// Coinbase Exchange public klines API — no key required
+const COINBASE_GRANULARITY: Record<string, number> = {
+  '1d': 1800,  // 30-min candles: 48 per day (≤ 300 limit)
+  '7d': 3600,  // 1-hour candles: 168 per 7d (≤ 300 limit)
+};
+
+async function fetchCoinbaseBtcHistory(range: string): Promise<PricePoint[]> {
+  const granularity = COINBASE_GRANULARITY[range];
+  if (!granularity) return fetchCoinDeskBtcHistory(range);
+  const nowSec = Math.floor(Date.now() / 1000);
+  const days = range === '1d' ? 1 : 7;
+  const startSec = nowSec - days * 86400;
+  const url = `https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=${granularity}&start=${startSec}&end=${nowSec}`;
+  try {
+    const res = await fetch(url, { headers: HEADERS });
+    if (!res.ok) return fetchCoinDeskBtcHistory(range);
+    const data = await res.json();
+    if (!Array.isArray(data)) return fetchCoinDeskBtcHistory(range);
+    // Coinbase returns [time, low, high, open, close, volume] in DESC order
+    const pts: PricePoint[] = data
+      .map((c: number[]) => ({ t: c[0] * 1000, p: c[4] }))
+      .filter(pt => !isNaN(pt.t) && !isNaN(pt.p) && pt.p > 0)
+      .sort((a, b) => a.t - b.t);
+    return pts.length > 1 ? pts : fetchCoinDeskBtcHistory(range);
+  } catch {
+    return fetchCoinDeskBtcHistory(range);
+  }
+}
+
+// CoinDesk BPI — free daily close prices, no key required
+async function fetchCoinDeskBtcHistory(range: string): Promise<PricePoint[]> {
+  // CoinDesk only provides daily data — not useful for intraday ranges
+  if (range === '1d') return [];
+  const now = new Date();
+  const days = range === '5y' ? 1825 : range === '1y' ? 365 : 7;
+  const start = new Date(now.getTime() - days * MS_PER_DAY);
+  const fmt = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  try {
+    const url = `https://api.coindesk.com/v1/bpi/historical/close.json?start=${fmt(start)}&end=${fmt(now)}`;
+    const res = await fetch(url, { headers: HEADERS });
+    if (!res.ok) return [];
+    const data = await res.json();
+    const bpi = data.bpi ?? {};
+    const pts: PricePoint[] = Object.entries(bpi)
+      .map(([date, p]) => ({ t: new Date(date).getTime(), p: p as number }))
+      .filter(pt => !isNaN(pt.t) && pt.p > 0)
+      .sort((a, b) => a.t - b.t);
     return pts.length > 1 ? pts : [];
   } catch {
     return [];

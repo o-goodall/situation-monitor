@@ -61,7 +61,7 @@ async function getYahooChart(
 }
 
 // Gold in USD: primary source is Yahoo Finance GC=F (gold futures, USD-denominated).
-// Falls back to freegoldapi.com (converted via audUsd rate if needed).
+// Falls back to CoinGecko PAXG, metals.live, then freegoldapi.com.
 async function getGold(sinceDate?: Date): Promise<{ current: number; pctChange: number } | null> {
   // Primary: Yahoo Finance gold futures (GC=F) — quoted in USD per troy oz
   const yf = await getYahooChart('GC=F', sinceDate);
@@ -69,7 +69,43 @@ async function getGold(sinceDate?: Date): Promise<{ current: number; pctChange: 
     return { current: yf.current, pctChange: yf.pctChange };
   }
 
-  // Fallback: freegoldapi.com (may return AUD; convert if audUsd available)
+  // Fallback 1: CoinGecko PAXG — Pax Gold token is redeemable 1:1 for 1 troy oz of gold
+  try {
+    const refDate = sinceDate ?? new Date(new Date().getFullYear(), 0, 1);
+    const daysSince = Math.ceil((Date.now() - refDate.getTime()) / 86400000);
+    const days = Math.max(7, Math.min(365, daysSince + 3));
+    const res = await fetch(
+      `https://api.coingecko.com/api/v3/coins/pax-gold/market_chart?vs_currency=usd&days=${days}`,
+      { headers: HEADERS }
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const prices: [number, number][] = data.prices ?? [];
+      if (prices.length >= 2) {
+        const current = prices[prices.length - 1][1];
+        const startPrice = prices[0][1];
+        if (current > 100 && startPrice > 100) {
+          const pctChange = ((current - startPrice) / startPrice) * 100;
+          return { current, pctChange };
+        }
+      }
+    }
+  } catch { /* fall through */ }
+
+  // Fallback 2: metals.live — live spot prices, no key, CORS enabled
+  try {
+    const res = await fetch('https://api.metals.live/v1/spot/gold', { headers: HEADERS });
+    if (res.ok) {
+      const data = await res.json();
+      const price: number | undefined =
+        data?.price ?? data?.gold ?? (Array.isArray(data) ? data[0]?.gold : undefined);
+      if (price && price > 100) {
+        return { current: price, pctChange: 0 };
+      }
+    }
+  } catch { /* fall through */ }
+
+  // Fallback 3: freegoldapi.com daily JSON feed, no key
   try {
     const res = await fetch('https://freegoldapi.com/data/latest.json', { headers: HEADERS });
     if (!res.ok) return null;
