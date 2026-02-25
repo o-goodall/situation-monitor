@@ -297,11 +297,24 @@ export async function GET({ url }: RequestEvent) {
   const btcDays = BTC_DAYS[safeRange];
   const { range: yfRange, interval: yfInterval } = YF_PARAMS[safeRange];
 
-  const [btc, sp500, gold] = await Promise.all([
+  let [btc, sp500, gold] = await Promise.all([
     fetchBtcHistory(btcDays, safeRange),
     fetchYahooHistory('%5EGSPC', yfRange, yfInterval),
     fetchYahooHistory('GC=F', yfRange, yfInterval),
   ]);
+
+  // Clip all series to the requested window so data from further back
+  // (e.g. Kraken returning 13+ years of weekly candles) is not included.
+  if (safeRange === '5y') {
+    const cutoff = Date.now() - 5 * 365 * MS_PER_DAY;
+    const clip = (pts: PricePoint[]) => {
+      const idx = pts.findIndex(pt => pt.t >= cutoff);
+      return idx >= 0 ? pts.slice(idx) : pts;
+    };
+    btc   = clip(btc);
+    sp500 = clip(sp500);
+    gold  = clip(gold);
+  }
 
   return json({ btc, sp500, gold });
 }
