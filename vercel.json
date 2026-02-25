@@ -10,10 +10,6 @@
     {
       "path": "/api/global-threats",
       "schedule": "*/30 * * * *"
-    },
-    {
-      "path": "/api/ongoing-conflicts",
-      "schedule": "0 * * * *"
     }
   ]
 }
