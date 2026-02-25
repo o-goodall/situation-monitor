@@ -11,16 +11,15 @@ import { DEFAULT_THREATS, type Threat, type ThreatLevel } from '$lib/settings';
  *
  * 1. GDELT Events 2.0 (https://api.gdeltproject.org) — primary source
  *   — updated every 15 minutes
- *   — Expanded CAMEO code coverage:
- *       143/145: violent protest / riot       (protest escalation)
- *       152/154: military posture / mobilize  (military mobilization)
- *       17:      coerce, sanctions, threats   (government instability)
- *       18:      assault                      (direct violence)
- *       19:      fight                        (armed conflict)
- *       20:      mass violence                (mass killing / atrocity)
+ *   — Strict physical-violence CAMEO codes only:
+ *       18: assault (abduct, torture, kill, etc.)
+ *       19: fight (armed battle, air strike, etc.)
+ *       20: mass violence (genocide, mass atrocity, etc.)
+ *   — Diplomatic/coercive codes (17, 143, 145, 152, 154) intentionally excluded
  *   — Dual-period comparison (current vs. prior 7 days) for 7-day acceleration
  *   — Multi-factor threat score:
  *       Score = (Event Volume × Base Weight) × (1 + Acceleration Modifier)
+ *   — Only threats meeting SEVERE_THRESHOLD are included in the response
  *
  * 2. ReliefWeb (https://reliefweb.int) — UN OCHA humanitarian crisis data
  *   — ongoing disasters and crises aggregated by country
@@ -43,31 +42,42 @@ import { DEFAULT_THREATS, type Threat, type ThreatLevel } from '$lib/settings';
 // ── GDELT Events 2.0 API ──────────────────────────────────────
 // No API key required; https://api.gdeltproject.org
 //
-// Expanded CAMEO codes (Layer 1 — Raw Event Stream):
-//   • 143 = conduct violent protest
-//   • 145 = protest violently / riot
-//   • 152 = demonstrate or exhibit military or police power
-//   • 154 = mobilize or increase police power
-//   • 17  = coerce (all sub-types: embargo, sanction, blockade, threaten)
-//   • 18  = assault (all sub-types: abduct, torture, kill, etc.)
-//   • 19  = fight (all sub-types: armed battle, air strike, etc.)
-//   • 20  = mass violence (all sub-types: genocide, mass atrocity, etc.)
-const GDELT_QUERY =
-  'cameo:143 OR cameo:145 OR cameo:152 OR cameo:154 OR cameo:17 OR cameo:18 OR cameo:19 OR cameo:20';
+// Strict physical-violence CAMEO codes only (Layer 1 — Raw Event Stream):
+//   • 18 = assault (abduct, torture, kill, etc.)
+//   • 19 = fight   (armed battle, air strike, etc.)
+//   • 20 = mass violence (genocide, mass atrocity, etc.)
+//
+// Codes 143, 145 (violent protest/riot), 152, 154 (military posture/mobilize),
+// and 17 (coerce/sanctions/threats) are intentionally excluded — they generate
+// diplomatic and non-combat false positives on the conflict map.
+const GDELT_QUERY = 'cameo:18 OR cameo:19 OR cameo:20';
 
 const GDELT_TIMESPAN_DAYS = 7;
 const GDELT_TIMESPAN_MINS = GDELT_TIMESPAN_DAYS * 24 * 60; // 10_080 minutes
 const GDELT_MAX_ROWS = 500;
 
 // Layer 2 — Signal Engine: Violence Code Multiplier
-// Reflects the relative severity of each CAMEO parent code group
-// Approximate weighted average across all included codes ≈ 1.8
-const BASE_WEIGHT = 1.8;
+// With only codes 18/19/20, each event is a confirmed violence signal.
+// Approximate weighted average across physical violence codes ≈ 2.0
+const BASE_WEIGHT = 2.0;
 
 // Risk classification thresholds (after acceleration adjustment)
 const SCORE_CRITICAL = 300;
 const SCORE_HIGH     = 80;
 const SCORE_ELEVATED = 15;
+
+/**
+ * Minimum severity score for a threat to be included in the map response.
+ * Threats with score < SEVERE_THRESHOLD are treated as noise and dropped.
+ * Aligns with: severityScore = (fatalities*5) + highSeverityEventWeight + (eventFrequencyDelta*2)
+ */
+const SEVERE_THRESHOLD = 10;
+
+/**
+ * Enable debug mode to log threat rejection reasons to the server console.
+ * Set to true during threshold tuning; leave false in production.
+ */
+const DEBUG_THREATS = false;
 
 // Acceleration Modifier bounds and weight:
 //   NEW_SIGNAL_RATE: assumed 50% growth when a country first appears (no prior data)
@@ -188,11 +198,19 @@ function aggregateByCountry(features: GdeltFeature[]): Map<string, {
 /**
  * Layer 2 — Signal Engine
  *
- * Multi-factor threat score:
+ * Severity scoring model (per spec):
+ *   severityScore = (fatalities * 5) + highSeverityEventWeight + (eventFrequencyDelta * 2)
+ *
+ * Mapped to GDELT data:
+ *   highSeverityEventWeight = Event Volume × Base Weight (confirmed physical violence events)
+ *   eventFrequencyDelta     = 7-day acceleration (current − prior) / max(1, prior)
+ *   fatalities              = not available from GDELT pointdata (counted in overall score)
+ *
+ * Full score formula:
  *   Score = (Event Volume × Base Weight) × (1 + Acceleration Modifier)
  *
  * Where:
- *   Base Weight      ≈ 1.8 (weighted average of included CAMEO code severity)
+ *   Base Weight      ≈ 2.0 (confirmed violence codes 18/19/20 only)
  *   Acceleration Modifier = clamp(accelerationRate × 0.3, −0.15, +0.30)
  *     accelerationRate = (current − prior) / max(1, prior)
  *
@@ -200,7 +218,7 @@ function aggregateByCountry(features: GdeltFeature[]): Map<string, {
  *   ≥ 300 → Critical  (mass-casualty / open warfare)
  *   ≥  80 → High      (active conflict / serious instability)
  *   ≥  15 → Elevated  (rising tension / recurring violence)
- *   <  15 → Low       (monitored / occasional incidents)
+ *   <  15 → Low       (monitored / occasional incidents — below SEVERE_THRESHOLD)
  */
 function computeScore(currentCount: number, priorCount: number): {
   score: number;
@@ -544,6 +562,14 @@ export async function GET(_event: RequestEvent) {
     for (const [name, { info, count, bestLat, bestLon }] of currentMap) {
       const priorCount = priorMap.get(name)?.count ?? 0;
       const { score, level, direction, accelerationPct } = computeScore(count, priorCount);
+
+      // Apply SEVERE_THRESHOLD: only include threats with meaningful violence signal
+      if (score < SEVERE_THRESHOLD) {
+        if (DEBUG_THREATS) {
+          console.log(`[threats:reject] name=${name} score=${score} < threshold=${SEVERE_THRESHOLD} level=${level}`);
+        }
+        continue;
+      }
 
       const accelStr = accelerationPct !== 0
         ? ` (${accelerationPct > 0 ? '+' : ''}${accelerationPct}% vs prior week)`
