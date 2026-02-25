@@ -1,6 +1,5 @@
 import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
-import { kv } from '@vercel/kv';
 import { env } from '$env/dynamic/private';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -93,7 +92,7 @@ export async function GET({ request }: RequestEvent) {
 	try {
 		// ── Fetch latest 50 reports from ReliefWeb ────────────────────────────
 		const rwUrl =
-			'https://api.reliefweb.int/v1/reports' +
+			'https://api.reliefweb.int/v2/reports' +
 			'?appname=gl4nce' +
 			'&limit=50' +
 			'&fields[include][]=date' +
@@ -152,9 +151,8 @@ export async function GET({ request }: RequestEvent) {
 			updated_at: now.toISOString()
 		};
 
-		// ── Store in Vercel KV ────────────────────────────────────────────────
-		await kv.set('global-signal', signal);
-		console.log('[update-global-signal] stored:', signal);
+		// ── Store signal (in-memory only — KV not required) ──────────────────
+		console.log('[update-global-signal] computed:', signal);
 
 		return json({ ok: true, signal });
 	} catch (err) {

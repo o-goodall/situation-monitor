@@ -27,12 +27,11 @@ import { DEFAULT_THREATS, type Threat, type ThreatLevel } from '$lib/settings';
  * 3. UCDP (https://ucdp.uu.se) — Uppsala Conflict Data Program
  *   — georeferenced conflict events from the most recent available year
  *
- * 4. CEWARN (https://cewarn.org) — East Africa Conflict Early Warning System
- *   — IGAD regional conflict incident reports (best-effort)
+ * 4. CEWARN (https://cewarn.org) — removed; no public API available
  *
- * All secondary sources (2–4) are fetched in parallel and merged into GDELT
- * results. Each secondary source failure is handled gracefully — only the
- * affected source is skipped; GDELT output is preserved.
+ * All secondary sources (2–3) are fetched in parallel and merged into GDELT
+ * results. Each source failure is handled gracefully — only the
+ * affected source is skipped; seed conflicts ensure map coverage.
  *
  * Falls back to curated static DEFAULT_THREATS on any error.
  *
@@ -353,7 +352,7 @@ const FETCH_HEADERS = {
 // UN OCHA humanitarian crisis data — https://reliefweb.int/help/api
 // No API key required; updated continuously.
 const RELIEFWEB_URL =
-  'https://api.reliefweb.int/v1/disasters' +
+  'https://api.reliefweb.int/v2/disasters' +
   '?appname=situation-monitor' +
   '&profile=list' +
   '&preset=latest' +
@@ -462,10 +461,12 @@ async function fetchUcdpThreats(): Promise<Map<string, UcdpEntry>> {
     }
   }
 
-  let events = await tryYear(UCDP_YEAR);
-  // GED releases typically lag ~1 year; fall back to prior year if current is empty
-  if (!events.length) events = await tryYear(UCDP_YEAR - 1);
-  if (!events.length) throw new Error('UCDP: no data for current or prior year');
+  // GED releases typically lag ~1.5 years; try up to 3 years back
+  let events: UcdpEvent[] = [];
+  for (let y = UCDP_YEAR; y >= UCDP_YEAR - 3 && !events.length; y--) {
+    events = await tryYear(y);
+  }
+  if (!events.length) throw new Error('UCDP: no data for recent years');
 
   const map = new Map<string, UcdpEntry>();
   for (const event of events) {
@@ -487,59 +488,6 @@ async function fetchUcdpThreats(): Promise<Map<string, UcdpEntry>> {
         eventCount: 1,
         totalDeaths: deaths,
       });
-    }
-  }
-  return map;
-}
-
-// ── CEWARN integration ─────────────────────────────────────────
-// IGAD Conflict Early Warning and Response Mechanism — https://cewarn.org
-// Covers East Africa: Ethiopia, Eritrea, Djibouti, Kenya, Somalia,
-//   South Sudan, Sudan, Uganda, and adjacent areas.
-// Attempts the public incidents endpoint; gracefully skipped if unavailable.
-const CEWARN_URL = 'https://api.cewarn.org/v1/incidents?limit=200&format=json';
-
-interface CewarnIncident {
-  id?: string | number;
-  country?: string;
-  fatalities?: number;
-  incident_type?: string;
-}
-interface CewarnResponse {
-  incidents?: CewarnIncident[];
-  data?: CewarnIncident[];
-  results?: CewarnIncident[];
-}
-
-interface CewarnEntry { info: CountryInfo; level: ThreatLevel; incidentCount: number; totalFatalities: number }
-
-function cewarnLevel(totalFatalities: number): ThreatLevel {
-  if (totalFatalities >= 50) return 'critical';
-  if (totalFatalities >= 10) return 'high';
-  return 'elevated'; // all CEWARN incidents are conflict-grade by definition
-}
-
-async function fetchCewarnThreats(): Promise<Map<string, CewarnEntry>> {
-  const res = await fetch(CEWARN_URL, { headers: FETCH_HEADERS });
-  if (!res.ok) throw new Error(`CEWARN HTTP ${res.status}`);
-  const body: CewarnResponse = await res.json();
-  const incidents = body.incidents ?? body.data ?? body.results ?? [];
-
-  const map = new Map<string, CewarnEntry>();
-  for (const incident of incidents) {
-    const info = matchCountry(incident.country ?? '');
-    if (!info) continue;
-    const fatalities = incident.fatalities ?? 0;
-    const existing = map.get(info.canonical);
-    if (existing) {
-      existing.incidentCount++;
-      existing.totalFatalities += fatalities;
-      const newLevel = cewarnLevel(existing.totalFatalities);
-      if ((LEVEL_RANK.get(newLevel) ?? -1) > (LEVEL_RANK.get(existing.level) ?? -1)) {
-        existing.level = newLevel;
-      }
-    } else {
-      map.set(info.canonical, { info, level: cewarnLevel(fatalities), incidentCount: 1, totalFatalities: fatalities });
     }
   }
   return map;
@@ -612,23 +560,30 @@ export async function GET(_event: RequestEvent) {
     const priorStartDt = dtStr(new Date(now.getTime() - 2 * ROLLING_WINDOW_DAYS * 24 * 60 * 60 * 1000));
 
     // Fetch all data sources in parallel:
-    //   [0] GDELT current rolling window   (primary)
-    //   [1] GDELT prior rolling window     (for acceleration calc)
+    //   [0] GDELT current rolling window   (primary — best-effort)
+    //   [1] GDELT prior rolling window     (for acceleration calc — best-effort)
     //   [2] ReliefWeb ongoing disasters    (secondary — best-effort)
     //   [3] UCDP georeferenced events      (secondary — best-effort)
-    //   [4] CEWARN incident reports        (secondary — best-effort)
-    const [currentRes, priorRes, rwResult, ucdpResult, cewarnResult] = await Promise.all([
+    const [currentRes, priorRes, rwResult, ucdpResult] = await Promise.all([
       fetch(gdeltUrl({ timespan: GDELT_TIMESPAN_MINS }), { headers: FETCH_HEADERS }),
       fetch(gdeltUrl({ startDt: priorStartDt, endDt: priorEndDt }), { headers: FETCH_HEADERS }),
       fetchReliefWebThreats().catch(e => { console.warn('ReliefWeb fetch failed:', e); return new Map<string, ReliefWebEntry>(); }),
       fetchUcdpThreats().catch(e => { console.warn('UCDP fetch failed:', e); return new Map<string, UcdpEntry>(); }),
-      fetchCewarnThreats().catch(e => { console.warn('CEWARN fetch failed:', e); return new Map<string, CewarnEntry>(); }),
     ]);
 
-    if (!currentRes.ok) throw new Error(`GDELT HTTP ${currentRes.status}`);
-
-    const currentBody: GdeltResponse = await currentRes.json();
-    const currentFeatures: GdeltFeature[] = currentBody.features ?? currentBody.data ?? [];
+    // GDELT is best-effort — when unavailable (deprecated endpoint / quota), fall through
+    // to seed conflicts + secondary sources which remain fully functional.
+    let currentFeatures: GdeltFeature[] = [];
+    if (!currentRes.ok) {
+      console.warn(`GDELT fetch failed: HTTP ${currentRes.status} — using seed data + secondary sources`);
+    } else {
+      try {
+        const currentBody: GdeltResponse = await currentRes.json();
+        currentFeatures = currentBody.features ?? currentBody.data ?? [];
+      } catch {
+        console.warn('GDELT: JSON parse error — using seed data + secondary sources');
+      }
+    }
 
     // Prior-period data is best-effort — degrade gracefully if unavailable
     let priorFeatures: GdeltFeature[] = [];
@@ -759,9 +714,8 @@ export async function GET(_event: RequestEvent) {
     }
 
     // Merge secondary sources — each enriches or adds to the GDELT baseline
-    mergeSecondarySource(threatMap, rwResult,     'ReliefWeb', batchTimestamp);
-    mergeSecondarySource(threatMap, ucdpResult,   'UCDP',      batchTimestamp);
-    mergeSecondarySource(threatMap, cewarnResult, 'CEWARN',    batchTimestamp);
+    mergeSecondarySource(threatMap, rwResult,   'ReliefWeb', batchTimestamp);
+    mergeSecondarySource(threatMap, ucdpResult, 'UCDP',      batchTimestamp);
 
     // Only send active_conflict and escalating_tension to the map; inactive are dropped
     const threats = Array.from(threatMap.values())
