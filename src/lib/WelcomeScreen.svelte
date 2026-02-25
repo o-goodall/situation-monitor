@@ -27,7 +27,7 @@
     setTimeout(() => { hintVisible = true; }, 1800);
 
     // Start leet sweep 0.7s after mount (0.2s after tagline begins fading in)
-    // Step every 85ms so 24 chars completes in ~2s alongside the logo animation
+    // Step every 150ms so the sweep moves slowly like an orange foil sheen
     setTimeout(() => {
       if (dismissed) return;
       let i = 0;
@@ -46,9 +46,9 @@
           setTimeout(() => {
             chars[idx] = { orig, disp: orig, state: 'done' };
             chars = [...chars];
-          }, 65);
+          }, 120);
         }
-      }, 85);
+      }, 150);
     }, 700);
   });
 
@@ -228,7 +228,7 @@
     .slogan-char {
       display: inline;
       color: inherit;
-      transition: color 0.06s ease;
+      transition: color 0.35s ease;
     }
     .slogan-char.slogan-leet {
       color: #f7931a;
