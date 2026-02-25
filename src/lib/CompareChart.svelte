@@ -8,7 +8,7 @@
   export let range: '1D' | '1W' | '1Y' | '5Y' = '5Y';
 
   // ── Internal state ───────────────────────────────────────────
-  let scaleMode: 'linear' | 'log' = 'linear';
+  let scaleMode: 'linear' | 'log' = 'log';
   let visible = { btc: true, sp500: true, gold: true };
 
   type SeriesKey = 'btc' | 'sp500' | 'gold';
@@ -104,9 +104,18 @@
 
     const xScale = d3.scaleTime().domain(xDomain).range([0, iW]);
 
+    // For log scale: use a clean domain starting at a safe minimum (> 0)
+    const logYMin = Math.max(1, yMin * 0.9);
+    const logYMax = yMax * 1.1;
     const yScale = scaleMode === 'log'
-      ? d3.scaleLog().domain([Math.max(1, yMin - yPad), yMax + yPad]).range([iH, 0]).clamp(true)
+      ? d3.scaleLog().domain([logYMin, logYMax]).range([iH, 0]).clamp(true)
       : d3.scaleLinear().domain([yMin - yPad, yMax + yPad]).range([iH, 0]);
+
+    // For log scale, use power-of-2 tick candidates centred around 100 (the baseline)
+    const LOG_TICK_CANDIDATES = [5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000];
+    const yTickValues = scaleMode === 'log'
+      ? LOG_TICK_CANDIDATES.filter(v => v >= logYMin && v <= logYMax)
+      : null;
 
     // Build SVG structure
     const svg = d3.select(svgEl);
@@ -115,8 +124,8 @@
 
     const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
-    // Gridlines — horizontal
-    const yTicks = yScale.ticks(5);
+    // Gridlines — horizontal (aligned with Y tick positions)
+    const yTicks = yTickValues ?? yScale.ticks(5);
     g.append('g').attr('class', 'grid-h')
       .selectAll('line')
       .data(yTicks)
@@ -135,8 +144,8 @@
       .attr('y1', 0).attr('y2', iH)
       .attr('stroke', 'rgba(255,255,255,0.04)').attr('stroke-width', 1);
 
-    // Zero / 100 baseline (dashed)
-    if (yMin - yPad <= 100 && yMax + yPad >= 100) {
+    // 100 baseline — dashed reference line (start = breakeven)
+    if (yScale(100) >= 0 && yScale(100) <= iH) {
       g.append('line')
         .attr('x1', 0).attr('x2', iW)
         .attr('y1', yScale(100)).attr('y2', yScale(100))
@@ -145,14 +154,19 @@
         .attr('stroke-dasharray', '4 4');
     }
 
-    // Y axis labels
+    // Y axis — format log ticks as "×N" multiples of 100, or plain numbers
+    const fmtYTick = (d: d3.NumberValue): string => {
+      const v = +d;
+      if (v >= 1000) return `${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k`;
+      return `${v.toFixed(0)}`;
+    };
+
+    const yAxisBuilder = d3.axisLeft(yScale).tickSize(0).tickFormat(fmtYTick);
+    if (yTickValues) yAxisBuilder.tickValues(yTickValues);
+    else yAxisBuilder.ticks(5);
+
     g.append('g').attr('class', 'y-axis')
-      .call(
-        d3.axisLeft(yScale)
-          .ticks(5)
-          .tickSize(0)
-          .tickFormat(d => `${(+d).toFixed(0)}`)
-      )
+      .call(yAxisBuilder)
       .call(ax => ax.select('.domain').remove())
       .call(ax => ax.selectAll('text')
         .attr('fill', 'rgba(255,255,255,0.35)')
@@ -160,6 +174,17 @@
         .attr('font-family', 'monospace')
         .attr('x', -4)
       );
+
+    // Y axis label
+    g.append('text')
+      .attr('transform', `rotate(-90)`)
+      .attr('x', -iH / 2)
+      .attr('y', -margin.left + 10)
+      .attr('text-anchor', 'middle')
+      .attr('fill', 'rgba(255,255,255,0.22)')
+      .attr('font-size', '8px')
+      .attr('font-family', 'monospace')
+      .text('Indexed (100 = start)');
 
     // X axis labels
     g.append('g').attr('class', 'x-axis')

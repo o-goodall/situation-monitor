@@ -128,6 +128,23 @@ export async function GET({ url }: RequestEvent) {
     default:     days = '1';
   }
 
+  // For 5y range, clip data to the last 5 years from today so fallback sources
+  // that return more history (e.g. Kraken returning 13+ years of weekly candles)
+  // don't skew the chart.
+  const fiveYearCutoff = safeRange === '5y' ? Date.now() - 5 * 365 * MS_PER_DAY : null;
+
+  const clipToRange = (pts: PricePoint[]): PricePoint[] => {
+    if (safeRange === 'ytd') {
+      const idx = pts.findIndex(pt => pt.t >= ytdJan1);
+      return idx >= 0 ? pts.slice(idx) : pts;
+    }
+    if (fiveYearCutoff !== null) {
+      const idx = pts.findIndex(pt => pt.t >= fiveYearCutoff);
+      return idx >= 0 ? pts.slice(idx) : pts;
+    }
+    return pts;
+  };
+
   // CoinGecko primary — falls back through Binance → Kraken → CoinDesk
   try {
     const res = await fetch(
@@ -139,31 +156,17 @@ export async function GET({ url }: RequestEvent) {
     let prices: PricePoint[] = (data.prices ?? []).map(([t, p]: [number, number]) => ({ t, p }));
     if (prices.length < 2) throw new Error('insufficient data');
 
-    // Clip to Jan 1 of the current year for the ytd range
-    if (safeRange === 'ytd') {
-      const idx = prices.findIndex((pt) => pt.t >= ytdJan1);
-      prices = idx >= 0 ? prices.slice(idx) : prices;
-    }
+    prices = clipToRange(prices);
 
     return json({ prices });
   } catch { /* fall through to Binance */ }
 
   // Binance → Kraken → CoinDesk fallback chain
-  let prices = await fetchBinanceHistory(safeRange);
-
-  // Clip ytd results to Jan 1
-  if (safeRange === 'ytd' && prices.length > 0) {
-    const idx = prices.findIndex(pt => pt.t >= ytdJan1);
-    prices = idx >= 0 ? prices.slice(idx) : prices;
-  }
+  let prices = clipToRange(await fetchBinanceHistory(safeRange));
 
   // If still no data, try CoinDesk BPI
   if (prices.length < 2) {
-    prices = await fetchCoinDeskHistory(safeRange);
-    if (safeRange === 'ytd' && prices.length > 0) {
-      const idx = prices.findIndex(pt => pt.t >= ytdJan1);
-      prices = idx >= 0 ? prices.slice(idx) : prices;
-    }
+    prices = clipToRange(await fetchCoinDeskHistory(safeRange));
   }
 
   return json({ prices });
