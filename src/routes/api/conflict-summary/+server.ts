@@ -118,6 +118,10 @@ interface ConflictSummary {
   top_conflicts: TopConflict[];
   event_count: number;
   sources_used: string[];
+  defcon_description: string;
+  source_url: string;
+  updated_month: string;
+  from_live_source: boolean;
 }
 
 // ── Scoring helpers ──────────────────────────────────────────────
@@ -149,6 +153,59 @@ function buildSummary(defcon: DefconBand, topConflicts: TopConflict[]): string {
   return `${prefix}: active reporting on ${conflictNames.join(', ')}.`;
 }
 
+// ── Scrape DEFCON level from defconlevel.com ─────────────────────
+const DEFCON_SOURCE_URL = 'https://www.defconlevel.com/current-level';
+
+async function fetchFromDefconLevel(): Promise<{
+  level: number;
+  description: string;
+  updatedMonth: string;
+} | null> {
+  try {
+    const res = await fetch(DEFCON_SOURCE_URL, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; SituationMonitor/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
+      },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const html = await res.text();
+
+    // Strip scripts and styles for cleaner matching
+    const stripped = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+
+    // Extract DEFCON level number (1–5)
+    const levelMatch = stripped.match(/DEFCON\s*(?:level\s*)?(\d)/i);
+    const level = levelMatch ? parseInt(levelMatch[1]) : null;
+    if (!level || level < 1 || level > 5) return null;
+
+    // Extract description — look for a paragraph containing threat/situation keywords
+    const descMatches = [...stripped.matchAll(/<p[^>]*>([\s\S]{40,600}?)<\/p>/gi)];
+    let description = '';
+    for (const m of descMatches) {
+      const text = m[1].replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+      if (/tension|conflict|war|threat|readiness|elevated|military|global|instabilit/i.test(text)) {
+        description = text;
+        break;
+      }
+    }
+
+    // Extract updated month/year
+    const dateMatch = stripped.match(/Updated\s+([A-Za-z]+\s+\d{4})/i)
+      ?? stripped.match(/([A-Za-z]+\s+\d{4})/);
+    const updatedMonth = dateMatch
+      ? dateMatch[1]
+      : new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+    return { level, description, updatedMonth };
+  } catch {
+    return null;
+  }
+}
+
 // ── Main handler ─────────────────────────────────────────────────
 export async function GET(_event: RequestEvent) {
   // Return cached response if still fresh
@@ -156,15 +213,19 @@ export async function GET(_event: RequestEvent) {
     return json(cache.data);
   }
 
-  try {
-    const results = await Promise.allSettled(
+  // Try to fetch live DEFCON level from defconlevel.com in parallel with RSS feeds
+  const [liveDefcon, rssResults] = await Promise.all([
+    fetchFromDefconLevel(),
+    Promise.allSettled(
       CONFLICT_FEEDS.map(f => parser.parseURL(f.url).then(feed => ({ feed, name: f.name })))
-    );
+    ),
+  ]);
 
+  try {
     const events: ConflictEvent[] = [];
     const sourcesUsed: string[] = [];
 
-    for (const result of results) {
+    for (const result of rssResults) {
       if (result.status !== 'fulfilled') continue;
       const { feed, name } = result.value;
       sourcesUsed.push(name);
@@ -208,8 +269,14 @@ export async function GET(_event: RequestEvent) {
     const rawScore = events.reduce((s, e) => s + e.severity, 0);
     const globalScore = Math.min(100, Math.round((rawScore / SCORE_CEILING) * 100));
 
-    const defcon = scoreToDefcon(globalScore);
+    // Use live DEFCON level from defconlevel.com if available, else RSS-derived
+    const defcon = liveDefcon
+      ? (DEFCON_BANDS.find(b => b.level === liveDefcon.level) ?? scoreToDefcon(globalScore))
+      : scoreToDefcon(globalScore);
     const summary = buildSummary(defcon, topConflicts);
+
+    const updatedMonth = liveDefcon?.updatedMonth
+      ?? new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
     const data: ConflictSummary = {
       date: new Date().toISOString().slice(0, 10),
@@ -220,6 +287,10 @@ export async function GET(_event: RequestEvent) {
       top_conflicts: topConflicts,
       event_count: events.length,
       sources_used: sourcesUsed,
+      defcon_description: liveDefcon?.description ?? summary,
+      source_url: DEFCON_SOURCE_URL,
+      updated_month: updatedMonth,
+      from_live_source: liveDefcon !== null,
     };
 
     cache = { data, at: Date.now() };
@@ -229,12 +300,19 @@ export async function GET(_event: RequestEvent) {
     return json({
       date: new Date().toISOString().slice(0, 10),
       global_score: 0,
-      defcon_level: 5,
-      defcon_label: 'Minimal global tension',
-      summary: 'Unable to fetch conflict feeds. Data unavailable.',
+      defcon_level: liveDefcon?.level ?? 5,
+      defcon_label: liveDefcon
+        ? (DEFCON_BANDS.find(b => b.level === liveDefcon.level)?.label ?? 'Minimal global tension')
+        : 'Minimal global tension',
+      summary: liveDefcon?.description ?? 'Unable to fetch conflict feeds. Data unavailable.',
       top_conflicts: [],
       event_count: 0,
       sources_used: [],
+      defcon_description: liveDefcon?.description ?? 'Unable to fetch conflict data.',
+      source_url: DEFCON_SOURCE_URL,
+      updated_month: liveDefcon?.updatedMonth
+        ?? new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
+      from_live_source: liveDefcon !== null,
     });
   }
 }
