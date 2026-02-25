@@ -53,6 +53,14 @@ export const DEFAULT_THREATS: Threat[] = [
   { id: 'north-korea',   name: 'North Korea',     lat: 40.0, lon: 127.0, level: 'elevated', desc: '⚠️ North Korea — Nuclear & missile program',                       countryId: '408' },
   { id: 'south-china-sea', name: 'South China Sea', lat: 12.0, lon: 114.0, level: 'elevated', desc: '⚠️ South China Sea — Territorial disputes' },
   { id: 'syria',         name: 'Syria',           lat: 34.8, lon:  38.5, level: 'elevated', desc: '⚠️ Syria — Post-Assad transition, HTS rule & fragile stability',   countryId: '760' },
+  // ── Additional Major Conflicts (seeded) ─────────────────────
+  { id: 'drc',           name: 'DR Congo – M23',  lat: -4.0, lon:  21.8, level: 'high',     desc: '⚔️ DR Congo — M23 insurgency & regional violence',                 countryId: '180' },
+  { id: 'cameroon',      name: 'Cameroon',         lat:  3.9, lon:  11.5, level: 'elevated', desc: '⚠️ Cameroon — Anglophone separatist conflict',                     countryId: '120' },
+  { id: 'colombia',      name: 'Colombia',         lat:  4.6, lon: -74.1, level: 'elevated', desc: '⚠️ Colombia — Armed group activity & FARC dissidents',             countryId: '170' },
+  { id: 'mexico',        name: 'Mexico',           lat: 23.6, lon:-102.6, level: 'elevated', desc: '⚠️ Mexico — Criminal violence & cartel drug war',                  countryId: '484' },
+  { id: 'south-sudan',   name: 'South Sudan',      lat:  7.9, lon:  30.2, level: 'elevated', desc: '⚠️ South Sudan — Fragile stability & ethnic violence',             countryId: '728' },
+  { id: 'northern-triangle', name: 'Northern Triangle', lat: 14.1, lon: -87.2, level: 'elevated', desc: '⚠️ Northern Triangle — Gang violence & political instability' },
+  { id: 'kashmir',       name: 'Kashmir',          lat: 34.0, lon:  74.0, level: 'elevated', desc: '⚠️ Kashmir — Border & proxy tensions (India–Pakistan)',            countryId: '356' },
 ];
 
 export interface Settings {
