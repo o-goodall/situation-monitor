@@ -21,18 +21,17 @@
   let leetInterval: ReturnType<typeof setInterval> | null = null;
 
   onMount(() => {
-    // Show tagline after 0.5s delay
-    setTimeout(() => { taglineVisible = true; }, 500);
+    // Show tagline quickly so it's visible before sweep begins
+    setTimeout(() => { taglineVisible = true; }, 200);
     // Show hint after 1.8s
     setTimeout(() => { hintVisible = true; }, 1800);
 
-    // Start leet sweep 0.7s after mount (0.2s after tagline begins fading in)
-    // Step every 150ms so the sweep moves slowly like an orange foil sheen
+    // Start leet sweep at 300ms — independent of eye animation
+    // Step every 80ms so orange letters wash continuously left → right
     setTimeout(() => {
-      if (dismissed) return;
       let i = 0;
       leetInterval = setInterval(() => {
-        if (dismissed || i >= chars.length) {
+        if (i >= chars.length) {
           clearInterval(leetInterval!);
           leetInterval = null;
           return;
@@ -40,16 +39,15 @@
         const idx = i++;
         const orig = chars[idx].orig;
         const leetChar = LEET[orig];
-        if (leetChar) {
-          chars[idx] = { orig, disp: leetChar, state: 'leet' };
+        // Sweep orange colour over every character; replace with leet glyph where available
+        chars[idx] = { orig, disp: leetChar ?? orig, state: 'leet' };
+        chars = [...chars];
+        setTimeout(() => {
+          chars[idx] = { orig, disp: orig, state: 'done' };
           chars = [...chars];
-          setTimeout(() => {
-            chars[idx] = { orig, disp: orig, state: 'done' };
-            chars = [...chars];
-          }, 120);
-        }
-      }, 150);
-    }, 700);
+        }, 100);
+      }, 80);
+    }, 300);
   });
 
   function dismiss() {
@@ -228,13 +226,14 @@
     .slogan-char {
       display: inline;
       color: inherit;
-      transition: color 0.35s ease;
+      transition: color 0.12s ease;
     }
     .slogan-char.slogan-leet {
       color: #f7931a;
     }
     .slogan-char.slogan-done {
       color: #ffffff;
+      transition: color 0.18s ease;
     }
 
     /* Hint text */
