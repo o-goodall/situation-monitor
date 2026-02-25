@@ -5,7 +5,8 @@
   export let btc:   { t: number; p: number }[] = [];
   export let sp500: { t: number; p: number }[] = [];
   export let gold:  { t: number; p: number }[] = [];
-  export let range: '1D' | '1W' | '1Y' | '5Y' = '5Y';
+  export let range: '1D' | '1W' | '1Y' | '5Y' | 'MAX' = '5Y';
+  export let showAnnualOverlay = false;
 
   // ── Internal state ───────────────────────────────────────────
   const scaleMode = 'log';
@@ -357,7 +358,7 @@
   <svg bind:this={svgEl} aria-label="Multi-asset indexed performance chart"></svg>
 
   <!-- Annual Returns Overlay -->
-  {#if showAnnualTable && annualRows.length > 0}
+  {#if showAnnualOverlay && annualRows.length > 0}
     <div class="cc-annual-overlay" role="region" aria-label="Annual returns table">
       <table class="cc-annual-table">
         <thead>

@@ -20,7 +20,7 @@
   import { getStoredSettings } from '$lib/personalization';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
-  let btcChartRange: '1D' | '1W' | '1Y' | '5Y' = '1D';
+  let btcChartRange: '1D' | '1W' | '1Y' | '5Y' | 'MAX' = '1D';
   let btcChartData: { t: number; p: number }[] = [];
   let btcChartLoading = false;
   let btcDayOpenPrice = 0; // price at start of today for daily % change
@@ -28,7 +28,7 @@
   async function fetchBtcChart(r = btcChartRange) {
     btcChartLoading = true;
     try {
-      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y' };
+      const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y', 'MAX':'max' };
       const d = await fetch(`/api/bitcoin/history?range=${map[r]}`).then(res => res.json());
       btcChartData = d.prices ?? [];
       if (r === '1D' && btcChartData.length > 0) btcDayOpenPrice = btcChartData[0].p;
@@ -36,7 +36,7 @@
     finally { btcChartLoading = false; }
   }
 
-  async function setBtcChartRange(r: '1D' | '1W' | '1Y' | '5Y') {
+  async function setBtcChartRange(r: '1D' | '1W' | '1Y' | '5Y' | 'MAX') {
     btcChartRange = r;
     await fetchBtcChart(r);
     if (btcChartView === 'compare') await fetchCompareChart(r);
@@ -46,6 +46,7 @@
   let btcChartView: 'price' | 'compare' = 'price';
   let compareData: { btc: { t: number; p: number }[]; sp500: { t: number; p: number }[]; gold: { t: number; p: number }[] } = { btc: [], sp500: [], gold: [] };
   let compareLoading = false;
+  let showCompareAnnual = false;
 
   async function fetchCompareChart(r = btcChartRange) {
     compareLoading = true;
@@ -292,7 +293,7 @@
   }
 
   function btcApiRange(r = btcChartRange): string {
-    const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y' };
+    const map: Record<string,string> = { '1D':'1d', '1W':'7d', '1Y':'1y', '5Y':'5y', 'MAX':'max' };
     return map[r] ?? '1d';
   }
 
@@ -892,7 +893,16 @@
           {/if}
           <button class="crb" class:crb--active={btcChartRange==='1Y'} on:click={() => setBtcChartRange('1Y')}>1Y</button>
           <button class="crb" class:crb--active={btcChartRange==='5Y'} on:click={() => setBtcChartRange('5Y')}>5Y</button>
+          {#if btcChartView === 'price'}
+            <button class="crb" class:crb--active={btcChartRange==='MAX'} on:click={() => setBtcChartRange('MAX')}>Max</button>
+          {/if}
         </div>
+        <!-- Compare extras: % annual returns toggle -->
+        {#if btcChartView === 'compare'}
+          <div class="chart-range-btns" role="group" aria-label="Compare chart options">
+            <button class="crb" class:crb--active={showCompareAnnual} on:click={() => showCompareAnnual = !showCompareAnnual} title="Show annual returns table">%</button>
+          </div>
+        {/if}
       </div>
     </div>
 
@@ -906,6 +916,7 @@
             sp500={compareData.sp500}
             gold={compareData.gold}
             range={btcChartRange}
+            showAnnualOverlay={showCompareAnnual}
           />
         {/if}
       {:else if btcChartLoading}
