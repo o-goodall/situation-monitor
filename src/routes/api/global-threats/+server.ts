@@ -233,8 +233,18 @@ export async function GET(_event: RequestEvent) {
 
     return json(payload, { headers: { 'Cache-Control': 's-maxage=1800, stale-while-revalidate=120' } });
   } catch {
+    // Even if the RSS feed is unavailable, return all known conflict zones with
+    // their default severities so the map always shows monitored hotspots.
+    const fallbackThreats: CountryThreat[] = KNOWN_CONFLICT_ZONES.map(zone => ({
+      country: zone.country,
+      severity: zone.defaultSeverity,
+      lat: zone.lat,
+      lon: zone.lon,
+      hasNew: false,
+      stories: [],
+    }));
     return json(
-      { threats: [], updatedAt: new Date().toISOString() },
+      { threats: fallbackThreats, updatedAt: new Date().toISOString() },
       { headers: { 'Cache-Control': 's-maxage=60' } }
     );
   }

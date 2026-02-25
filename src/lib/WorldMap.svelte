@@ -67,6 +67,7 @@
   let mapLoading = true;
   let mapError = '';
   let threatsUpdatedAt = '';
+  let threats: CountryThreat[] = [];
   let majorEvents: ThreatEvent[] = [];
   let legendMinimized = false;
   let legendAutoHideTimer: ReturnType<typeof setTimeout> | null = null;
@@ -194,6 +195,7 @@
         const isoId = LOCATION_TO_ISO_ID[ct.country];
         if (isoId) globalThreatCountryFills.set(isoId, ct.severity);
       }
+      threats = globalThreatData.threats;
       threatsUpdatedAt = globalThreatData.updatedAt ? new Date(globalThreatData.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
       // Store major events (critical + high only) for the story panel
@@ -439,6 +441,7 @@
         const isoId = LOCATION_TO_ISO_ID[ct.country];
         if (isoId) globalThreatCountryFills.set(isoId, ct.severity);
       }
+      threats = globalThreats;
 
       // Update every country fill to reflect the new threat levels
       countryPaths.attr('fill', (d: { id: unknown }) => getCountryFillById(String(d.id)));
@@ -501,6 +504,9 @@
       return m < MINS_PER_HOUR ? `${m}m` : m < MINS_PER_DAY ? `${Math.floor(m / MINS_PER_HOUR)}h` : `${Math.floor(m / MINS_PER_DAY)}d`;
     } catch { return ''; }
   }
+
+  $: activeZones = threats.filter(t => t.stories.length > 0);
+  $: moniteredCount = threats.length;
 </script>
 
 <div class="wm-outer">
@@ -548,6 +554,9 @@
       {#if threatsUpdatedAt}
         <div class="wm-leg-sep"></div>
         <div class="wm-leg-ts">Updated {threatsUpdatedAt}</div>
+        {#if moniteredCount > 0}
+          <div class="wm-leg-ts">{moniteredCount} zones monitored · {activeZones.length} active</div>
+        {/if}
       {/if}
       {/if}
     </button>
@@ -571,6 +580,33 @@
           </a>
         {/each}
       </div>
+    </div>
+  </div>
+  {/if}
+
+  {#if threats.length > 0}
+  <div class="wm-zones" aria-label="Monitored conflict zones">
+    <div class="wm-zones-label">
+      <span class="wm-zones-title">CONFLICT ZONES</span>
+      <span class="wm-zones-sub">{activeZones.length}/{moniteredCount} active · Al Jazeera</span>
+    </div>
+    <div class="wm-zones-track">
+      {#each threats as zone}
+        {@const col = GLOBAL_THREAT_COLORS[zone.severity] ?? '#00cc44'}
+        {@const firstLink = zone.stories[0]?.link}
+        <button
+          class="wm-zone-chip wm-zone-chip--{zone.severity}"
+          title="{zone.country}: {zone.stories.length} stor{zone.stories.length === 1 ? 'y' : 'ies'}"
+          on:click={() => firstLink && window.open(firstLink, '_blank', 'noopener,noreferrer')}
+          aria-label="{zone.country}, {zone.severity} severity, {zone.stories.length} stories"
+        >
+          <span class="wm-zone-dot" style="background:{col};"></span>
+          <span class="wm-zone-name">{zone.country}</span>
+          {#if zone.stories.length > 0}
+            <span class="wm-zone-count">{zone.stories.length}</span>
+          {/if}
+        </button>
+      {/each}
     </div>
   </div>
   {/if}
@@ -742,5 +778,92 @@
       border-radius: 10px 10px 0 0;
     }
     .wm-story-title { max-width: 200px; }
+  }
+
+  /* ── CONFLICT ZONE ROSTER ───────────────────────────────── */
+  .wm-zones {
+    background: #0a1420;
+    border: 1px solid rgba(0,200,255,0.18);
+    border-top: none;
+    border-radius: 0 0 10px 10px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    min-height: 36px;
+    padding: 6px 0 6px 0;
+  }
+  .wm-zones-label {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+    padding: 0 10px;
+    flex-shrink: 0;
+    border-right: 1px solid rgba(0,200,255,0.18);
+    min-height: 36px;
+    background: rgba(0,200,255,0.05);
+  }
+  .wm-zones-title {
+    font-size: .46rem;
+    font-weight: 700;
+    letter-spacing: .12em;
+    color: rgba(0,200,255,0.6);
+    font-family: monospace;
+    white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .wm-zones-sub {
+    font-size: .44rem;
+    color: rgba(255,255,255,0.3);
+    font-family: monospace;
+    white-space: nowrap;
+  }
+  .wm-zones-track {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 10px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    flex: 1;
+  }
+  .wm-zones-track::-webkit-scrollbar { display: none; }
+  .wm-zone-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px 2px 5px;
+    border-radius: 12px;
+    background: rgba(0,0,0,0.25);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background .15s;
+    flex-shrink: 0;
+    font-family: monospace;
+    text-align: left;
+  }
+  .wm-zone-chip:hover {
+    background: rgba(255,255,255,0.06);
+  }
+  .wm-zone-chip--red   { border: 1px solid rgba(255,34,0,0.35); }
+  .wm-zone-chip--orange { border: 1px solid rgba(255,170,0,0.30); }
+  .wm-zone-chip--green  { border: 1px solid rgba(0,204,68,0.20); }
+  .wm-zone-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .wm-zone-name {
+    font-size: .52rem;
+    color: rgba(255,255,255,0.75);
+  }
+  .wm-zone-count {
+    font-size: .46rem;
+    color: rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.08);
+    border-radius: 8px;
+    padding: 0 4px;
+    margin-left: 1px;
   }
 </style>
