@@ -16,10 +16,10 @@ import { DEFAULT_THREATS, type Threat, type ThreatLevel } from '$lib/settings';
  *       19: fight (armed battle, air strike, etc.)
  *       20: mass violence (genocide, mass atrocity, etc.)
  *   — Diplomatic/coercive codes (17, 143, 145, 152, 154) intentionally excluded
- *   — Dual-period comparison (current vs. prior 7 days) for 7-day acceleration
+ *   — Dual-period comparison (current vs. prior rolling window) for acceleration
  *   — Multi-factor threat score:
  *       Score = (Event Volume × Base Weight) × (1 + Acceleration Modifier)
- *   — Only threats meeting SEVERE_THRESHOLD are included in the response
+ *   — Only threats meeting ACTIVE_THRESHOLD are included in the response
  *
  * 2. ReliefWeb (https://reliefweb.int) — UN OCHA humanitarian crisis data
  *   — ongoing disasters and crises aggregated by country
@@ -52,8 +52,13 @@ import { DEFAULT_THREATS, type Threat, type ThreatLevel } from '$lib/settings';
 // diplomatic and non-combat false positives on the conflict map.
 const GDELT_QUERY = 'cameo:18 OR cameo:19 OR cameo:20';
 
-const GDELT_TIMESPAN_DAYS = 7;
-const GDELT_TIMESPAN_MINS = GDELT_TIMESPAN_DAYS * 24 * 60; // 10_080 minutes
+/**
+ * Rolling window for event aggregation (configurable).
+ * Current: 7 days — provides a stable weekly signal.
+ * Set to 3 for a tighter 72-hour window (higher precision, lower volume).
+ */
+const ROLLING_WINDOW_DAYS = 7;
+const GDELT_TIMESPAN_MINS = ROLLING_WINDOW_DAYS * 24 * 60; // e.g. 10_080 minutes for 7 days
 const GDELT_MAX_ROWS = 500;
 
 // Layer 2 — Signal Engine: Violence Code Multiplier
@@ -67,11 +72,12 @@ const SCORE_HIGH     = 80;
 const SCORE_ELEVATED = 15;
 
 /**
- * Minimum severity score for a threat to be included in the map response.
- * Threats with score < SEVERE_THRESHOLD are treated as noise and dropped.
- * Aligns with: severityScore = (fatalities*5) + highSeverityEventWeight + (eventFrequencyDelta*2)
+ * Minimum severity score for a threat to be marked as ACTIVE and shown on the map.
+ * Threats with score < ACTIVE_THRESHOLD are classified as 'inactive' and excluded.
+ * Threats between ACTIVE_THRESHOLD and ESCALATING_THRESHOLD are 'escalating_tension'.
  */
-const SEVERE_THRESHOLD = 10;
+const ACTIVE_THRESHOLD      = 10;
+const ESCALATING_THRESHOLD  = 20;
 
 /**
  * Enable debug mode to log threat rejection reasons to the server console.
@@ -163,11 +169,11 @@ interface GdeltResponse {
 }
 
 /** Aggregate GDELT pointdata features into a per-country count map */
-function aggregateByCountry(features: GdeltFeature[]): Map<string, {
-  info: CountryInfo; count: number; bestLat: number; bestLon: number; maxCluster: number;
+function aggregateByCountry(features: GdeltFeature[], batchTimestamp: string): Map<string, {
+  info: CountryInfo; count: number; bestLat: number; bestLon: number; maxCluster: number; lastEventTimestamp: string;
 }> {
   const map = new Map<string, {
-    info: CountryInfo; count: number; bestLat: number; bestLon: number; maxCluster: number;
+    info: CountryInfo; count: number; bestLat: number; bestLon: number; maxCluster: number; lastEventTimestamp: string;
   }>();
   for (const f of features) {
     const coords = f.geometry?.coordinates;
@@ -189,6 +195,7 @@ function aggregateByCountry(features: GdeltFeature[]): Map<string, {
     } else {
       map.set(country.canonical, {
         info: country, count, bestLat: lat, bestLon: lon, maxCluster: count,
+        lastEventTimestamp: batchTimestamp,
       });
     }
   }
@@ -203,7 +210,7 @@ function aggregateByCountry(features: GdeltFeature[]): Map<string, {
  *
  * Mapped to GDELT data:
  *   highSeverityEventWeight = Event Volume × Base Weight (confirmed physical violence events)
- *   eventFrequencyDelta     = 7-day acceleration (current − prior) / max(1, prior)
+ *   eventFrequencyDelta     = rolling-window acceleration (current − prior) / max(1, prior)
  *   fatalities              = not available from GDELT pointdata (counted in overall score)
  *
  * Full score formula:
@@ -214,11 +221,14 @@ function aggregateByCountry(features: GdeltFeature[]): Map<string, {
  *   Acceleration Modifier = clamp(accelerationRate × 0.3, −0.15, +0.30)
  *     accelerationRate = (current − prior) / max(1, prior)
  *
+ * Decay: when currentCount drops to zero (no events in rolling window), the score
+ * is zero — the conflict is automatically classified as 'inactive' and removed from the map.
+ *
  * Risk classification (Layer 3 signal output):
  *   ≥ 300 → Critical  (mass-casualty / open warfare)
  *   ≥  80 → High      (active conflict / serious instability)
  *   ≥  15 → Elevated  (rising tension / recurring violence)
- *   <  15 → Low       (monitored / occasional incidents — below SEVERE_THRESHOLD)
+ *   <  15 → Low       (monitored / occasional incidents — below ACTIVE_THRESHOLD)
  */
 function computeScore(currentCount: number, priorCount: number): {
   score: number;
@@ -226,10 +236,11 @@ function computeScore(currentCount: number, priorCount: number): {
   direction: '↑' | '↓' | '→';
   accelerationPct: number;
 } {
-  // 7-day Acceleration Rate: proportional change from prior period
+  // Rolling-window Acceleration Rate: proportional change from prior period
+  // When currentCount is zero → full decay; no events = no active conflict signal
   const accelerationRate = priorCount > 0
     ? (currentCount - priorCount) / priorCount
-    : (currentCount > 0 ? NEW_SIGNAL_RATE : 0); // no prior data → assume moderate new signal
+    : (currentCount > 0 ? NEW_SIGNAL_RATE : 0);
 
   // Acceleration Modifier: capped to avoid dominating the base score
   const accelerationMod = Math.max(ACCEL_MAX_PENALTY, Math.min(ACCEL_MAX_BOOST, accelerationRate * ACCEL_WEIGHT));
@@ -247,6 +258,18 @@ function computeScore(currentCount: number, priorCount: number): {
   else level = 'low';
 
   return { score, level, direction, accelerationPct };
+}
+
+/**
+ * Classify conflict state from score and acceleration:
+ *   active_conflict      — score ≥ ESCALATING_THRESHOLD (shown on map)
+ *   escalating_tension   — score ≥ ACTIVE_THRESHOLD but < ESCALATING_THRESHOLD (sidebar only)
+ *   inactive             — score < ACTIVE_THRESHOLD (not shown)
+ */
+function computeConflictState(score: number): 'active_conflict' | 'escalating_tension' | 'inactive' {
+  if (score >= ESCALATING_THRESHOLD) return 'active_conflict';
+  if (score >= ACTIVE_THRESHOLD)     return 'escalating_tension';
+  return 'inactive';
 }
 
 function riskLabel(level: ThreatLevel): string {
@@ -474,11 +497,13 @@ async function fetchCewarnThreats(): Promise<Map<string, CewarnEntry>> {
  *
  * For countries only present in a secondary source:
  *   • A new Threat entry is created with zero GDELT score and '→' direction.
+ *   • conflictState is set to 'escalating_tension' (secondary-only signals are lower confidence).
  */
 function mergeSecondarySource(
   threats: Map<string, Threat>,
   source: Map<string, { info: CountryInfo; level: ThreatLevel }>,
   sourceLabel: string,
+  batchTimestamp: string,
 ): void {
   for (const [name, data] of source) {
     const existing = threats.get(name);
@@ -492,18 +517,21 @@ function mergeSecondarySource(
         existing.desc += ` · ${sourceLabel}`;
       }
     } else {
-      // New country not seen in GDELT
+      // New country not seen in GDELT — secondary-source only
       threats.set(name, {
-        id:             name.toLowerCase().replace(/\s+/g, '-'),
+        id:                 name.toLowerCase().replace(/\s+/g, '-'),
         name,
-        lat:            data.info.lat,
-        lon:            data.info.lon,
-        level:          data.level,
-        desc:           `${name} — ${riskLabel(data.level)} (${sourceLabel})`,
-        countryId:      data.info.id,
-        score:          0,
-        direction:      '→',
-        accelerationPct: 0,
+        lat:                data.info.lat,
+        lon:                data.info.lon,
+        level:              data.level,
+        desc:               `${name} — ${riskLabel(data.level)} (${sourceLabel})`,
+        countryId:          data.info.id,
+        score:              0,
+        direction:          '→',
+        accelerationPct:    0,
+        recentEventCount:   0,
+        lastEventTimestamp: batchTimestamp,
+        conflictState:      'escalating_tension',
       });
     }
   }
@@ -521,15 +549,16 @@ export async function GET(_event: RequestEvent) {
 
   try {
     const now = new Date();
-    const priorEndDt   = dtStr(new Date(now.getTime() - GDELT_TIMESPAN_DAYS * 24 * 60 * 60 * 1000));
-    const priorStartDt = dtStr(new Date(now.getTime() - 2 * GDELT_TIMESPAN_DAYS * 24 * 60 * 60 * 1000));
+    const batchTimestamp = now.toISOString();
+    const priorEndDt   = dtStr(new Date(now.getTime() - ROLLING_WINDOW_DAYS * 24 * 60 * 60 * 1000));
+    const priorStartDt = dtStr(new Date(now.getTime() - 2 * ROLLING_WINDOW_DAYS * 24 * 60 * 60 * 1000));
 
     // Fetch all data sources in parallel:
-    //   [0] GDELT current 7-day window   (primary)
-    //   [1] GDELT prior 7-day window     (for acceleration calc)
-    //   [2] ReliefWeb ongoing disasters  (secondary — best-effort)
-    //   [3] UCDP georeferenced events    (secondary — best-effort)
-    //   [4] CEWARN incident reports      (secondary — best-effort)
+    //   [0] GDELT current rolling window   (primary)
+    //   [1] GDELT prior rolling window     (for acceleration calc)
+    //   [2] ReliefWeb ongoing disasters    (secondary — best-effort)
+    //   [3] UCDP georeferenced events      (secondary — best-effort)
+    //   [4] CEWARN incident reports        (secondary — best-effort)
     const [currentRes, priorRes, rwResult, ucdpResult, cewarnResult] = await Promise.all([
       fetch(gdeltUrl({ timespan: GDELT_TIMESPAN_MINS }), { headers: FETCH_HEADERS }),
       fetch(gdeltUrl({ startDt: priorStartDt, endDt: priorEndDt }), { headers: FETCH_HEADERS }),
@@ -552,53 +581,60 @@ export async function GET(_event: RequestEvent) {
       } catch { /* ignore parse failures for prior period */ }
     }
 
-    const currentMap = aggregateByCountry(currentFeatures);
-    const priorMap   = aggregateByCountry(priorFeatures);
+    const currentMap = aggregateByCountry(currentFeatures, batchTimestamp);
+    const priorMap   = aggregateByCountry(priorFeatures, batchTimestamp);
 
     if (currentMap.size === 0) throw new Error('GDELT returned no matching conflict locations');
 
-    // Build initial threat map from GDELT (Layer 1 — Raw Event Stream)
+    // Build initial threat map from GDELT (Layer 1 — Raw Event Stream → Layer 2 Signal Engine)
+    // Only conflicts meeting ACTIVE_THRESHOLD are included; lower-signal countries are dropped.
     const threatMap = new Map<string, Threat>();
-    for (const [name, { info, count, bestLat, bestLon }] of currentMap) {
+    for (const [name, { info, count, bestLat, bestLon, lastEventTimestamp }] of currentMap) {
       const priorCount = priorMap.get(name)?.count ?? 0;
       const { score, level, direction, accelerationPct } = computeScore(count, priorCount);
+      const conflictState = computeConflictState(score);
 
-      // Apply SEVERE_THRESHOLD: only include threats with meaningful violence signal
-      if (score < SEVERE_THRESHOLD) {
+      // Apply ACTIVE_THRESHOLD: exclude inactive conflicts from the map
+      if (conflictState === 'inactive') {
         if (DEBUG_THREATS) {
-          console.log(`[threats:reject] name=${name} score=${score} < threshold=${SEVERE_THRESHOLD} level=${level}`);
+          console.log(`[threats:reject] name=${name} score=${score} < threshold=${ACTIVE_THRESHOLD} state=inactive`);
         }
         continue;
       }
 
       const accelStr = accelerationPct !== 0
-        ? ` (${accelerationPct > 0 ? '+' : ''}${accelerationPct}% vs prior week)`
+        ? ` (${accelerationPct > 0 ? '+' : ''}${accelerationPct}% vs prior ${ROLLING_WINDOW_DAYS}d)`
         : '';
 
       threatMap.set(name, {
-        id:             name.toLowerCase().replace(/\s+/g, '-'),
+        id:                 name.toLowerCase().replace(/\s+/g, '-'),
         name,
-        lat:            bestLat,
-        lon:            bestLon,
+        lat:                bestLat,
+        lon:                bestLon,
         level,
-        desc:           `${direction} ${name} — ${riskLabel(level)} · ${directionLabel(direction)}${accelStr} · ${count} events/7d (GDELT)`,
-        countryId:      info.id,
+        desc:               `${direction} ${name} — ${riskLabel(level)} · ${directionLabel(direction)}${accelStr} · ${count} events/${ROLLING_WINDOW_DAYS}d (GDELT)`,
+        countryId:          info.id,
         score,
         direction,
         accelerationPct,
+        recentEventCount:   count,
+        lastEventTimestamp,
+        conflictState,
       });
     }
 
     // Merge secondary sources — each enriches or adds to the GDELT baseline
-    mergeSecondarySource(threatMap, rwResult,    'ReliefWeb');
-    mergeSecondarySource(threatMap, ucdpResult,  'UCDP');
-    mergeSecondarySource(threatMap, cewarnResult, 'CEWARN');
+    mergeSecondarySource(threatMap, rwResult,     'ReliefWeb', batchTimestamp);
+    mergeSecondarySource(threatMap, ucdpResult,   'UCDP',      batchTimestamp);
+    mergeSecondarySource(threatMap, cewarnResult, 'CEWARN',    batchTimestamp);
 
-    const threats = Array.from(threatMap.values());
+    // Only send active_conflict and escalating_tension to the map; inactive are dropped
+    const threats = Array.from(threatMap.values())
+      .filter(t => t.conflictState !== 'inactive');
     threats.sort((a, b) => LEVEL_ORDER.indexOf(b.level) - LEVEL_ORDER.indexOf(a.level));
 
     const conflictCountryIds = threats.filter(t => t.countryId).map(t => t.countryId as string);
-    const payload = { threats, conflictCountryIds, updatedAt: new Date().toISOString() };
+    const payload = { threats, conflictCountryIds, updatedAt: batchTimestamp };
     _cache = payload;
     _cacheExpiresAt = Date.now() + CACHE_TTL_MS;
 
@@ -615,3 +651,4 @@ export async function GET(_event: RequestEvent) {
     });
   }
 }
+
