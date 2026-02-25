@@ -17,7 +17,6 @@
   import WorldMap from '$lib/WorldMap.svelte';
   import CompareChart from '$lib/CompareChart.svelte';
   import PersonalGreeting from '$lib/PersonalGreeting.svelte';
-  import GlobalSignalCard from '$lib/components/GlobalSignalCard.svelte';
   import { getStoredSettings } from '$lib/personalization';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
@@ -134,11 +133,11 @@
   $: hashrateMA7  = hashrateData.length >= 7  ? computeMA(hashrateData, 7)  : [];
   $: hashrateMA30 = hashrateData.length >= 30 ? computeMA(hashrateData, 30) : [];
 
-  let intelView: 'cutting-edge'|'classic'|'globe'|'conflict' = 'globe';
+  let intelView: 'cutting-edge'|'classic'|'globe' = 'globe';
   let intelTransitioning = false;
   const BLUR_DURATION_MS = 400;   // blur phase before content swap
   const REVEAL_DURATION_MS = 600; // reveal phase after content swap
-  function switchIntelView(target: 'cutting-edge'|'classic'|'globe'|'conflict') {
+  function switchIntelView(target: 'cutting-edge'|'classic'|'globe') {
     if (intelView === target) return;
     intelTransitioning = true;
     setTimeout(() => {
@@ -1021,7 +1020,7 @@
         <!-- Compare extras: % annual returns toggle -->
         {#if btcChartView === 'compare'}
           <div class="chart-range-btns" role="group" aria-label="Compare chart options">
-            <button class="crb" class:crb--active={showCompareAnnual} on:click={() => showCompareAnnual = !showCompareAnnual} title="Show annual returns table">%</button>
+            <button class="crb" class:crb--active={showCompareAnnual} on:click={() => showCompareAnnual = !showCompareAnnual} aria-pressed={showCompareAnnual} title="Show annual returns table">%</button>
           </div>
         {/if}
       </div>
@@ -1072,7 +1071,6 @@
       <button class="crb globe-toggle-btn" class:crb--active={intelView==='globe'} on:click={() => switchIntelView('globe')} aria-pressed={intelView === 'globe'} title="Globe — live world events map">🌐 Globe</button>
       <button class="crb" class:crb--active={intelView==='classic'} on:click={() => switchIntelView('classic')} aria-pressed={intelView === 'classic'} title="Classic — news feed">☰ News</button>
       <button class="crb" class:crb--active={intelView==='cutting-edge'} on:click={() => switchIntelView('cutting-edge')} aria-pressed={intelView === 'cutting-edge'} title="Cutting Edge — prediction markets">◈ Markets</button>
-      <button class="crb" class:crb--active={intelView==='conflict'} on:click={() => switchIntelView('conflict')} aria-pressed={intelView === 'conflict'} title="DEFCON — live global threat level from defconlevel.com">🛡️ DEFCON</button>
     </div>
   </div>
 
@@ -1171,12 +1169,6 @@
           {/each}
         </div>
       {/if}
-    </div>
-
-    {:else if intelView === 'conflict'}
-    <!-- ── DEFCON: Global Signal (ReliefWeb-derived threat level) ── -->
-    <div class="gc intel-gc globe-gc" style="padding:20px 18px;">
-      <GlobalSignalCard />
     </div>
 
     {:else}
@@ -1481,11 +1473,6 @@
     /* DCA signal: hide only the price band on mobile; show signals and formula button */
     .signal-card .vband { display:none; }
     .dca-hero { padding:20px 0 16px; }
-    /* Expand DCA signal card to fill empty space on mobile */
-    .signal-card {
-      min-height: calc(100svh - 380px);
-      max-height: 700px;
-    }
     /* Portfolio: hide detailed tiles, show merged summary only */
     .port-grid { display:none; }
     .mobile-port-summary { display:block; }
