@@ -21,15 +21,12 @@ import { DEFAULT_THREATS, type Threat, type ThreatLevel } from '$lib/settings';
  *       Score = (Event Volume × Base Weight) × (1 + Acceleration Modifier)
  *   — Only threats meeting ACTIVE_THRESHOLD are included in the response
  *
- * 2. ReliefWeb (https://reliefweb.int) — UN OCHA humanitarian crisis data
- *   — ongoing disasters and crises aggregated by country
- *
- * 3. UCDP (https://ucdp.uu.se) — Uppsala Conflict Data Program
+ * 2. UCDP (https://ucdp.uu.se) — Uppsala Conflict Data Program
  *   — georeferenced conflict events from the most recent available year
  *
- * 4. CEWARN (https://cewarn.org) — removed; no public API available
+ * 3. CEWARN (https://cewarn.org) — removed; no public API available
  *
- * All secondary sources (2–3) are fetched in parallel and merged into GDELT
+ * All secondary sources (2) are fetched in parallel and merged into GDELT
  * results. Each source failure is handled gracefully — only the
  * affected source is skipped; seed conflicts ensure map coverage.
  *
@@ -348,77 +345,6 @@ const FETCH_HEADERS = {
   'User-Agent': 'situation-monitor/1.0 (https://github.com/o-goodall/situation-monitor)',
 };
 
-// ── ReliefWeb integration ──────────────────────────────────────
-// UN OCHA humanitarian crisis data — https://reliefweb.int/help/api
-// No API key required; updated continuously.
-const RELIEFWEB_URL =
-  'https://api.reliefweb.int/v2/disasters' +
-  '?appname=situation-monitor' +
-  '&profile=list' +
-  '&preset=latest' +
-  '&slim=1' +
-  '&limit=50' +
-  '&filter[operator]=AND' +
-  '&filter[conditions][0][field]=status' +
-  '&filter[conditions][0][value][]=ongoing' +
-  '&filter[conditions][0][value][]=alert';
-
-interface ReliefWebFields {
-  name?: string;
-  status?: string;
-  country?: Array<{ name: string; iso3?: string }>;
-  type?: Array<{ name: string }>;
-}
-interface ReliefWebDisaster { id: number; fields: ReliefWebFields }
-interface ReliefWebResponse { data?: ReliefWebDisaster[] }
-
-// Disaster types considered conflict/security threats (rather than natural disasters)
-const RW_CONFLICT_TYPES = new Set([
-  'Armed Conflict',
-  'Civil Unrest',
-  'Complex Emergency',
-  'Extrajudicial Killings',
-  'Violence Against Civilians',
-  'Epidemic',       // included: public health crises with security implications
-  'Famine',         // included: famine often conflict-driven
-  'Displacement',
-]);
-
-function reliefWebLevel(types: Array<{ name: string }>, status?: string): ThreatLevel {
-  const names = types.map(t => t.name);
-  if (names.some(n => n === 'Armed Conflict' || n === 'Complex Emergency')) {
-    return status === 'alert' ? 'critical' : 'high';
-  }
-  if (names.some(n => RW_CONFLICT_TYPES.has(n))) {
-    return status === 'alert' ? 'high' : 'elevated';
-  }
-  return 'elevated'; // all ongoing/alert disasters at minimum elevated
-}
-
-interface ReliefWebEntry { info: CountryInfo; level: ThreatLevel; types: string[] }
-
-async function fetchReliefWebThreats(): Promise<Map<string, ReliefWebEntry>> {
-  const res = await fetch(RELIEFWEB_URL, { headers: FETCH_HEADERS });
-  if (!res.ok) throw new Error(`ReliefWeb HTTP ${res.status}`);
-  const body: ReliefWebResponse = await res.json();
-
-  const map = new Map<string, ReliefWebEntry>();
-  for (const disaster of body.data ?? []) {
-    const f = disaster.fields;
-    const types = (f.type ?? []).map(t => t.name);
-    for (const country of f.country ?? []) {
-      const info = matchCountry(country.name);
-      if (!info) continue;
-      const level = reliefWebLevel(f.type ?? [], f.status);
-      const existing = map.get(info.canonical);
-      if (!existing || (LEVEL_RANK.get(level) ?? -1) > (LEVEL_RANK.get(existing.level) ?? -1)) {
-        map.set(info.canonical, { info, level, types });
-      }
-    }
-  }
-  return map;
-}
-
 // ── UCDP integration ───────────────────────────────────────────
 // Uppsala Conflict Data Program — https://ucdp.uu.se/apidocs/
 // GED (Georeferenced Event Dataset): annual snapshots, updated periodically.
@@ -562,12 +488,10 @@ export async function GET(_event: RequestEvent) {
     // Fetch all data sources in parallel:
     //   [0] GDELT current rolling window   (primary — best-effort)
     //   [1] GDELT prior rolling window     (for acceleration calc — best-effort)
-    //   [2] ReliefWeb ongoing disasters    (secondary — best-effort)
-    //   [3] UCDP georeferenced events      (secondary — best-effort)
-    const [currentRes, priorRes, rwResult, ucdpResult] = await Promise.all([
+    //   [2] UCDP georeferenced events      (secondary — best-effort)
+    const [currentRes, priorRes, ucdpResult] = await Promise.all([
       fetch(gdeltUrl({ timespan: GDELT_TIMESPAN_MINS }), { headers: FETCH_HEADERS }),
       fetch(gdeltUrl({ startDt: priorStartDt, endDt: priorEndDt }), { headers: FETCH_HEADERS }),
-      fetchReliefWebThreats().catch(e => { console.warn('ReliefWeb fetch failed:', e); return new Map<string, ReliefWebEntry>(); }),
       fetchUcdpThreats().catch(e => { console.warn('UCDP fetch failed:', e); return new Map<string, UcdpEntry>(); }),
     ]);
 
@@ -714,7 +638,6 @@ export async function GET(_event: RequestEvent) {
     }
 
     // Merge secondary sources — each enriches or adds to the GDELT baseline
-    mergeSecondarySource(threatMap, rwResult,   'ReliefWeb', batchTimestamp);
     mergeSecondarySource(threatMap, ucdpResult, 'UCDP',      batchTimestamp);
 
     // Only send active_conflict and escalating_tension to the map; inactive are dropped
