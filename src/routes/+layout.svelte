@@ -3,6 +3,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
   import SettingsPersonalizationToggle from '$lib/SettingsPersonalizationToggle.svelte';
+  import WelcomeScreen from '$lib/WelcomeScreen.svelte';
   import type { FeedCategory } from '$lib/settings';
   import {
     settings, showSettings, saved, time, lightMode, activeSection,
@@ -38,7 +39,9 @@
   function navigateTo(section: 'signal' | 'portfolio' | 'intel') {
     $activeSection = section;
     mobileMenuOpen = false;
-    if (typeof window !== 'undefined') {
+    // On mobile, navigation is handled by the swipeable pages via $activeSection.
+    // On desktop, scroll the section into view.
+    if (typeof window !== 'undefined' && window.innerWidth > 768) {
       const el = document.getElementById(section);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       else window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -296,25 +299,28 @@
     ];
     window.addEventListener('scroll', handleScroll, {passive:true});
 
-    // ── INTERSECTION OBSERVER — track active section on scroll ─
-    const sectionIds: Array<'signal' | 'portfolio' | 'intel'> = ['signal', 'portfolio', 'intel'];
-    sectionObserver = new IntersectionObserver(
-      (entries) => {
-        for (const entry of entries) {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.3) {
-            $activeSection = entry.target.id as 'signal' | 'portfolio' | 'intel';
+    // ── INTERSECTION OBSERVER — track active section on scroll (desktop only) ─
+    // On mobile, $activeSection is managed by swipe gestures in +page.svelte.
+    if (window.innerWidth > 768) {
+      const sectionIds: Array<'signal' | 'portfolio' | 'intel'> = ['signal', 'portfolio', 'intel'];
+      sectionObserver = new IntersectionObserver(
+        (entries) => {
+          for (const entry of entries) {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.3) {
+              $activeSection = entry.target.id as 'signal' | 'portfolio' | 'intel';
+            }
           }
-        }
-      },
-      { threshold: 0.3 }
-    );
-    // Wait for the next animation frame so the page sections are rendered before observing
-    requestAnimationFrame(() => {
-      sectionIds.forEach(id => {
-        const el = document.getElementById(id);
-        if (el && sectionObserver) sectionObserver.observe(el);
+        },
+        { threshold: 0.3 }
+      );
+      // Wait for the next animation frame so the page sections are rendered before observing
+      requestAnimationFrame(() => {
+        sectionIds.forEach(id => {
+          const el = document.getElementById(id);
+          if (el && sectionObserver) sectionObserver.observe(el);
+        });
       });
-    });
+    }
 
 
     // Bitcoin peer-to-peer network visualization: anchor nodes (peers) with faint
@@ -538,6 +544,9 @@
 </script>
 
 <canvas id="net-canvas" aria-hidden="true"></canvas>
+
+<!-- ══ WELCOME SCREEN (mobile only) ════════════════════════════ -->
+<WelcomeScreen />
 
 <!-- ══ SKIP NAVIGATION ═══════════════════════════════════════ -->
 <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -1000,12 +1009,8 @@
   .mobile-hdr-right { display:none; align-items:center; gap:6px; }
 
   @media (max-width:768px) {
-    /* Remove backdrop-filter on mobile — it forces the header to re-composite with
-       the animated canvas on every frame, causing the header/buttons to flash. Use
-       a solid background instead and promote the element to its own GPU layer so it
-       is unaffected by paints in other layers. */
-    .hdr { position:relative; height:54px; padding:0 16px; backdrop-filter:none; -webkit-backdrop-filter:none; background:rgba(10,10,10,0.97); transform:translateZ(0); }
-    .hdr--scrolled { height:54px; background:rgba(10,10,10,0.99); box-shadow:0 4px 28px rgba(247,147,26,0.10); }
+    /* Hide the header on mobile — navigation is via the bottom nav and swipeable pages */
+    .hdr { display:none !important; }
     .desktop-only { display:none !important; }
     .mobile-only  { display:flex !important; }
     .brand { margin-right:0; }
@@ -1069,10 +1074,10 @@
     cursor:pointer;
   }
   .mobile-menu-panel {
-    position:absolute; top:54px; left:0; right:0;
+    position:absolute; top:0; left:0; right:0;
     background:rgba(10,10,10,.97); backdrop-filter:blur(28px);
     border-bottom:1px solid rgba(255,255,255,.08);
-    padding:0 0 24px; max-height:calc(100vh - 54px - var(--bottom-nav-h)); overflow-y:auto;
+    padding:0 0 24px; max-height:calc(100vh - var(--bottom-nav-h)); overflow-y:auto;
   }
   .mobile-nav { display:flex; flex-direction:column; padding:8px 0; }
   .mobile-nav-link {
@@ -1137,10 +1142,7 @@
       scroll-padding-top: 64px;
     }
   }
-  @media (max-width:768px) { .page-wrap { padding-top:0; padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px)); } }
-  @media (max-width:700px) {
-    .page-wrap { display:flex; flex-direction:column; }
-  }
+  @media (max-width:768px) { .page-wrap { padding-top:0; padding-bottom:0; } }
 
   /* ── SETTINGS DRAWER ────────────────────────────────────── */
   .drawer {
@@ -1154,7 +1156,7 @@
     from { opacity:0; transform:translateY(-8px); }
     to   { opacity:1; transform:translateY(0); }
   }
-  @media (max-width:768px) { .drawer { top: 54px; max-height: calc(100vh - 54px - var(--bottom-nav-h)); } }
+  @media (max-width:768px) { .drawer { top: 0; max-height: calc(100vh - var(--bottom-nav-h)); } }
   .drawer-inner { max-width:900px; margin:0 auto; padding:20px 24px; display:flex; flex-direction:column; gap:0; }
   .dg { padding:16px 0; border-bottom:1px solid rgba(255,255,255,.04); }
   .dg:last-of-type { border-bottom:none; }

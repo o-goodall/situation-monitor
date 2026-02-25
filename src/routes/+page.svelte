@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, onDestroy } from 'svelte';
   import {
     settings, btcPrice, priceFlash, priceHistory, btcBlock, btcFees,
     halvingBlocksLeft, halvingDays, halvingDate, halvingProgress,
@@ -10,7 +10,7 @@
     gfTodayChangePct, gfHoldings, gfError, gfLoading, gfUpdated,
     gfDividendTotal, gfDividendYtd, gfCash, gfFirstOrderDate, gfOrdersCount,
     markets, marketsUpdated, newsItems, breakingNewsLinks, btcDisplayPrice, btcWsConnected,
-    btcHashrate, gfPortfolioChart
+    btcHashrate, gfPortfolioChart, activeSection
   } from '$lib/store';
   import Sparkline from '$lib/Sparkline.svelte';
   import PriceChart from '$lib/PriceChart.svelte';
@@ -306,11 +306,125 @@
     fetchAuData();
     // Re-read personalization state after hydration so SSR default (false) is corrected
     personalizationEnabled = getStoredSettings().enabled;
+
+    // ── MOBILE SWIPE SETUP ────────────────────────────────────
+    isMobile = window.innerWidth <= 768;
+    vw = window.innerWidth;
+    window.addEventListener('resize', handleSwipeResize, { passive: true });
+  });
+
+  onDestroy(() => {
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('resize', handleSwipeResize);
+    }
   });
 
   // Initialize from localStorage on mount; SSR-safe default is false
   let personalizationEnabled = typeof window !== 'undefined' ? getStoredSettings().enabled : false;
+
+  // ── MOBILE SWIPE STATE ────────────────────────────────────────
+  const SECTION_NAMES = ['signal', 'portfolio', 'intel'] as const;
+  const PAGE_MAP: Record<string, number> = { signal: 0, portfolio: 1, intel: 2 };
+
+  let isMobile = false;
+  let vw = 375;
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let dragDelta = 0;
+  let isDragging = false;
+  let isHorizontalSwipe = false;
+
+  const SWIPE_THRESHOLD = 50; // px to trigger page change
+
+  // Keep page index in sync with activeSection store
+  $: mobilePageIndex = PAGE_MAP[$activeSection ?? 'signal'] ?? 0;
+
+  // Computed transform: smooth transition between pages + live drag offset
+  $: mobileTranslateX = isMobile ? -(mobilePageIndex * vw) + dragDelta : 0;
+
+  function handleSwipeResize() {
+    isMobile = window.innerWidth <= 768;
+    vw = window.innerWidth;
+  }
+
+  function onTouchStart(e: TouchEvent) {
+    if (!isMobile) return;
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    dragDelta = 0;
+    isDragging = true;
+    isHorizontalSwipe = false;
+  }
+
+  function onTouchMove(e: TouchEvent) {
+    if (!isMobile || !isDragging) return;
+    const dx = e.touches[0].clientX - touchStartX;
+    const dy = e.touches[0].clientY - touchStartY;
+
+    // Determine swipe axis on first significant movement
+    if (!isHorizontalSwipe && (Math.abs(dx) > 8 || Math.abs(dy) > 8)) {
+      isHorizontalSwipe = Math.abs(dx) > Math.abs(dy);
+    }
+
+    if (!isHorizontalSwipe) return;
+
+    // Rubber-band effect at edges
+    let delta = dx;
+    if ((mobilePageIndex === 0 && dx > 0) || (mobilePageIndex === 2 && dx < 0)) {
+      delta = dx * 0.25; // resist overscroll at edges
+    }
+    dragDelta = delta;
+    e.preventDefault();
+  }
+
+  function onTouchEnd() {
+    if (!isMobile || !isDragging) return;
+    isDragging = false;
+
+    if (isHorizontalSwipe) {
+      if (dragDelta < -SWIPE_THRESHOLD && mobilePageIndex < 2) {
+        const nextIdx = mobilePageIndex + 1;
+        $activeSection = SECTION_NAMES[nextIdx];
+        // Scroll new page to top
+        requestAnimationFrame(() => {
+          const pages = document.querySelectorAll('.swipe-page');
+          if (pages[nextIdx]) (pages[nextIdx] as HTMLElement).scrollTop = 0;
+        });
+      } else if (dragDelta > SWIPE_THRESHOLD && mobilePageIndex > 0) {
+        const prevIdx = mobilePageIndex - 1;
+        $activeSection = SECTION_NAMES[prevIdx];
+        // Scroll new page to top
+        requestAnimationFrame(() => {
+          const pages = document.querySelectorAll('.swipe-page');
+          if (pages[prevIdx]) (pages[prevIdx] as HTMLElement).scrollTop = 0;
+        });
+      }
+    }
+    dragDelta = 0;
+    isHorizontalSwipe = false;
+  }
 </script>
+
+<!-- ══════════════════════════════════════════════════════════
+  MOBILE SWIPEABLE PAGES WRAPPER
+  On desktop, this is transparent (no-op styles).
+  On mobile (≤768px), provides horizontal swipe between pages.
+═══════════════════════════════════════════════════════════ -->
+<!-- svelte-ignore a11y-no-static-element-interactions -->
+<div class="pages-outer"
+  on:touchstart={onTouchStart}
+  on:touchmove|nonpassive={onTouchMove}
+  on:touchend={onTouchEnd}
+>
+  <div
+    class="pages-inner"
+    class:no-transition={isDragging}
+    style={isMobile ? `transform: translateX(${mobileTranslateX}px)` : ''}
+    aria-label="Section pages"
+  >
+
+<!-- Page 1: Signal -->
+<div class="swipe-page">
 
 <!-- ══════════════════════════════════════════════════════════
   ① SIGNAL SECTION
@@ -698,6 +812,11 @@
   </div>
 </section>
 
+</div><!-- /swipe-page signal -->
+
+<!-- Page 2: Portfolio -->
+<div class="swipe-page">
+
 <!-- ══════════════════════════════════════════════════════════
   ② PORTFOLIO SECTION
 ═══════════════════════════════════════════════════════════ -->
@@ -935,6 +1054,11 @@
 
 </section>
 
+</div><!-- /swipe-page portfolio -->
+
+<!-- Page 3: Intel -->
+<div class="swipe-page">
+
 <!-- ══════════════════════════════════════════════════════════
   ③ INTEL SECTION
 ═══════════════════════════════════════════════════════════ -->
@@ -1064,7 +1188,64 @@
 
 </section>
 
+</div><!-- /swipe-page intel -->
+
+  </div><!-- /pages-inner -->
+</div><!-- /pages-outer -->
+
 <style>
+  /* ── SWIPEABLE PAGES (mobile only) ─────────────────────────── */
+  /* Desktop: pages-outer/pages-inner/swipe-page are transparent wrappers */
+  .pages-outer { display: contents; }
+  .pages-inner { display: contents; }
+  .swipe-page  { display: contents; }
+
+  @media (max-width: 768px) {
+    .pages-outer {
+      display: block;
+      overflow: hidden;
+      width: 100%;
+      /* Full viewport height minus bottom nav */
+      height: calc(100vh - var(--bottom-nav-h, 72px));
+      height: calc(100svh - var(--bottom-nav-h, 72px));
+      position: relative;
+    }
+
+    .pages-inner {
+      display: flex;
+      /* Each swipe-page is 100vw, so 3 pages = 300vw */
+      width: 300%;
+      height: 100%;
+      will-change: transform;
+      transition: transform 0.38s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    /* Disable transition while dragging for instant feedback */
+    .pages-inner.no-transition {
+      transition: none;
+    }
+
+    .swipe-page {
+      display: block;
+      width: 33.333%;
+      flex-shrink: 0;
+      height: 100%;
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-y: contain;
+    }
+
+    /* On mobile, sections fill their swipe-page */
+    .section {
+      min-height: unset !important;
+      width: 100% !important;
+      max-width: 100% !important;
+      margin: 0 !important;
+      overflow: clip !important;
+    }
+  }
+
   /* ── LAYOUT ──────────────────────────────────────────────── */
   .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; min-height: 100vh; position: relative; overflow: clip; }
   /* Desktop scroll snap — align section start to viewport */
