@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import type { Threat } from '$lib/settings';
   import type { ThreatEvent } from '../routes/api/events/+server';
   import type { CountryThreat } from '../routes/api/global-threats/+server';
 
@@ -79,19 +78,8 @@
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let countryPaths: any = null; // D3 selection retained for live colour updates
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let threatGroup: any = null; // Dedicated SVG group for hotspot markers
-  let countryLevelMap = new Map<string, string>(); // countryId → ThreatLevel
 
   const MAX_MAJOR_EVENTS = 8;
-
-  const THREAT_COLORS: Record<string, string> = {
-    critical: '#ff4444',
-    high:     '#ff8800',
-    elevated: '#ffcc00',
-    low:      '#00ff88',
-    info:     '#00ccff',
-  };
 
   const EVENT_COLORS: Record<string, string> = {
     critical: '#ff2200',
@@ -144,41 +132,11 @@
   }
   let seenCountries = new Set<string>();
 
-  /** Semi-transparent country fill colours keyed by threat level */
-  const COUNTRY_THREAT_FILLS: Record<string, string> = {
-    critical: 'rgba(255,68,68,0.35)',
-    high:     'rgba(255,136,0,0.28)',
-    elevated: 'rgba(255,204,0,0.18)',
-    low:      'rgba(0,255,136,0.12)',
-    info:     'rgba(0,204,255,0.10)',
-  };
-
-  function getCountryFill(level: string): string {
-    return COUNTRY_THREAT_FILLS[level] ?? COUNTRY_THREAT_FILLS.elevated;
-  }
-
-  /** Returns the fill for a country, preferring global-threat severity when available */
+  /** Returns the fill for a country based on global-threat severity */
   function getCountryFillById(id: string): string {
     const gtSeverity = globalThreatCountryFills.get(id);
-    if (gtSeverity) return GLOBAL_THREAT_COUNTRY_FILLS[gtSeverity] ?? GLOBAL_THREAT_COUNTRY_FILLS.minor;
-    const level = countryLevelMap.get(id);
-    return level ? getCountryFill(level) : '#1e3248';
-  }
-
-  /** Priority order for threat levels (higher = more severe) */
-  const LEVEL_PRIORITY: Record<string, number> = { critical: 4, high: 3, elevated: 2, low: 1, info: 0 };
-
-  /** Builds a countryId → highest ThreatLevel map, keeping the most severe level per country */
-  function buildCountryLevelMap(threats: Threat[]): Map<string, string> {
-    const map = new Map<string, string>();
-    for (const t of threats) {
-      if (!t.countryId) continue;
-      const existing = map.get(t.countryId);
-      if (!existing || (LEVEL_PRIORITY[t.level] ?? 0) > (LEVEL_PRIORITY[existing] ?? 0)) {
-        map.set(t.countryId, t.level as string);
-      }
-    }
-    return map;
+    if (gtSeverity) return GLOBAL_THREAT_COUNTRY_FILLS[gtSeverity] ?? '#1e3248';
+    return '#1e3248';
   }
 
   function showTip(e: MouseEvent, title: string, color: string, lines: string[] = []) {
@@ -201,13 +159,6 @@
   function zoomOut()   { if (svg && zoom) svg.transition().duration(280).call(zoom.scaleBy, 1/1.5); }
   function resetZoom() { if (svg && zoom && d3Module) svg.transition().duration(280).call(zoom.transform, d3Module.zoomIdentity); }
 
-  /** Fetch live threat hotspots (ACLED when configured, static fallback otherwise) */
-  async function fetchThreats(): Promise<{ threats: Threat[]; conflictCountryIds: string[]; updatedAt: string }> {
-    const res = await fetch('/api/threats');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  }
-
   /** Fetch live RSS-sourced events */
   async function fetchEvents(): Promise<{ events: ThreatEvent[]; updatedAt: string }> {
     const res = await fetch('/api/events');
@@ -227,9 +178,8 @@
     mapError   = '';
 
     try {
-      const [[d3, topojson], threatData, eventData, globalThreatData] = await Promise.all([
+      const [[d3, topojson], eventData, globalThreatData] = await Promise.all([
         Promise.all([import('d3'), import('topojson-client')]),
-        fetchThreats(),
         fetchEvents(),
         fetchGlobalThreats().catch(() => ({ threats: [] as CountryThreat[], updatedAt: '' })),
       ]);
@@ -238,18 +188,13 @@
       // Load seen-country keys from localStorage so "New" badges reflect fresh visits
       seenCountries = loadSeenIds();
 
-      const { threats, updatedAt } = threatData;
-      // Build a map from ISO numeric country ID → highest threat level so country
-      // fills can be coloured by severity rather than a single flat conflict colour.
-      countryLevelMap = buildCountryLevelMap(threats);
-      threatsUpdatedAt = updatedAt ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
-
-      // Build global-threat country fill map: ISO ID → severity (from aggregated API)
+      // Build global-threat country fill map: ISO ID → severity (from Al Jazeera RSS)
       globalThreatCountryFills = new Map<string, string>();
       for (const ct of globalThreatData.threats) {
         const isoId = LOCATION_TO_ISO_ID[ct.country];
         if (isoId) globalThreatCountryFills.set(isoId, ct.severity);
       }
+      threatsUpdatedAt = globalThreatData.updatedAt ? new Date(globalThreatData.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
       // Store major events (critical + high only) for the story panel
       majorEvents = eventData.events.filter(e => e.level === 'critical' || e.level === 'high').slice(0, MAX_MAJOR_EVENTS);
@@ -338,11 +283,11 @@
       }
 
       // ── Live RSS event markers ──────────────────────────────────
-      // Skip events whose geocoded position is too close to an existing threat marker
+      // Skip events whose geocoded position is too close to a global threat marker
       // (within ~3° in both lat and lon) to avoid visual overlap.
       const MIN_MARKER_DISTANCE_DEGREES = 3;
       const isNearThreat = (lat: number, lon: number) =>
-        threats.some(h => Math.abs(h.lat - lat) < MIN_MARKER_DISTANCE_DEGREES && Math.abs(h.lon - lon) < MIN_MARKER_DISTANCE_DEGREES);
+        globalThreatData.threats.some(h => Math.abs(h.lat - lat) < MIN_MARKER_DISTANCE_DEGREES && Math.abs(h.lon - lon) < MIN_MARKER_DISTANCE_DEGREES);
 
       for (const ev of eventData.events) {
         if (isNearThreat(ev.lat, ev.lon)) continue;
@@ -413,10 +358,6 @@
           .on('click', () => firstLink && window.open(firstLink, '_blank', 'noopener,noreferrer'));
       }
 
-      // ── Threat hotspot markers (in a dedicated group for live re-renders) ──
-      threatGroup = mapGroup.append('g').attr('id', 'wm-threats-group');
-      renderThreatMarkers(threats);
-
       // Create a dedicated group for polymarket markers (so they can be updated independently)
       polyGroup = mapGroup.append('g').attr('id', 'wm-poly-group');
       renderPolyMarkers();
@@ -482,64 +423,24 @@
   // Re-render polymarket markers whenever the prop changes (after map is initialised)
   $: if (polyGroup) renderPolyMarkers();
 
-  /** Clears and redraws all threat hotspot markers into the dedicated threat group */
-  function renderThreatMarkers(threats: Threat[]) {
-    if (!threatGroup || !projection) return;
-    threatGroup.selectAll('*').remove();
-
-    for (const h of threats) {
-      const pos = projection([h.lon, h.lat]);
-      if (!pos) continue;
-      const [x, y] = pos;
-      const col = THREAT_COLORS[h.level] ?? '#aaa';
-
-      // pulse ring
-      threatGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 7)
-        .attr('fill', col).attr('fill-opacity', 0.18).attr('class', 'wm-pulse')
-        .attr('stroke', col).attr('stroke-width', 0.8).attr('stroke-opacity', 0.5);
-      // inner dot
-      threatGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 3.5)
-        .attr('fill', col);
-      // label
-      threatGroup.append('text')
-        .attr('x', x + 6).attr('y', y + 4)
-        .attr('fill', col).attr('font-size', '7.5px').attr('font-family', 'monospace')
-        .attr('pointer-events', 'none')
-        .text(h.name);
-      // hit area — tooltip shows risk level, direction and score when available
-      const tipLines: string[] = [];
-      if (h.direction && h.accelerationPct !== undefined) {
-        const accelStr = h.accelerationPct !== 0
-          ? ` (${h.accelerationPct > 0 ? '+' : ''}${h.accelerationPct}% vs prior week)`
-          : '';
-        tipLines.push(`Trend: ${h.direction} ${h.direction === '↑' ? 'Rising' : h.direction === '↓' ? 'Cooling' : 'Stable'}${accelStr}`);
-      }
-      if (h.score !== undefined) tipLines.push(`Score: ${h.score}`);
-      threatGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', 12)
-        .attr('fill', 'transparent').attr('class', 'wm-hit')
-        .on('mouseenter', (e: MouseEvent) => showTip(e, h.desc, col, tipLines))
-        .on('mousemove', moveTip)
-        .on('mouseleave', hideTip);
-    }
-  }
-
   /**
-   * Re-fetches live threat data and updates country fills + hotspot markers
-   * in-place, without tearing down and rebuilding the whole map.
+   * Re-fetches live global threat data and updates country fills in-place,
+   * without tearing down and rebuilding the whole map.
    */
   async function refreshThreats() {
-    if (!countryPaths || !threatGroup || !projection) return;
+    if (!countryPaths || !projection) return;
     try {
-      const { threats, updatedAt } = await fetchThreats();
+      const { threats: globalThreats, updatedAt } = await fetchGlobalThreats();
 
-      // Rebuild country-level map from latest data, keeping highest severity per country
-      countryLevelMap = buildCountryLevelMap(threats);
+      // Rebuild global-threat country fill map from latest Al Jazeera data
+      globalThreatCountryFills = new Map<string, string>();
+      for (const ct of globalThreats) {
+        const isoId = LOCATION_TO_ISO_ID[ct.country];
+        if (isoId) globalThreatCountryFills.set(isoId, ct.severity);
+      }
 
       // Update every country fill to reflect the new threat levels
       countryPaths.attr('fill', (d: { id: unknown }) => getCountryFillById(String(d.id)));
-
-      // Re-render hotspot markers with latest positions + levels
-      renderThreatMarkers(threats);
 
       threatsUpdatedAt = updatedAt
         ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -633,11 +534,7 @@
     <button class="wm-legend" class:wm-legend--min={legendMinimized} on:click={() => legendMinimized = !legendMinimized} title={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-label={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-expanded={!legendMinimized}>
       <div class="wm-leg-title">THREAT {#if legendMinimized}<span class="wm-leg-expand">▸</span>{:else}<span class="wm-leg-expand">▾</span>{/if}</div>
       {#if !legendMinimized}
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff4444;"></span>Critical</div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff8800;"></span>High</div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span>Elevated</div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#00ff88;"></span>Monitored</div>
-      <div class="wm-leg-row wm-leg-row--sub"><span class="wm-dot wm-dot--sq" style="background:rgba(255,34,0,0.32);"></span><span class="wm-leg-sub">Country shaded by conflict</span></div>
+      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(255,34,0,0.32);"></span><span class="wm-leg-sub">Country shaded by conflict</span></div>
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       <div class="wm-leg-sep"></div>
@@ -751,11 +648,6 @@
   .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.15); margin: 3px 0; }
   .wm-leg-ts { font-size: .48rem; color: var(--t3); font-family: monospace; }
 
-  :global(.wm-pulse) { animation: wm-pulse 2.2s ease-in-out infinite; }
-  @keyframes wm-pulse {
-    0%, 100% { opacity: .25; }
-    50%       { opacity: .65; }
-  }
   :global(.wm-hit) { cursor: pointer; }
   :global(.wm-poly-pulse) { animation: wm-poly-pulse 1.8s ease-in-out infinite; }
   @keyframes wm-poly-pulse {
