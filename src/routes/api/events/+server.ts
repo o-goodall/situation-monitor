@@ -49,6 +49,16 @@ const NOISE_KEYWORDS = [
   'museum',
   'exhibition',
   'history of',
+  'memoir',
+  'biography',
+  'podcast',
+  'interview',
+  'review',
+  'analysis',
+  'retrospective',
+  'explainer',
+  'opinion',
+  'op-ed',
 ];
 
 // ── Severity keywords ──────────────────────────────────────────

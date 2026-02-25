@@ -2,6 +2,9 @@ export type FeedCategory = 'global' | 'business' | 'tech' | 'security' | 'crypto
 
 export type ThreatLevel = 'critical' | 'high' | 'elevated' | 'low' | 'info';
 
+/** Dynamic conflict state derived from rolling score and decay logic */
+export type ConflictState = 'active_conflict' | 'escalating_tension' | 'inactive';
+
 export interface Threat {
   id: string;
   name: string;
@@ -17,6 +20,12 @@ export interface Threat {
   direction?: '↑' | '↓' | '→';
   /** Week-over-week acceleration as a percentage (+/−) */
   accelerationPct?: number;
+  /** Number of violent events in the current rolling window */
+  recentEventCount?: number;
+  /** ISO timestamp of the most recent event batch (within the rolling window) */
+  lastEventTimestamp?: string;
+  /** Dynamic conflict state: active_conflict → shown on map; escalating_tension → sidebar; inactive → hidden */
+  conflictState?: ConflictState;
 }
 
 export interface RssFeed {
