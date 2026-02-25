@@ -91,29 +91,36 @@
 
   /** Colour scheme for global-threat markers keyed by severity */
   const GLOBAL_THREAT_COLORS: Record<string, string> = {
-    red:    '#ff2200',   // 200+ casualties
-    orange: '#ffaa00',   // 50–199 casualties
-    green:  '#00cc44',   // 10–49 casualties
+    extreme:  '#ff2200',   // CLED Extreme
+    high:     '#ffaa00',   // CLED High
+    turbulent:'#ffcc00',   // CLED Turbulent
   };
 
   /** Semi-transparent fills matching GLOBAL_THREAT_COLORS for country shading */
   const GLOBAL_THREAT_COUNTRY_FILLS: Record<string, string> = {
-    red:    'rgba(255,34,0,0.32)',
-    orange: 'rgba(255,170,0,0.25)',
-    green:  'rgba(0,204,68,0.15)',
+    extreme:  'rgba(255,34,0,0.32)',
+    high:     'rgba(255,170,0,0.25)',
+    turbulent:'rgba(255,204,0,0.15)',
   };
 
   /** Maps global-threat location names to ISO 3166-1 numeric country IDs (topojson) */
   const LOCATION_TO_ISO_ID: Record<string, string> = {
-    'Ukraine': '804', 'Gaza': '275', 'Palestine': '275', 'Israel': '376',
-    'Syria': '760', 'Yemen': '887', 'Sudan': '729', 'Somalia': '706',
-    'Afghanistan': '004', 'Iraq': '368', 'Iran': '364', 'Myanmar': '104',
-    'Ethiopia': '231', 'DR Congo': '180', 'Mali': '466', 'Burkina Faso': '854',
-    'Nigeria': '566', 'Libya': '434', 'Haiti': '332', 'Lebanon': '422',
-    'Pakistan': '586', 'India': '356', 'Kashmir': '356', 'North Korea': '408',
-    'Taiwan': '158', 'Cameroon': '120', 'Mozambique': '508', 'South Sudan': '728',
-    'Colombia': '170', 'Mexico': '484', 'Venezuela': '862', 'Chad': '148',
-    'Central African Republic': '140',
+    // Extreme
+    'Palestine': '275', 'Myanmar': '104', 'Syria': '760', 'Mexico': '484',
+    'Nigeria': '566', 'Ecuador': '218', 'Brazil': '076', 'Haiti': '332',
+    'Sudan': '729', 'Pakistan': '586',
+    // High
+    'Cameroon': '120', 'DR Congo': '180', 'Ukraine': '804', 'Colombia': '170',
+    'Yemen': '887', 'India': '356', 'Guatemala': '320', 'Somalia': '706',
+    'Lebanon': '422', 'Russia': '643', 'Bangladesh': '050', 'Ethiopia': '231',
+    'Iraq': '368', 'Kenya': '404', 'South Sudan': '728', 'Honduras': '340',
+    'Mali': '466', 'Jamaica': '388', 'Central African Republic': '140',
+    'Burundi': '108', 'Philippines': '608', 'Afghanistan': '004',
+    'Trinidad and Tobago': '780', 'Venezuela': '862', 'Libya': '434',
+    'Niger': '562', 'Burkina Faso': '854', 'Puerto Rico': '630',
+    'Mozambique': '508', 'Iran': '364', 'Uganda': '800', 'Israel': '376',
+    'Peru': '604', 'Ghana': '288', 'Indonesia': '360', 'Chile': '152',
+    'South Africa': '710', 'Nepal': '524', 'Belize': '084', 'Chad': '148',
   };
 
   /** ISO numeric ID → global-threat severity (highest for that country) */
@@ -317,8 +324,8 @@
         const pos = projection([ct.lon, ct.lat]);
         if (!pos) continue;
         const [x, y] = pos;
-        const col = GLOBAL_THREAT_COLORS[ct.severity] ?? '#00cc44';
-        const r = ct.severity === 'red' ? 5.5 : ct.severity === 'orange' ? 4 : 3;
+        const col = GLOBAL_THREAT_COLORS[ct.severity] ?? '#ffcc00';
+        const r = ct.severity === 'extreme' ? 5.5 : ct.severity === 'high' ? 4 : 3;
 
         // Solid core dot — no glow ring, no labels
         mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
@@ -335,9 +342,9 @@
         }
 
         // Build tooltip lines: severity label, then each story
-        const severityLabel = ct.severity === 'red' ? 'HIGH — 200+ casualties'
-          : ct.severity === 'orange' ? 'MEDIUM — 50–199 casualties'
-          : 'LOW — notable conflict';
+        const severityLabel = ct.severity === 'extreme' ? 'EXTREME — CLED top tier'
+          : ct.severity === 'high' ? 'HIGH — CLED second tier'
+          : 'TURBULENT — CLED monitored';
         const tipLines: string[] = [`Severity: ${severityLabel}`];
         for (const s of ct.stories) {
           tipLines.push(`▸ ${s.title.slice(0, 70)}`);
@@ -545,9 +552,9 @@
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>High conflict (200+)</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffaa00;"></span><span>Medium (50–199)</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#00cc44;"></span><span>Low / monitored</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>Extreme (CLED)</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffaa00;"></span><span>High (CLED)</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span><span>Turbulent (CLED)</span></div>
       {#if polymarketThreats.length > 0}
         <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #f59e0b;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#f59e0b;">Market signals</span></div>
       {/if}
@@ -592,7 +599,7 @@
     </div>
     <div class="wm-zones-track">
       {#each threats as zone}
-        {@const col = GLOBAL_THREAT_COLORS[zone.severity] ?? '#00cc44'}
+        {@const col = GLOBAL_THREAT_COLORS[zone.severity] ?? '#ffcc00'}
         {@const firstLink = zone.stories[0]?.link}
         <button
           class="wm-zone-chip wm-zone-chip--{zone.severity}"

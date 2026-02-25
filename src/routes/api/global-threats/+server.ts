@@ -8,29 +8,18 @@ const parser = new Parser();
  * GET /api/global-threats
  *
  * Fetches conflict stories from Al Jazeera's RSS feed, aggregated by country.
- * Known ongoing conflict zones are always included on the map (using static
- * coordinates) and supplemented with any matching Al Jazeera stories.
- * This endpoint consolidates the previous global-threats + ongoing-conflicts
- * endpoints into a single Al Jazeera-only source.
+ * Displays the 50 most severe conflict zones from the CLED Conflict Index,
+ * categorised as Extreme, High, or Turbulent.  Stories are sourced exclusively
+ * from Al Jazeera's conflict RSS feed and supplement the static zone list.
  *
  * Refreshed every 30 minutes by the Vercel cron job (vercel.json).
  */
 
 // ── Single trusted RSS source ──────────────────────────────────
 const RSS_URL = 'https://www.aljazeera.com/xml/rss/subjects/conflict.xml';
-const ARTICLES_LIMIT = 30;
+const ARTICLES_LIMIT = 50;
 
-// ── Conflict keyword filter (broad — prefer some noise over missing events) ──
-const CONFLICT_KEYWORDS = [
-  'killed', 'dead', 'bombing', 'airstrike', 'attack',
-  'massacre', 'clashes', 'shelling', 'war', 'invasion',
-  'militants', 'rebels', 'siege', 'offensive', 'drone',
-  'strike', 'troops', 'military', 'conflict', 'violence',
-  'casualties', 'wounded', 'deaths',
-];
-const CONFLICT_KW_RE = new RegExp(`\\b(${CONFLICT_KEYWORDS.join('|')})\\b`, 'i');
-
-// ── Casualty extraction ────────────────────────────────────────
+// ── Casualty extraction (used for display in tooltips only) ───
 const CASUALTY_RE = /(?:(\d{1,5})\s+(?:killed|dead|casualties|deaths|wounded|injured))|(?:(?:killed|dead|casualties|deaths|wounded|injured)\s+(\d{1,5}))/gi;
 
 function extractCasualties(text: string): number | null {
@@ -45,20 +34,14 @@ function extractCasualties(text: string): number | null {
   return found ? max : null;
 }
 
-// ── Severity classification ────────────────────────────────────
-export type GlobalThreatSeverity = 'red' | 'orange' | 'green';
+// ── Severity classification (CLED Conflict Index categories) ──
+export type GlobalThreatSeverity = 'extreme' | 'high' | 'turbulent';
 
-const SEVERITY_RANK: Record<GlobalThreatSeverity, number> = { red: 2, orange: 1, green: 0 };
+const SEVERITY_RANK: Record<GlobalThreatSeverity, number> = { extreme: 2, high: 1, turbulent: 0 };
 
-function classifySeverity(casualties: number | null): GlobalThreatSeverity {
-  if (casualties !== null && casualties >= 200) return 'red';
-  if (casualties !== null && casualties >= 50)  return 'orange';
-  return 'green';
-}
-
-// ── Known conflict zones (static coords + Al Jazeera pattern matching) ────────
-// These zones are ALWAYS shown on the map; stories are populated from the feed.
-// Consolidated from the former ongoing-conflicts endpoint.
+// ── CLED Conflict Index — 50 most severe conflict zones ───────
+// Extreme (10): CLED top tier.  High (40): CLED second tier.
+// Stories are populated from Al Jazeera; zones always appear on the map.
 const KNOWN_CONFLICT_ZONES: {
   pattern: RegExp;
   country: string;
@@ -66,36 +49,63 @@ const KNOWN_CONFLICT_ZONES: {
   lon: number;
   defaultSeverity: GlobalThreatSeverity;
 }[] = [
-  { pattern: /\bukraine\b/i,                          country: 'Ukraine',                  lat: 48.4,  lon:  31.2,  defaultSeverity: 'red'    },
-  { pattern: /\bgaza\b|\bpalestine\b/i,               country: 'Gaza',                     lat: 31.4,  lon:  34.4,  defaultSeverity: 'red'    },
-  { pattern: /\bisrael\b/i,                           country: 'Israel',                   lat: 31.8,  lon:  35.2,  defaultSeverity: 'red'    },
-  { pattern: /\byemen\b|houthi|huthi/i,               country: 'Yemen',                    lat: 15.5,  lon:  48.5,  defaultSeverity: 'red'    },
-  { pattern: /\bsudan\b/i,                            country: 'Sudan',                    lat: 15.5,  lon:  30.0,  defaultSeverity: 'red'    },
-  { pattern: /\bethiopia\b|tigray/i,                  country: 'Ethiopia',                 lat:  9.0,  lon:  40.5,  defaultSeverity: 'red'    },
-  { pattern: /\bmyanmar\b|burma/i,                    country: 'Myanmar',                  lat: 19.7,  lon:  96.1,  defaultSeverity: 'orange' },
-  { pattern: /\bhaiti\b/i,                            country: 'Haiti',                    lat: 18.9,  lon: -72.3,  defaultSeverity: 'orange' },
-  { pattern: /\bcameroon\b/i,                         country: 'Cameroon',                 lat:  3.8,  lon:  11.5,  defaultSeverity: 'orange' },
-  { pattern: /\bcolombia\b|\bcolumbia\b/i,            country: 'Colombia',                 lat:  4.7,  lon: -74.1,  defaultSeverity: 'orange' },
-  { pattern: /\bsyria\b/i,                            country: 'Syria',                    lat: 34.8,  lon:  38.5,  defaultSeverity: 'orange' },
-  { pattern: /\bsomalia\b/i,                          country: 'Somalia',                  lat:  5.2,  lon:  46.2,  defaultSeverity: 'orange' },
-  { pattern: /\bafghanistan\b/i,                      country: 'Afghanistan',              lat: 34.5,  lon:  69.2,  defaultSeverity: 'orange' },
-  { pattern: /\biraq\b/i,                             country: 'Iraq',                     lat: 33.3,  lon:  44.4,  defaultSeverity: 'orange' },
-  { pattern: /\bmali\b|sahel/i,                       country: 'Mali',                     lat: 12.7,  lon:  -8.0,  defaultSeverity: 'orange' },
-  { pattern: /\bburnkina\s*faso\b|burkina/i,          country: 'Burkina Faso',             lat: 12.4,  lon:  -1.6,  defaultSeverity: 'orange' },
-  { pattern: /\bdrc\b|congo/i,                        country: 'DR Congo',                 lat: -4.0,  lon:  21.8,  defaultSeverity: 'red'    },
-  { pattern: /south\s*sudan/i,                        country: 'South Sudan',              lat:  6.9,  lon:  31.3,  defaultSeverity: 'orange' },
-  { pattern: /\blebanon\b/i,                          country: 'Lebanon',                  lat: 33.9,  lon:  35.5,  defaultSeverity: 'green'  },
-  { pattern: /\bpakistan\b/i,                         country: 'Pakistan',                 lat: 30.4,  lon:  69.3,  defaultSeverity: 'green'  },
-  { pattern: /\bkashmir\b/i,                          country: 'Kashmir',                  lat: 33.8,  lon:  76.5,  defaultSeverity: 'green'  },
-  { pattern: /\bmexico\b/i,                           country: 'Mexico',                   lat: 23.6,  lon: -102.6, defaultSeverity: 'orange' },
-  { pattern: /\bliby/i,                               country: 'Libya',                    lat: 26.3,  lon:  17.2,  defaultSeverity: 'green'  },
-  { pattern: /\bnigeria\b/i,                          country: 'Nigeria',                  lat:  9.1,  lon:   8.7,  defaultSeverity: 'green'  },
-  { pattern: /\biran\b/i,                             country: 'Iran',                     lat: 32.0,  lon:  53.0,  defaultSeverity: 'green'  },
+  // ── Extreme ───────────────────────────────────────────────────
+  { pattern: /\bpalestine\b|\bgaza\b/i,               country: 'Palestine',                lat: 31.4,  lon:  34.4,  defaultSeverity: 'extreme' },
+  { pattern: /\bmyanmar\b|\bburma\b/i,                country: 'Myanmar',                  lat: 19.7,  lon:  96.1,  defaultSeverity: 'extreme' },
+  { pattern: /\bsyria\b/i,                            country: 'Syria',                    lat: 34.8,  lon:  38.5,  defaultSeverity: 'extreme' },
+  { pattern: /\bmexico\b/i,                           country: 'Mexico',                   lat: 23.6,  lon: -102.6, defaultSeverity: 'extreme' },
+  { pattern: /\bnigeria\b/i,                          country: 'Nigeria',                  lat:  9.1,  lon:   8.7,  defaultSeverity: 'extreme' },
+  { pattern: /\becuador\b/i,                          country: 'Ecuador',                  lat: -1.8,  lon: -78.2,  defaultSeverity: 'extreme' },
+  { pattern: /\bbrazil\b/i,                           country: 'Brazil',                   lat: -14.2, lon: -51.9,  defaultSeverity: 'extreme' },
+  { pattern: /\bhaiti\b/i,                            country: 'Haiti',                    lat: 18.9,  lon: -72.3,  defaultSeverity: 'extreme' },
+  { pattern: /\bsudan\b(?!\s+south)/i,                country: 'Sudan',                    lat: 15.5,  lon:  30.0,  defaultSeverity: 'extreme' },
+  { pattern: /\bpakistan\b/i,                         country: 'Pakistan',                 lat: 30.4,  lon:  69.3,  defaultSeverity: 'extreme' },
+  // ── High ──────────────────────────────────────────────────────
+  { pattern: /\bcameroon\b/i,                         country: 'Cameroon',                 lat:  3.8,  lon:  11.5,  defaultSeverity: 'high'    },
+  { pattern: /\bdrc\b|democratic\s+republic\s+of\s+congo|(?<!\brepublic\s+of\s+)congo/i, country: 'DR Congo', lat: -4.0, lon: 21.8, defaultSeverity: 'high' },
+  { pattern: /\bukraine\b/i,                          country: 'Ukraine',                  lat: 48.4,  lon:  31.2,  defaultSeverity: 'high'    },
+  { pattern: /\bcolombia\b|\bcolumbia\b/i,            country: 'Colombia',                 lat:  4.7,  lon: -74.1,  defaultSeverity: 'high'    },
+  { pattern: /\byemen\b|\bhouthi\b|\bhuthi\b/i,       country: 'Yemen',                    lat: 15.5,  lon:  48.5,  defaultSeverity: 'high'    },
+  { pattern: /\bindia\b/i,                            country: 'India',                    lat: 20.6,  lon:  79.0,  defaultSeverity: 'high'    },
+  { pattern: /\bguatemala\b/i,                        country: 'Guatemala',                lat: 15.8,  lon: -90.2,  defaultSeverity: 'high'    },
+  { pattern: /\bsomalia\b/i,                          country: 'Somalia',                  lat:  5.2,  lon:  46.2,  defaultSeverity: 'high'    },
+  { pattern: /\blebanon\b/i,                          country: 'Lebanon',                  lat: 33.9,  lon:  35.5,  defaultSeverity: 'high'    },
+  { pattern: /\brussia\b/i,                           country: 'Russia',                   lat: 61.5,  lon: 105.3,  defaultSeverity: 'high'    },
+  { pattern: /\bbangladesh\b/i,                       country: 'Bangladesh',               lat: 23.7,  lon:  90.4,  defaultSeverity: 'high'    },
+  { pattern: /\bethiopia\b|\btigray\b/i,              country: 'Ethiopia',                 lat:  9.0,  lon:  40.5,  defaultSeverity: 'high'    },
+  { pattern: /\biraq\b/i,                             country: 'Iraq',                     lat: 33.3,  lon:  44.4,  defaultSeverity: 'high'    },
+  { pattern: /\bkenya\b/i,                            country: 'Kenya',                    lat: -1.3,  lon:  36.8,  defaultSeverity: 'high'    },
+  { pattern: /south\s*sudan/i,                        country: 'South Sudan',              lat:  6.9,  lon:  31.3,  defaultSeverity: 'high'    },
+  { pattern: /\bhonduras\b/i,                         country: 'Honduras',                 lat: 15.2,  lon: -86.2,  defaultSeverity: 'high'    },
+  { pattern: /\bmali\b|\bsahel\b/i,                   country: 'Mali',                     lat: 12.7,  lon:  -8.0,  defaultSeverity: 'high'    },
+  { pattern: /\bjamaica\b/i,                          country: 'Jamaica',                  lat: 18.1,  lon: -77.3,  defaultSeverity: 'high'    },
+  { pattern: /central\s*african\s*republic/i,         country: 'Central African Republic', lat:  6.6,  lon:  20.9,  defaultSeverity: 'high'    },
+  { pattern: /\bburundi\b/i,                          country: 'Burundi',                  lat: -3.4,  lon:  29.9,  defaultSeverity: 'high'    },
+  { pattern: /\bphilippines\b|\bfilipino\b/i,         country: 'Philippines',              lat: 12.9,  lon: 122.0,  defaultSeverity: 'high'    },
+  { pattern: /\bafghanistan\b/i,                      country: 'Afghanistan',              lat: 34.5,  lon:  69.2,  defaultSeverity: 'high'    },
+  { pattern: /\btrinidad\b/i,                         country: 'Trinidad and Tobago',      lat: 10.7,  lon: -61.5,  defaultSeverity: 'high'    },
+  { pattern: /\bvenezuela\b/i,                        country: 'Venezuela',                lat:  6.4,  lon: -66.6,  defaultSeverity: 'high'    },
+  { pattern: /\bliby/i,                               country: 'Libya',                    lat: 26.3,  lon:  17.2,  defaultSeverity: 'high'    },
+  { pattern: /\bniger\b/i,                            country: 'Niger',                    lat: 17.6,  lon:   8.1,  defaultSeverity: 'high'    },
+  { pattern: /\bburkina\b/i,                          country: 'Burkina Faso',             lat: 12.4,  lon:  -1.6,  defaultSeverity: 'high'    },
+  { pattern: /\bpuerto\s*rico\b/i,                    country: 'Puerto Rico',              lat: 18.2,  lon: -66.6,  defaultSeverity: 'high'    },
+  { pattern: /\bmozambique\b/i,                       country: 'Mozambique',               lat: -18.7, lon:  35.5,  defaultSeverity: 'high'    },
+  { pattern: /\biran\b/i,                             country: 'Iran',                     lat: 32.0,  lon:  53.0,  defaultSeverity: 'high'    },
+  { pattern: /\buganda\b/i,                           country: 'Uganda',                   lat:  1.4,  lon:  32.3,  defaultSeverity: 'high'    },
+  { pattern: /\bisrael\b/i,                           country: 'Israel',                   lat: 31.8,  lon:  35.2,  defaultSeverity: 'high'    },
+  { pattern: /\bperu\b/i,                             country: 'Peru',                     lat: -9.2,  lon: -75.0,  defaultSeverity: 'high'    },
+  { pattern: /\bghana\b/i,                            country: 'Ghana',                    lat:  7.9,  lon:  -1.0,  defaultSeverity: 'high'    },
+  { pattern: /\bindonesia\b/i,                        country: 'Indonesia',                lat: -0.8,  lon: 113.9,  defaultSeverity: 'high'    },
+  { pattern: /\bchile\b/i,                            country: 'Chile',                    lat: -35.7, lon: -71.5,  defaultSeverity: 'high'    },
+  { pattern: /south\s*africa/i,                       country: 'South Africa',             lat: -30.6, lon:  22.9,  defaultSeverity: 'high'    },
+  { pattern: /\bnepal\b/i,                            country: 'Nepal',                    lat: 28.4,  lon:  84.1,  defaultSeverity: 'high'    },
+  { pattern: /\bbelize\b/i,                           country: 'Belize',                   lat: 17.2,  lon: -88.5,  defaultSeverity: 'high'    },
+  { pattern: /\bchad\b/i,                             country: 'Chad',                     lat: 15.5,  lon:  18.7,  defaultSeverity: 'high'    },
 ];
 
 // ── TTL constants ──────────────────────────────────────────────
-const TTL_MS       = 7 * 24 * 3600 * 1000; // 7-day story TTL
-const NEW_STORY_MS = 2 * 3600 * 1000;       // story is "new" if published within 2 hours
+const TTL_MS       = 7 * 24 * 3600 * 1000;  // 7-day story TTL
+const NEW_STORY_MS = 24 * 3600 * 1000;       // ping visible for 24 hours
 
 // ── Output types ───────────────────────────────────────────────
 export interface StoryEntry {
@@ -158,11 +168,10 @@ export async function GET(_event: RequestEvent) {
       return true;
     });
 
-    // Filter: within 7-day TTL + broad conflict keyword match
+    // Filter: within 7-day TTL only (Al Jazeera conflict feed is pre-filtered for conflict stories)
     const filtered = unique.filter(item => {
       const age = now - new Date(item.pubDate).getTime();
-      if (age > TTL_MS) return false;
-      return CONFLICT_KW_RE.test(`${item.title} ${item.summary}`);
+      return age <= TTL_MS;
     });
 
     // Map stories to known conflict zones by pattern matching
@@ -202,13 +211,8 @@ export async function GET(_event: RequestEvent) {
     for (const zone of KNOWN_CONFLICT_ZONES) {
       const stories = countryStories.get(zone.country) ?? [];
 
-      // Severity: highest from stories (or zone default if no stories)
-      const severity = stories.length > 0
-        ? stories.reduce<GlobalThreatSeverity>((best, s) => {
-            const sv = classifySeverity(s.casualties);
-            return SEVERITY_RANK[sv] > SEVERITY_RANK[best] ? sv : best;
-          }, zone.defaultSeverity)
-        : zone.defaultSeverity;
+      // Severity comes from the CLED Conflict Index (zone.defaultSeverity)
+      const severity = zone.defaultSeverity;
 
       const hasNew = stories.some(s => now - new Date(s.date).getTime() < NEW_STORY_MS);
 
