@@ -17,6 +17,7 @@
   import WorldMap from '$lib/WorldMap.svelte';
   import CompareChart from '$lib/CompareChart.svelte';
   import PersonalGreeting from '$lib/PersonalGreeting.svelte';
+  import GlobalSignalCard from '$lib/components/GlobalSignalCard.svelte';
   import { getStoredSettings } from '$lib/personalization';
   $: displayCur = ($settings.displayCurrency ?? 'AUD').toUpperCase();
 
@@ -146,49 +147,6 @@
     }, BLUR_DURATION_MS);
   }
 
-  // ── Conflict Summary (DEFCON) ─────────────────────────────────
-  interface TopConflict { name: string; country: string; severity_score: number }
-  interface ConflictSummary {
-    date: string;
-    global_score: number;
-    defcon_level: number;
-    defcon_label: string;
-    summary: string;
-    top_conflicts: TopConflict[];
-    event_count: number;
-    sources_used: string[];
-    defcon_description: string;
-    source_url: string;
-    updated_month: string;
-    from_live_source: boolean;
-  }
-  let conflictSummary: ConflictSummary | null = null;
-  let conflictLoading = false;
-  let conflictError = false;
-
-  async function fetchConflictSummary() {
-    if (conflictSummary || conflictLoading) return;
-    conflictLoading = true;
-    conflictError = false;
-    try {
-      const res = await fetch('/api/conflict-summary');
-      conflictSummary = await res.json();
-    } catch {
-      conflictError = true;
-    } finally {
-      conflictLoading = false;
-    }
-  }
-
-  $: if (intelView === 'conflict' && !conflictSummary && !conflictLoading) fetchConflictSummary();
-
-  function defconColor(level: number): string {
-    if (level === 1) return '#ef4444';
-    if (level === 2) return '#f97316';
-    if (level === 3) return '#eab308';
-    if (level === 4) return '#22d3ee';
-    return '#22c55e';
-  }
   const INTEL_TILE_LIMIT = 12; // 3 columns × 4 rows
 
   /** Conflict/threat keywords to filter polymarket markets for map display */
@@ -1216,78 +1174,9 @@
     </div>
 
     {:else if intelView === 'conflict'}
-    <!-- ── DEFCON: Live global threat level from defconlevel.com ── -->
+    <!-- ── DEFCON: Global Signal (ReliefWeb-derived threat level) ── -->
     <div class="gc intel-gc globe-gc" style="padding:20px 18px;">
-      <div class="gc-head" style="margin-bottom:14px;">
-        <div>
-          <p class="gc-title">Live Threat Intelligence{#if conflictSummary} · Updated {conflictSummary.updated_month}{/if}</p>
-          <p class="dim" style="margin-top:3px;">Current DEFCON Level {new Date().getFullYear()} | Today's Alert Status</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="globe-badge" style="border-color:rgba(239,68,68,.4);background:rgba(239,68,68,.12);color:#f87171;">DAILY</span>
-        </div>
-      </div>
-
-      {#if conflictLoading}
-        <div class="markets-loading" role="status" aria-label="Loading conflict summary">
-          <div class="skeleton" style="height:90px;border-radius:10px;"></div>
-          <div class="skeleton" style="height:90px;border-radius:10px;"></div>
-          <div class="skeleton" style="height:90px;border-radius:10px;"></div>
-        </div>
-      {:else if conflictError || !conflictSummary}
-        <p class="dim" style="padding:16px 0;">Unable to load conflict data. Please try again later.</p>
-      {:else}
-        {@const dc = conflictSummary.defcon_level}
-        {@const col = defconColor(dc)}
-        <!-- DEFCON level + score row -->
-        <div class="conflict-hero">
-          <div class="defcon-badge" style="--defcon-color:{col};">
-            <span class="defcon-label">DEFCON</span>
-            <span class="defcon-num" style="color:{col};">{dc}</span>
-          </div>
-          <div class="conflict-hero-info">
-            <p class="conflict-score-label">Global Score <span class="conflict-score-val" style="color:{col};">{conflictSummary.global_score}<span style="font-size:.7em;font-weight:500;color:var(--t3);">/100</span></span></p>
-            <p class="conflict-summary-text">{conflictSummary.defcon_description || conflictSummary.summary}</p>
-            <div class="conflict-score-bar-wrap">
-              <div class="conflict-score-bar" style="width:{conflictSummary.global_score}%;background:{col};"></div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Top conflicts grid -->
-        {#if conflictSummary.top_conflicts.length > 0}
-          <p class="gc-title" style="margin:16px 0 10px;font-size:.75rem;letter-spacing:.06em;opacity:.6;">TOP CONFLICTS</p>
-          <div class="pm-grid conflict-grid">
-            {#each conflictSummary.top_conflicts as c}
-              {@const barW = Math.min(100, Math.round((c.severity_score / (conflictSummary?.top_conflicts[0]?.severity_score || 1)) * 100))}
-              <div class="pm-card pm-card--intel conflict-card">
-                <div class="pm-card-frosted-overlay"></div>
-                <div class="pm-card-tags" style="position:relative;z-index:1;">
-                  <span class="pm-tag pm-news-src">{c.country}</span>
-                </div>
-                <p class="pm-card-q" style="position:relative;z-index:1;">{c.name}</p>
-                <div class="pm-binary-prob" style="position:relative;z-index:1;">
-                  <span class="pm-binary-outcome" style="color:var(--t2);">severity</span>
-                  <span class="pm-binary-pct" style="color:{col};">{c.severity_score}</span>
-                </div>
-                <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
-                  <div class="pm-prob-fill" style="width:{barW}%;background:{col};"></div>
-                </div>
-              </div>
-            {/each}
-          </div>
-        {/if}
-
-        <!-- Footer: source attribution -->
-        <p class="dim" style="margin-top:14px;font-size:.6rem;letter-spacing:.04em;">
-          {#if conflictSummary.from_live_source}
-            Source: <a href={conflictSummary.source_url} target="_blank" rel="noopener noreferrer" style="color:inherit;text-decoration:underline;">{conflictSummary.source_url}</a>
-            {#if conflictSummary.sources_used.length > 0} · {conflictSummary.sources_used.join(' · ')} · {conflictSummary.event_count} events analysed{/if}
-          {:else if conflictSummary.sources_used.length > 0}
-            Sources: {conflictSummary.sources_used.join(' · ')} · {conflictSummary.event_count} events analysed
-          {/if}
-        </p>
-      {/if}
+      <GlobalSignalCard />
     </div>
 
     {:else}
@@ -2047,53 +1936,6 @@
     animation:badge-blink 0.9s step-start infinite;
   }
   @keyframes badge-blink { 0%,100%{opacity:1;} 50%{opacity:.55;} }
-
-  /* ── CONFLICT SUMMARY (DEFCON) STYLES ──────────────────────── */
-  .conflict-hero {
-    display:flex; align-items:flex-start; gap:16px; margin-bottom:4px;
-    flex-wrap:wrap;
-  }
-  .defcon-badge {
-    display:flex; flex-direction:column; align-items:center; justify-content:center;
-    min-width:76px; padding:10px 14px; border-radius:10px;
-    border:2px solid var(--defcon-color, #22c55e);
-    background:rgba(0,0,0,.15);
-    flex-shrink:0;
-  }
-  .defcon-label {
-    font-size:.55rem; font-weight:800; letter-spacing:.12em; color:var(--t2);
-    text-transform:uppercase;
-  }
-  .defcon-num {
-    font-size:2.4rem; font-weight:900; line-height:1; letter-spacing:-.04em;
-  }
-  .conflict-hero-info {
-    flex:1; min-width:140px; display:flex; flex-direction:column; gap:6px;
-  }
-  .conflict-score-label {
-    font-size:.7rem; font-weight:600; color:var(--t2); letter-spacing:.04em;
-    text-transform:uppercase; display:flex; align-items:baseline; gap:6px;
-  }
-  .conflict-score-val {
-    font-size:1.5rem; font-weight:800; line-height:1; letter-spacing:-.03em;
-  }
-  .conflict-summary-text {
-    font-size:.78rem; color:var(--t2); line-height:1.5;
-  }
-  .conflict-score-bar-wrap {
-    height:4px; background:rgba(255,255,255,.06); border-radius:2px; overflow:hidden;
-    margin-top:2px;
-  }
-  .conflict-score-bar {
-    height:100%; border-radius:2px; transition:width .7s ease; opacity:.8;
-  }
-  .conflict-grid { grid-template-columns:repeat(3,1fr); }
-  @media (max-width:900px) { .conflict-grid { grid-template-columns:repeat(2,1fr); } }
-  @media (max-width:600px) { .conflict-grid { grid-template-columns:1fr; } }
-  :global(html.light) .defcon-badge {
-    background:rgba(255,255,255,.6);
-  }
-  :global(html.light) .conflict-score-bar-wrap { background:rgba(0,0,0,.06); }
 
   /* ── INTEL CARD – CONSISTENT SIZING FOR BOTH VIEWS ─────── */
   .pm-card--intel { min-height:130px; }
