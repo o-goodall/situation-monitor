@@ -7,17 +7,25 @@ const parser = new Parser();
 /**
  * GET /api/global-threats
  *
- * Fetches conflict stories from Al Jazeera's RSS feed, aggregated by country.
- * Displays the 50 most severe conflict zones from the CLED Conflict Index,
- * categorised as Extreme, High, or Turbulent.  Stories are sourced exclusively
- * from Al Jazeera's conflict RSS feed and supplement the static zone list.
+ * Fetches conflict stories from Al Jazeera, BBC, and Reuters RSS feeds,
+ * aggregated by country.  Displays the 50 most severe conflict zones from
+ * the CLED Conflict Index, categorised as Extreme, High, or Turbulent.
+ * Stories are sourced from multiple RSS feeds and supplement the static zone list.
  *
  * Refreshed every 30 minutes by the Vercel cron job (vercel.json).
  */
 
-// ── Single trusted RSS source ──────────────────────────────────
-const RSS_URL = 'https://www.aljazeera.com/xml/rss/subjects/conflict.xml';
+// ── RSS sources — name, URL, and whether keyword filtering is needed ──
+const RSS_SOURCES: { name: string; url: string; preFiltered: boolean }[] = [
+  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/subjects/conflict.xml', preFiltered: true },
+  { name: 'BBC',        url: 'https://feeds.bbci.co.uk/news/world/rss.xml',             preFiltered: false },
+  { name: 'Reuters',    url: 'https://feeds.reuters.com/reuters/topNews',               preFiltered: false },
+];
+
 const ARTICLES_LIMIT = 50;
+
+// ── Conflict keyword filter (applied to non-pre-filtered feeds) ───────
+const CONFLICT_KEYWORDS = /\b(killed?|dead|deaths?|casualties|attack(?:ed|s)?|bombing|bomb(?:ed|s)?|shooting|shot|missile|airstrike|air.?strike|fighting|clashes?|war|conflict|offensive|explosion|wounded|injured|troops|military|invasion|assault|terror|terrorist|hostage|siege|massacre|genocide|ceasefire|insurgent|rebel|militia)\b/i;
 
 // ── Casualty extraction (used for display in tooltips only) ───
 const CASUALTY_RE = /(?:(\d{1,5})\s+(?:killed|dead|casualties|deaths|wounded|injured))|(?:(?:killed|dead|casualties|deaths|wounded|injured)\s+(\d{1,5}))/gi;
@@ -104,8 +112,8 @@ const KNOWN_CONFLICT_ZONES: {
 ];
 
 // ── TTL constants ──────────────────────────────────────────────
-const TTL_MS       = 7 * 24 * 3600 * 1000;  // 7-day story TTL
-const NEW_STORY_MS = 24 * 3600 * 1000;       // ping visible for 24 hours
+const TTL_MS       = 24 * 3600 * 1000;  // 24-hour story TTL (stories expire after 24 h)
+const NEW_STORY_MS = 24 * 3600 * 1000;  // ping visible for 24 hours
 
 // ── Output types ───────────────────────────────────────────────
 export interface StoryEntry {
@@ -143,20 +151,33 @@ export async function GET(_event: RequestEvent) {
   }
 
   try {
-    const feed = await parser.parseURL(RSS_URL);
+    // Fetch all RSS feeds in parallel; individual failures are tolerated
+    const feedResults = await Promise.allSettled(
+      RSS_SOURCES.map(src => parser.parseURL(src.url).then(feed => ({ feed, src })))
+    );
+
     const now = Date.now();
 
-    // Collect raw items
-    interface RawItem { title: string; link: string; summary: string; pubDate: string }
+    // Collect raw items across all feeds
+    interface RawItem { title: string; link: string; summary: string; pubDate: string; source: string }
     const raw: RawItem[] = [];
-    for (const item of feed.items.slice(0, ARTICLES_LIMIT)) {
-      if (!item.title || !item.link) continue;
-      raw.push({
-        title:   item.title,
-        link:    item.link,
-        summary: item.contentSnippet ?? item.summary ?? item.content ?? '',
-        pubDate: item.pubDate ?? new Date().toISOString(),
-      });
+    for (const result of feedResults) {
+      if (result.status !== 'fulfilled') continue;
+      const { feed, src } = result.value;
+      for (const item of feed.items.slice(0, ARTICLES_LIMIT)) {
+        if (!item.title || !item.link) continue;
+        const title   = item.title;
+        const summary = item.contentSnippet ?? item.summary ?? item.content ?? '';
+        // Apply keyword filter to non-pre-filtered feeds (BBC, Reuters)
+        if (!src.preFiltered && !CONFLICT_KEYWORDS.test(`${title} ${summary}`)) continue;
+        raw.push({
+          title,
+          link:    item.link,
+          summary,
+          pubDate: item.pubDate ?? new Date().toISOString(),
+          source:  src.name,
+        });
+      }
     }
 
     // Deduplicate by title prefix
@@ -168,7 +189,7 @@ export async function GET(_event: RequestEvent) {
       return true;
     });
 
-    // Filter: within 7-day TTL only (Al Jazeera conflict feed is pre-filtered for conflict stories)
+    // Filter: within 24-hour TTL only
     const filtered = unique.filter(item => {
       const age = now - new Date(item.pubDate).getTime();
       return age <= TTL_MS;
@@ -191,7 +212,7 @@ export async function GET(_event: RequestEvent) {
           casualties,
           date:       item.pubDate,
           link:       item.link,
-          source:     'Al Jazeera',
+          source:     item.source,
           createdAt,
           expiresAt,
         };
