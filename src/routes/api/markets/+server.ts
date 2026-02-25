@@ -109,12 +109,11 @@ async function getGold(sinceDate?: Date): Promise<{ current: number; pctChange: 
 
     const latest = data[data.length - 1];
     const refDate = sinceDate ?? (() => { const d = new Date(); d.setFullYear(d.getFullYear() - 1); return d; })();
-    const refEntry = data.reduce((closest, entry) => {
-      const d = new Date(entry.date).getTime();
-      const target = refDate.getTime();
-      const prevD = new Date(closest.date).getTime();
-      return Math.abs(d - target) < Math.abs(prevD - target) ? entry : closest;
-    });
+    const target = refDate.getTime();
+    const refEntry = data
+      .map(e => ({ entry: e, ms: new Date(e.date).getTime() }))
+      .reduce((acc, cur) => Math.abs(cur.ms - target) < Math.abs(acc.ms - target) ? cur : acc)
+      .entry;
 
     if (!latest.price || !refEntry.price) return null;
     const pctChange = ((latest.price - refEntry.price) / refEntry.price) * 100;

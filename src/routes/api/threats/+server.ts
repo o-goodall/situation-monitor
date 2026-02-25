@@ -195,14 +195,22 @@ const COUNTRY_INDEX: [RegExp, CountryInfo][] = [
   [/kashmir/i,                  { id: '356', lat:  34.0, lon:  74.0, canonical: 'Kashmir' }],
 ];
 
+const _matchCountryCache = new Map<string, CountryInfo | null>();
 function matchCountry(name: string): CountryInfo | null {
+  if (_matchCountryCache.has(name)) return _matchCountryCache.get(name)!;
   for (const [re, info] of COUNTRY_INDEX) {
-    if (re.test(name)) return info;
+    if (re.test(name)) {
+      _matchCountryCache.set(name, info);
+      return info;
+    }
   }
+  _matchCountryCache.set(name, null);
   return null;
 }
 
 const LEVEL_ORDER: ThreatLevel[] = ['low', 'elevated', 'high', 'critical'];
+/** O(1) rank lookup — avoids repeated indexOf scans across hot loops */
+const LEVEL_RANK = new Map<ThreatLevel, number>(LEVEL_ORDER.map((l, i) => [l, i]));
 
 // ── GDELT pointdata response shape ────────────────────────────
 interface GdeltFeature {
@@ -404,7 +412,7 @@ async function fetchReliefWebThreats(): Promise<Map<string, ReliefWebEntry>> {
       if (!info) continue;
       const level = reliefWebLevel(f.type ?? [], f.status);
       const existing = map.get(info.canonical);
-      if (!existing || LEVEL_ORDER.indexOf(level) > LEVEL_ORDER.indexOf(existing.level)) {
+      if (!existing || (LEVEL_RANK.get(level) ?? -1) > (LEVEL_RANK.get(existing.level) ?? -1)) {
         map.set(info.canonical, { info, level, types });
       }
     }
@@ -465,7 +473,7 @@ async function fetchUcdpThreats(): Promise<Map<string, UcdpEntry>> {
       existing.eventCount++;
       existing.totalDeaths += deaths;
       const newLevel = ucdpLevel(existing.totalDeaths);
-      if (LEVEL_ORDER.indexOf(newLevel) > LEVEL_ORDER.indexOf(existing.level)) {
+      if ((LEVEL_RANK.get(newLevel) ?? -1) > (LEVEL_RANK.get(existing.level) ?? -1)) {
         existing.level = newLevel;
       }
     } else {
@@ -523,7 +531,7 @@ async function fetchCewarnThreats(): Promise<Map<string, CewarnEntry>> {
       existing.incidentCount++;
       existing.totalFatalities += fatalities;
       const newLevel = cewarnLevel(existing.totalFatalities);
-      if (LEVEL_ORDER.indexOf(newLevel) > LEVEL_ORDER.indexOf(existing.level)) {
+      if ((LEVEL_RANK.get(newLevel) ?? -1) > (LEVEL_RANK.get(existing.level) ?? -1)) {
         existing.level = newLevel;
       }
     } else {
@@ -555,7 +563,7 @@ function mergeSecondarySource(
     const existing = threats.get(name);
     if (existing) {
       // Upgrade level if secondary source is more severe
-      if (LEVEL_ORDER.indexOf(data.level) > LEVEL_ORDER.indexOf(existing.level)) {
+      if ((LEVEL_RANK.get(data.level) ?? -1) > (LEVEL_RANK.get(existing.level) ?? -1)) {
         existing.level = data.level;
       }
       // Annotate description
@@ -754,7 +762,7 @@ export async function GET(_event: RequestEvent) {
     // Only send active_conflict and escalating_tension to the map; inactive are dropped
     const threats = Array.from(threatMap.values())
       .filter(t => t.conflictState !== 'inactive');
-    threats.sort((a, b) => LEVEL_ORDER.indexOf(b.level) - LEVEL_ORDER.indexOf(a.level));
+    threats.sort((a, b) => (LEVEL_RANK.get(b.level) ?? -1) - (LEVEL_RANK.get(a.level) ?? -1));
 
     const conflictCountryIds = threats.filter(t => t.countryId).map(t => t.countryId as string);
     const payload = { threats, conflictCountryIds, updatedAt: batchTimestamp };

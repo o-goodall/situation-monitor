@@ -72,8 +72,10 @@ function parseOutcomes(event: any): { topOutcome: string; probability: number; o
 
   if (!prices.length) return { topOutcome: 'Yes', probability: 50, outcomes: [] };
 
-  const maxPrice = prices.reduce((m, p) => p > m ? p : m, -Infinity);
-  const maxIdx = prices.indexOf(maxPrice);
+  let maxIdx = 0;
+  for (let i = 1; i < prices.length; i++) {
+    if (prices[i] > prices[maxIdx]) maxIdx = i;
+  }
   const outcomes = prices.map((p, i) => ({
     name: outcomeNames[i] ?? (i === 0 ? 'Yes' : 'No'),
     probability: Math.round(p * 100),
