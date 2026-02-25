@@ -720,9 +720,9 @@
 
   @media (max-width: 768px) {
     .wm-wrap {
-      height: calc(100svh - 260px);
+      height: calc(100svh - 230px);
       min-height: 300px;
-      max-height: 480px;
+      max-height: 700px;
       border-radius: 10px 10px 0 0;
     }
     .wm-story-title { max-width: 200px; }
