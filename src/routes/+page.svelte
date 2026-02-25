@@ -886,8 +886,10 @@
         </div>
         <!-- Range buttons -->
         <div class="chart-range-btns" role="group" aria-label="Chart time range">
-          <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
-          <button class="crb" class:crb--active={btcChartRange==='1W'} on:click={() => setBtcChartRange('1W')}>1W</button>
+          {#if btcChartView === 'price'}
+            <button class="crb" class:crb--active={btcChartRange==='1D'} on:click={() => setBtcChartRange('1D')}>1D</button>
+            <button class="crb" class:crb--active={btcChartRange==='1W'} on:click={() => setBtcChartRange('1W')}>1W</button>
+          {/if}
           <button class="crb" class:crb--active={btcChartRange==='1Y'} on:click={() => setBtcChartRange('1Y')}>1Y</button>
           <button class="crb" class:crb--active={btcChartRange==='5Y'} on:click={() => setBtcChartRange('5Y')}>5Y</button>
         </div>

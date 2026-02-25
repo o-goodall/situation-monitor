@@ -8,7 +8,7 @@
   export let range: '1D' | '1W' | '1Y' | '5Y' = '5Y';
 
   // ── Internal state ───────────────────────────────────────────
-  let scaleMode: 'linear' | 'log' = 'log';
+  const scaleMode = 'log';
   let visible = { btc: true, sp500: true, gold: true };
 
   type SeriesKey = 'btc' | 'sp500' | 'gold';
@@ -330,46 +330,23 @@
   $: if (svgEl && (normBtc || normSp500 || normGold || visible || scaleMode)) redraw();
 </script>
 
-<!-- ── Performance badges ────────────────────────────────────── -->
-<div class="cc-badges" role="status" aria-label="Performance summary">
-  {#each SERIES_CFG as cfg}
-    {@const ret = cfg.key === 'btc' ? btcReturn : cfg.key === 'sp500' ? sp500Return : goldReturn}
-    <span
-      class="cc-badge"
-      style="--c:{cfg.color};--rc:{returnColor(ret)}"
-      title="{cfg.label} indexed return since chart start"
-    >
-      <span class="cc-badge-dot" style="background:{cfg.color};"></span>
-      {cfg.label}
-      <span class="cc-badge-ret" style="color:{returnColor(ret)}">{fmtReturn(ret)}</span>
-    </span>
-  {/each}
-</div>
-
 <!-- ── Legend ───────────────────────────────────────────────── -->
 <div class="cc-legend" role="group" aria-label="Toggle series visibility">
   {#each SERIES_CFG as cfg}
+    {@const ret = cfg.key === 'btc' ? btcReturn : cfg.key === 'sp500' ? sp500Return : goldReturn}
     <button
       class="cc-leg-btn"
       class:cc-leg-btn--off={!visible[cfg.key]}
       on:click={() => { visible = { ...visible, [cfg.key]: !visible[cfg.key] }; }}
       aria-pressed={visible[cfg.key]}
       aria-label="Toggle {cfg.label}"
-      title="Toggle {cfg.label}"
+      title="{cfg.label} indexed return since chart start"
     >
       <span class="cc-leg-line" style="background:{cfg.color};opacity:{visible[cfg.key]?1:0.28};width:{cfg.strokeWidth*4}px;"></span>
       <span class="cc-leg-label" style="color:{visible[cfg.key]?cfg.color:'rgba(255,255,255,0.3)'};">{cfg.label}</span>
+      <span class="cc-leg-ret" style="color:{returnColor(ret)}">{fmtReturn(ret)}</span>
     </button>
   {/each}
-
-  <button
-    class="cc-scale-btn"
-    on:click={() => { scaleMode = scaleMode === 'linear' ? 'log' : 'linear'; }}
-    title="Toggle linear/log scale"
-    aria-label="Scale: {scaleMode}"
-  >
-    {scaleMode === 'linear' ? 'LOG' : 'LIN'}
-  </button>
 </div>
 
 <!-- ── Chart ────────────────────────────────────────────────── -->
@@ -378,6 +355,35 @@
     <p class="cc-empty">Chart data unavailable — please try again later.</p>
   {/if}
   <svg bind:this={svgEl} aria-label="Multi-asset indexed performance chart"></svg>
+
+  <!-- Annual Returns Overlay -->
+  {#if showAnnualTable && annualRows.length > 0}
+    <div class="cc-annual-overlay" role="region" aria-label="Annual returns table">
+      <table class="cc-annual-table">
+        <thead>
+          <tr>
+            <th class="cc-th-year">Yr</th>
+            {#each SERIES_CFG as cfg}
+              <th class="cc-th-asset" style="color:{cfg.color}">{cfg.label}</th>
+            {/each}
+          </tr>
+        </thead>
+        <tbody>
+          {#each annualRows as row}
+            <tr>
+              <td class="cc-td-year">{row.year}</td>
+              {#each SERIES_CFG as cfg}
+                {@const val = cfg.key === 'btc' ? row.btc : cfg.key === 'sp500' ? row.sp500 : row.gold}
+                <td class="cc-td-ret" style="color:{returnColor(val)}">
+                  {val !== null ? (val >= 0 ? '+' : '') + val.toFixed(0) + '%' : '—'}
+                </td>
+              {/each}
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+    </div>
+  {/if}
 
   <!-- Tooltip -->
   {#if tooltip.visible}
@@ -404,67 +410,7 @@
   {/if}
 </div>
 
-<!-- ── Annual Returns Table ──────────────────────────────── -->
-{#if showAnnualTable && annualRows.length > 0}
-  <div class="cc-annual-wrap" role="region" aria-label="Annual returns table">
-    <table class="cc-annual-table">
-      <thead>
-        <tr>
-          <th class="cc-th-year">Year</th>
-          {#each SERIES_CFG as cfg}
-            <th class="cc-th-asset" style="color:{cfg.color}">{cfg.label}</th>
-          {/each}
-        </tr>
-      </thead>
-      <tbody>
-        {#each annualRows as row}
-          <tr>
-            <td class="cc-td-year">{row.year}</td>
-            {#each SERIES_CFG as cfg}
-              {@const val = cfg.key === 'btc' ? row.btc : cfg.key === 'sp500' ? row.sp500 : row.gold}
-              <td class="cc-td-ret" style="color:{returnColor(val)}">
-                {val !== null ? (val >= 0 ? '+' : '') + val.toFixed(0) + '%' : '—'}
-              </td>
-            {/each}
-          </tr>
-        {/each}
-      </tbody>
-    </table>
-  </div>
-{/if}
-
 <style>
-  /* ── Badges ─────────────────────────────────────────────── */
-  .cc-badges {
-    display: flex;
-    gap: 8px;
-    flex-wrap: wrap;
-    margin-bottom: 8px;
-  }
-  .cc-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 5px;
-    padding: 3px 8px;
-    font-size: .6rem;
-    font-weight: 700;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 3px;
-    color: rgba(255,255,255,.7);
-  }
-  .cc-badge-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .cc-badge-ret {
-    font-weight: 800;
-    letter-spacing: .02em;
-  }
-
   /* ── Legend ─────────────────────────────────────────────── */
   .cc-legend {
     display: flex;
@@ -501,23 +447,7 @@
     transition: opacity .2s;
   }
   .cc-leg-label { font-size: .6rem; font-weight: 700; letter-spacing: .05em; }
-  .cc-scale-btn {
-    margin-left: auto;
-    padding: 3px 8px;
-    font-size: .58rem;
-    font-weight: 700;
-    letter-spacing: .07em;
-    text-transform: uppercase;
-    background: rgba(255,255,255,.04);
-    border: 1px solid rgba(255,255,255,.08);
-    border-radius: 3px;
-    cursor: pointer;
-    color: rgba(255,255,255,.45);
-    font-family: inherit;
-    transition: background .2s, color .2s;
-  }
-  .cc-scale-btn:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.75); }
-  .cc-scale-btn:focus-visible { outline: 2px solid rgba(247,147,26,.6); outline-offset: 2px; }
+  .cc-leg-ret { font-weight: 800; font-size: .58rem; letter-spacing: .02em; }
 
   /* ── Chart wrapper ──────────────────────────────────────── */
   .cc-wrap {
@@ -539,6 +469,58 @@
     font-size: .66rem;
     color: rgba(255,255,255,.35);
     pointer-events: none;
+  }
+
+  /* ── Annual Returns Overlay ─────────────────────────────── */
+  .cc-annual-overlay {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    background: rgba(10,10,10,.78);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    border: 1px solid rgba(255,255,255,.07);
+    border-radius: 4px;
+    padding: 3px 5px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .cc-annual-table {
+    border-collapse: collapse;
+    font-size: .55rem;
+    font-family: monospace;
+  }
+  .cc-annual-table th,
+  .cc-annual-table td {
+    padding: 1px 5px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .cc-annual-table th:first-child,
+  .cc-annual-table td:first-child {
+    text-align: left;
+  }
+  .cc-th-year {
+    color: rgba(255,255,255,.35);
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    padding-bottom: 2px;
+  }
+  .cc-th-asset {
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+    padding-bottom: 2px;
+  }
+  .cc-td-year {
+    color: rgba(255,255,255,.35);
+    font-weight: 600;
+  }
+  .cc-td-ret {
+    font-weight: 700;
   }
 
   /* ── Tooltip ────────────────────────────────────────────── */
@@ -592,50 +574,5 @@
     font-family: monospace;
     min-width: 44px;
     text-align: right;
-  }
-
-  /* ── Annual Returns Table ────────────────────────────────── */
-  .cc-annual-wrap {
-    margin-top: 10px;
-    overflow-x: auto;
-  }
-  .cc-annual-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: .6rem;
-    font-family: monospace;
-  }
-  .cc-annual-table th,
-  .cc-annual-table td {
-    padding: 3px 8px;
-    text-align: right;
-    white-space: nowrap;
-  }
-  .cc-annual-table th:first-child,
-  .cc-annual-table td:first-child {
-    text-align: left;
-  }
-  .cc-th-year {
-    color: rgba(255,255,255,.35);
-    font-weight: 700;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(255,255,255,.06);
-  }
-  .cc-th-asset {
-    font-weight: 700;
-    letter-spacing: .05em;
-    text-transform: uppercase;
-    border-bottom: 1px solid rgba(255,255,255,.06);
-  }
-  .cc-td-year {
-    color: rgba(255,255,255,.35);
-    font-weight: 600;
-  }
-  .cc-td-ret {
-    font-weight: 700;
-  }
-  .cc-annual-table tbody tr:hover td {
-    background: rgba(255,255,255,.03);
   }
 </style>
