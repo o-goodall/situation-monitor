@@ -41,6 +41,48 @@
   $: sp500Return = lastValue(normSp500) !== null ? lastValue(normSp500)! - 100 : null;
   $: goldReturn  = lastValue(normGold)  !== null ? lastValue(normGold)!  - 100 : null;
 
+  // ── Annual returns table ─────────────────────────────────────
+  type AnnualRow = { year: number; btc: number | null; sp500: number | null; gold: number | null };
+
+  function computeAnnualReturns(
+    btcPts: { t: number; p: number }[],
+    sp500Pts: { t: number; p: number }[],
+    goldPts: { t: number; p: number }[]
+  ): AnnualRow[] {
+    const allPts = [...btcPts, ...sp500Pts, ...goldPts];
+    if (!allPts.length) return [];
+
+    const minYear = new Date(Math.min(...allPts.map(p => p.t))).getFullYear();
+    const maxYear = new Date(Math.max(...allPts.map(p => p.t))).getFullYear();
+
+    const getAnnualReturn = (pts: { t: number; p: number }[], year: number): number | null => {
+      if (!pts.length) return null;
+      const yearStart = new Date(year, 0, 1).getTime();
+      const yearEnd   = new Date(year + 1, 0, 1).getTime();
+      const before = pts.filter(p => p.t < yearStart);
+      const inYear = pts.filter(p => p.t >= yearStart && p.t < yearEnd);
+      if (!inYear.length) return null;
+      const startPrice = before.length ? before[before.length - 1].p : inYear[0].p;
+      const endPrice   = inYear[inYear.length - 1].p;
+      if (!startPrice || !endPrice) return null;
+      return ((endPrice - startPrice) / startPrice) * 100;
+    };
+
+    const rows: AnnualRow[] = [];
+    for (let year = maxYear; year >= minYear; year--) {
+      const btcRet   = getAnnualReturn(btcPts,   year);
+      const sp500Ret = getAnnualReturn(sp500Pts, year);
+      const goldRet  = getAnnualReturn(goldPts,  year);
+      if (btcRet !== null || sp500Ret !== null || goldRet !== null) {
+        rows.push({ year, btc: btcRet, sp500: sp500Ret, gold: goldRet });
+      }
+    }
+    return rows;
+  }
+
+  $: showAnnualTable = range === '1Y' || range === '5Y';
+  $: annualRows = showAnnualTable ? computeAnnualReturns(btc, sp500, gold) : [];
+
   function fmtReturn(v: number | null): string {
     if (v === null) return '—';
     return (v >= 0 ? '+' : '') + v.toFixed(1) + '%';
@@ -362,6 +404,35 @@
   {/if}
 </div>
 
+<!-- ── Annual Returns Table ──────────────────────────────── -->
+{#if showAnnualTable && annualRows.length > 0}
+  <div class="cc-annual-wrap" role="region" aria-label="Annual returns table">
+    <table class="cc-annual-table">
+      <thead>
+        <tr>
+          <th class="cc-th-year">Year</th>
+          {#each SERIES_CFG as cfg}
+            <th class="cc-th-asset" style="color:{cfg.color}">{cfg.label}</th>
+          {/each}
+        </tr>
+      </thead>
+      <tbody>
+        {#each annualRows as row}
+          <tr>
+            <td class="cc-td-year">{row.year}</td>
+            {#each SERIES_CFG as cfg}
+              {@const val = cfg.key === 'btc' ? row.btc : cfg.key === 'sp500' ? row.sp500 : row.gold}
+              <td class="cc-td-ret" style="color:{returnColor(val)}">
+                {val !== null ? (val >= 0 ? '+' : '') + val.toFixed(0) + '%' : '—'}
+              </td>
+            {/each}
+          </tr>
+        {/each}
+      </tbody>
+    </table>
+  </div>
+{/if}
+
 <style>
   /* ── Badges ─────────────────────────────────────────────── */
   .cc-badges {
@@ -521,5 +592,50 @@
     font-family: monospace;
     min-width: 44px;
     text-align: right;
+  }
+
+  /* ── Annual Returns Table ────────────────────────────────── */
+  .cc-annual-wrap {
+    margin-top: 10px;
+    overflow-x: auto;
+  }
+  .cc-annual-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .6rem;
+    font-family: monospace;
+  }
+  .cc-annual-table th,
+  .cc-annual-table td {
+    padding: 3px 8px;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .cc-annual-table th:first-child,
+  .cc-annual-table td:first-child {
+    text-align: left;
+  }
+  .cc-th-year {
+    color: rgba(255,255,255,.35);
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .cc-th-asset {
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+  .cc-td-year {
+    color: rgba(255,255,255,.35);
+    font-weight: 600;
+  }
+  .cc-td-ret {
+    font-weight: 700;
+  }
+  .cc-annual-table tbody tr:hover td {
+    background: rgba(255,255,255,.03);
   }
 </style>
