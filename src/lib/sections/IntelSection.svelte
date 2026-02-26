@@ -54,31 +54,6 @@
     m.trending && m.probability >= 50 && POLY_CONFLICT_RE.test(m.question)
   ).map(m => ({ question: m.question, url: m.url, probability: m.probability, topOutcome: m.topOutcome }));
 
-  const TOPIC_MAP: [RegExp, string][] = [
-    [/trump|maga|republican|gop|democrat|harris|biden/, '🇺🇸'],
-    [/iran|tehran|persian|khamenei/, '🇮🇷'],
-    [/china|beijing|xi jinping|taiwan|pla/, '🇨🇳'],
-    [/russia|moscow|putin|kremlin/, '🇷🇺'],
-    [/bitcoin|btc|crypto|ethereum|defi/, '₿'],
-    [/fed|federal reserve|interest rate|inflation|cpi/, '🏛️'],
-    [/israel|gaza|hamas|palestine|idf/, '⚔️'],
-    [/ukraine|kyiv|zelensky|donbas/, '🇺🇦'],
-    [/oil|opec|energy|gas|petroleum/, '🛢️'],
-    [/election|vote|ballot|poll|president/, '🗳️'],
-    [/war|military|missile|nuclear|troops/, '⚠️'],
-    [/trade|tariff|sanction|wto/, '📊'],
-    [/korea|dprk|kim jong/, '🇰🇵'],
-    [/india|modi|pakistan|kashmir/, '🌏'],
-    [/europe|eu|nato|macron|scholz|uk|britain/, '🌍'],
-    [/climate|weather|disaster|earthquake|flood/, '🌡️'],
-    [/ai|artificial intelligence|tech|openai/, '🤖'],
-  ];
-  function detectTopic(text: string): string {
-    const t = text.toLowerCase();
-    for (const [re, icon] of TOPIC_MAP) { if (re.test(t)) return icon; }
-    return '◈';
-  }
-
   function fmtEndDate(daysLeft: number | null, endDate: string): string {
     if (daysLeft === null) return '';
     if (daysLeft < 0) return 'Closed';
@@ -98,85 +73,23 @@
 <section id="intel" class="section" aria-label="Intel">
   <div class="section-header">
     <h2 class="sect-title">Intel</h2>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-left:auto;">
+      <button class="btn-ghost" on:click={(e) => handleTileClick('news', e)} aria-haspopup="dialog" aria-label="Open news feed modal">News</button>
+      <button class="btn-ghost" on:click={(e) => handleTileClick('polymarket', e)} aria-haspopup="dialog" aria-label="Open Poly Market predictions modal">Markets</button>
+    </div>
   </div>
 
-  <div class="intel-dashboard-grid">
-    <!-- ── GLOBE: Global Threat Monitor (always visible) ── -->
-    <div class="gc intel-gc globe-gc" style="padding:20px 18px;">
-      <div class="gc-head" style="margin-bottom:14px;">
-        <div>
-          <p class="gc-title">Global Threat Monitor</p>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;">
-          <span class="globe-badge">LIVE</span>
-        </div>
+  <!-- ── GLOBE: Global Threat Monitor ── -->
+  <div class="gc intel-gc globe-gc" style="padding:20px 18px;">
+    <div class="gc-head" style="margin-bottom:14px;">
+      <div>
+        <p class="gc-title">Global Threat Monitor</p>
       </div>
-      <WorldMap polymarketThreats={polymarketThreats} />
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span class="globe-badge">LIVE</span>
+      </div>
     </div>
-
-    <!-- ── SUMMARY TILES ROW: News + Poly Market ── -->
-    <div class="intel-summary-row">
-
-      <!-- News tile -->
-      <button
-        class="gc intel-summary-tile"
-        on:click={(e) => handleTileClick('news', e)}
-        aria-haspopup="dialog"
-        aria-label="Open News Feed"
-      >
-        <div class="gc-head" style="margin-bottom:6px;">
-          <p class="gc-title">News Feed</p>
-          {#if $newsItems.length > 0}
-            <span class="dim" style="font-size:.58rem;">{$newsItems.length} articles</span>
-          {/if}
-        </div>
-        {#if $newsItems.length > 0}
-          <div class="intel-tile-preview">
-            {#each $newsItems.slice(0, 3) as item}
-              <div class="intel-tile-preview-item">
-                <span class="pm-tag pm-news-src" style="width:fit-content;">{item.source}</span>
-                <span class="intel-tile-preview-title">{item.title}</span>
-              </div>
-            {/each}
-          </div>
-        {:else}
-          <p class="dim" style="font-size:.75rem;flex:1;">Fetching RSS feeds…</p>
-        {/if}
-        <div class="intel-tile-open-hint">Open ↗</div>
-      </button>
-
-      <!-- Poly Market tile -->
-      <button
-        class="gc intel-summary-tile"
-        on:click={(e) => handleTileClick('polymarket', e)}
-        aria-haspopup="dialog"
-        aria-label="Open Poly Market"
-      >
-        <div class="gc-head" style="margin-bottom:6px;">
-          <p class="gc-title">Poly Market</p>
-          {#if $marketsUpdated}
-            <span class="dim" style="font-size:.58rem;">{$marketsUpdated}</span>
-          {/if}
-        </div>
-        {#if $markets.length > 0}
-          {@const top = $markets[0]}
-          <div class="intel-tile-preview">
-            <div class="intel-tile-preview-item">
-              <span class="pm-tag" style="width:fit-content;">{top.tag || 'Market'}</span>
-              <span class="intel-tile-preview-title">{top.question}</span>
-            </div>
-            <div class="pm-binary-prob" style="margin-top:auto;">
-              <span class="pm-binary-outcome" style="color:{pc(top.probability)};">{top.topOutcome}</span>
-              <span class="pm-binary-pct" style="color:{pc(top.probability)};">{top.probability}%</span>
-            </div>
-          </div>
-        {:else}
-          <p class="dim" style="font-size:.75rem;flex:1;">Loading markets…</p>
-        {/if}
-        <div class="intel-tile-open-hint">Open ↗</div>
-      </button>
-
-    </div>
+    <WorldMap polymarketThreats={polymarketThreats} />
   </div>
 
   <!-- ── TILE MODALS ── -->
@@ -210,12 +123,11 @@
             <div class="pm-grid news-pm-grid">
               {#each $newsItems.slice(0, INTEL_TILE_LIMIT) as item}
                 <a href={item.link} target="_blank" rel="noopener noreferrer" class="pm-card pm-card--intel" aria-label="{item.title}">
-                  <div class="pm-card-frosted-overlay"></div>
-                  <div class="pm-card-tags" style="position:relative;z-index:1;">
+                  <div class="pm-card-tags">
                     <span class="pm-tag pm-news-src">{item.source}</span>
                     <span class="pm-tag">{ago(item.pubDate)} ago</span>
                   </div>
-                  <p class="pm-card-q" style="position:relative;z-index:1;">{item.title}</p>
+                  <p class="pm-card-q">{item.title}</p>
                 </a>
               {/each}
             </div>
@@ -249,8 +161,7 @@
                    class:pm-card--urgent={isUrgent}
                    class:pm-card--trending={m.trending && !m.pinned}
                    aria-label="{m.question}">
-                  <div class="pm-card-frosted-overlay"></div>
-                  <div class="pm-card-tags" style="position:relative;z-index:1;">
+                  <div class="pm-card-tags">
                     {#if m.pinned}
                       <span class="pm-tag pm-pin">★ Watching</span>
                     {:else if m.trending}
@@ -264,13 +175,13 @@
                       <span class="pm-tag pm-date-tag">{endLabel}</span>
                     {/if}
                   </div>
-                  <p class="pm-card-q" style="position:relative;z-index:1;">{m.question}</p>
-                  <div class="pm-binary-prob" style="position:relative;z-index:1;">
+                  <p class="pm-card-q">{m.question}</p>
+                  <div class="pm-binary-prob">
                     <span class="pm-binary-outcome" style="color:{pc(topPct)};" aria-label="Leading outcome: {topOutcome}">{topOutcome}</span>
                     <span class="pm-binary-pct" style="color:{pc(topPct)};" aria-label="Probability: {topPct} percent">{topPct}%</span>
                   </div>
                   {#if m.outcomes.length > 2}
-                    <div class="pm-secondary-outcomes" style="position:relative;z-index:1;" aria-label="Other contenders">
+                    <div class="pm-secondary-outcomes" aria-label="Other contenders">
                       {#each m.outcomes.slice(1, 4) as o}
                         <span class="pm-secondary-item">
                           <span class="pm-secondary-name">{o.name}</span>
@@ -279,7 +190,7 @@
                       {/each}
                     </div>
                   {/if}
-                  <div class="pm-card-prob-bar" style="position:relative;z-index:1;">
+                  <div class="pm-card-prob-bar">
                     <div class="pm-prob-fill" style="width:{topPct}%;background:{pc(topPct)};"></div>
                   </div>
                 </a>
