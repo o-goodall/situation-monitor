@@ -856,34 +856,36 @@
     </div>
 
     <!-- Stories list -->
-    {#if selectedCountry.stories.length === 0}
-      <p class="wm-modal-empty">No recent stories for this region. Check back later.</p>
-    {:else}
-      <p class="wm-modal-count">{selectedCountry.stories.length} recent {selectedCountry.stories.length === 1 ? 'story' : 'stories'} — most recent first</p>
-      <div class="wm-modal-stories">
-        {#each selectedCountry.stories as story}
-          <a
-            href={story.link}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="wm-modal-story"
-            aria-label="{story.title}"
-          >
-            <div class="wm-modal-meta">
-              <span class="wm-modal-source">{story.source}</span>
-              <span class="wm-modal-age">{ago(story.date)}</span>
-              {#if story.casualties !== null}
-                <span class="wm-modal-cas">~{story.casualties} casualties</span>
+    <div class="wm-modal-body">
+      {#if selectedCountry.stories.length === 0}
+        <p class="wm-modal-empty">No recent stories for this region. Check back later.</p>
+      {:else}
+        <p class="wm-modal-count">{selectedCountry.stories.length} recent {selectedCountry.stories.length === 1 ? 'story' : 'stories'} — most recent first</p>
+        <div class="wm-modal-stories">
+          {#each selectedCountry.stories as story}
+            <a
+              href={story.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              class="wm-modal-story"
+              aria-label="{story.title}"
+            >
+              <div class="wm-modal-meta">
+                <span class="wm-modal-source">{story.source}</span>
+                <span class="wm-modal-age">{ago(story.date)}</span>
+                {#if story.casualties !== null}
+                  <span class="wm-modal-cas">~{story.casualties} casualties</span>
+                {/if}
+              </div>
+              <p class="wm-modal-story-title">{story.title}</p>
+              {#if story.summary}
+                <p class="wm-modal-story-summary">{story.summary}</p>
               {/if}
-            </div>
-            <p class="wm-modal-story-title">{story.title}</p>
-            {#if story.summary}
-              <p class="wm-modal-story-summary">{story.summary}</p>
-            {/if}
-          </a>
-        {/each}
-      </div>
-    {/if}
+            </a>
+          {/each}
+        </div>
+      {/if}
+    </div>
   </div>
 {/if}
 
@@ -1099,14 +1101,12 @@
     background: rgba(9, 17, 30, 0.97);
     border: 1px solid rgba(0, 200, 255, 0.25);
     border-radius: 14px;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     z-index: 1001;
     outline: none;
     animation: wm-modal-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
-    /* Scrollbar styling */
-    scrollbar-width: thin;
-    scrollbar-color: rgba(0,200,255,0.2) transparent;
   }
   @keyframes wm-modal-in {
     from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
@@ -1120,9 +1120,15 @@
     gap: 12px;
     padding: 20px 20px 14px;
     border-bottom: 1px solid rgba(0,200,255,0.12);
-    position: sticky; top: 0;
+    flex-shrink: 0;
     background: rgba(9, 17, 30, 0.98);
-    z-index: 2;
+  }
+  .wm-modal-body {
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    flex: 1;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,200,255,0.2) transparent;
   }
   .wm-modal-title-row {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;
@@ -1187,10 +1193,11 @@
   /* Mobile: sheet slides from bottom */
   @media (max-width: 768px) {
     .wm-modal {
-      top: auto; bottom: 0; left: 0; right: 0;
+      top: max(env(safe-area-inset-top, 0px) + 10px, 44px);
+      bottom: 0; left: 0; right: 0;
       transform: none;
       width: 100%; max-width: none;
-      max-height: 85dvh;
+      max-height: none;
       border-radius: 16px 16px 0 0;
       border-bottom: none;
       animation: wm-modal-in-mobile 0.3s ease;
