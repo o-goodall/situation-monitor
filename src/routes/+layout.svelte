@@ -2,7 +2,7 @@
   import '../app.css';
   import { onMount, onDestroy } from 'svelte';
   import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
+  import { goto, afterNavigate } from '$app/navigation';
   import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
   import SettingsPersonalizationToggle from '$lib/SettingsPersonalizationToggle.svelte';
   import WelcomeScreen from '$lib/WelcomeScreen.svelte';
@@ -28,6 +28,19 @@
   let mobileMenuOpen = false;
   let sectionObserver: IntersectionObserver | null = null;
   let showDcaFormula = false;
+  let pendingScrollTarget: string | null = null;
+
+  // After any SvelteKit navigation, scroll to a deferred section target if one is pending
+  afterNavigate(() => {
+    if (pendingScrollTarget) {
+      const target = pendingScrollTarget;
+      pendingScrollTarget = null;
+      requestAnimationFrame(() => {
+        const el = document.getElementById(target);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  });
 
   const FEED_CATEGORIES: { key: FeedCategory; label: string; hint: string }[] = [
     { key: 'global',   label: '🌍 Global / Major News', hint: 'Breaking world events' },
@@ -43,6 +56,12 @@
     mobileMenuOpen = false;
     if (typeof window !== 'undefined' && window.innerWidth > 768) {
       $activeSection = section;
+      if ($page.url.pathname !== '/') {
+        // On a sub-route (e.g. /intel/[country]): navigate home first, then scroll
+        pendingScrollTarget = section;
+        goto('/');
+        return;
+      }
       const el = document.getElementById(section);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       else window.scrollTo({ top: 0, behavior: 'smooth' });
