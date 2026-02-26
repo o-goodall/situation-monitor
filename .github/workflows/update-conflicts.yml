@@ -1,0 +1,34 @@
+name: Update Conflict Colors
+
+on:
+  schedule:
+    # Run every Sunday at 02:00 UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Fetch latest Wikipedia conflict data
+        run: npx tsx scripts/update-conflict-colors.ts
+
+      - name: Commit updated conflicts.json (if changed)
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add static/data/conflicts.json static/data/.last-revision || true
+          git diff --cached --quiet || git commit -m "chore: update conflicts.json from Wikipedia [skip ci]"
+          git push
