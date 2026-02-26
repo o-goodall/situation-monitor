@@ -46,7 +46,7 @@
 
     // Stroke
     ctx.strokeStyle = lineColor;
-    ctx.lineWidth   = 1.4;
+    ctx.lineWidth   = 2;
     ctx.lineJoin    = 'round';
     ctx.lineCap     = 'round';
     ctx.shadowBlur  = 6;

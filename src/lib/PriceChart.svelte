@@ -73,6 +73,10 @@
     // Adaptive X-axis tick count based on range and chart width
     const xCount = range === '1d' ? (W >= 400 ? 5 : 4) : (W >= 400 ? 7 : 5);
 
+    // Subtle backplate for chart plotting area — improves legibility on glass tiles
+    ctx.fillStyle = 'rgba(0,0,0,0.12)';
+    ctx.fillRect(PAD_L, PAD_T, dW, dH);
+
     // Subtle horizontal grid lines
     ctx.strokeStyle = 'rgba(255,255,255,0.05)';
     ctx.lineWidth = 1;
@@ -113,8 +117,8 @@
 
     // Y-axis price labels — scale font down on narrow charts (below MIN_LABEL_WIDTH px)
     const MIN_LABEL_WIDTH = 200;
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
-    ctx.font = `${9 * Math.min(1, W / MIN_LABEL_WIDTH)}px monospace`;
+    ctx.fillStyle = 'rgba(255,255,255,0.45)';
+    ctx.font = `500 ${9 * Math.min(1, W / MIN_LABEL_WIDTH)}px monospace`;
     ctx.textAlign = 'right';
     const defaultFormatter = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : `$${v.toFixed(0)}`;
     const fmtPrice = formatY ?? defaultFormatter;
@@ -125,7 +129,7 @@
     }
 
     // X-axis time labels — adaptive count, edge-aligned to prevent overflow
-    ctx.font = `${9 * Math.min(1, W / MIN_LABEL_WIDTH)}px monospace`;
+    ctx.font = `500 ${9 * Math.min(1, W / MIN_LABEL_WIDTH)}px monospace`;
     for (let i = 0; i < xCount; i++) {
       const frac = i / (xCount - 1);
       const dataIdx = Math.round(frac * (prices.length - 1));
@@ -159,7 +163,7 @@
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.strokeStyle = resolvedLineColor;
-    ctx.lineWidth = overlays.length > 0 ? 2 : 1.5;
+    ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
     ctx.shadowBlur = 2;
@@ -178,7 +182,7 @@
         else ctx.lineTo(x, y);
       });
       ctx.strokeStyle = overlay.color;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.shadowBlur = 2;
