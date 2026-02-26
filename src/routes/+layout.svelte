@@ -30,6 +30,21 @@
   let showDcaFormula = false;
   let pendingScrollTarget: string | null = null;
   let netAnimCleanup: (() => void) | null = null;
+  let tileObserver: IntersectionObserver | null = null;
+  let sectionEls: HTMLElement[] = [];
+  let scrollRafId: number | null = null; // rAF handle for batching scroll updates
+
+  function observeNewTiles() {
+    if (typeof window === 'undefined' || !tileObserver) return;
+    requestAnimationFrame(() => {
+      document.querySelectorAll<HTMLElement>('.gc, .stat-tile').forEach(el => {
+        if (!el.classList.contains('scroll-reveal')) {
+          el.classList.add('scroll-reveal');
+          tileObserver?.observe(el);
+        }
+      });
+    });
+  }
 
   // After any SvelteKit navigation, scroll to a deferred section target if one is pending.
   // Also handles scrollTarget passed via navigation state (e.g. from the country page back button).
@@ -44,6 +59,17 @@
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     }
+    // Mobile: slide-in page transition
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      const pw = document.getElementById('main-content');
+      if (pw) {
+        pw.classList.remove('mob-page-enter');
+        void pw.offsetHeight; // force reflow so animation re-triggers on rapid navigation
+        pw.classList.add('mob-page-enter');
+      }
+    }
+    // Re-observe new tiles that arrived after navigation
+    observeNewTiles();
   });
 
   const FEED_CATEGORIES: { key: FeedCategory; label: string; hint: string }[] = [
@@ -322,7 +348,21 @@
     $settings.news.defaultFeeds = $settings.news.defaultFeeds.map(f => f.category === cat ? { ...f, enabled: !anyEnabled } : f);
   }
 
-  function handleScroll() { scrolled = window.scrollY > 40; }
+  function handleScroll() {
+    scrolled = window.scrollY > 40;
+    // Section background parallax (desktop only — GPU-friendly transform via CSS var)
+    // Batch style updates in a single rAF to avoid layout thrashing on rapid scroll
+    if (window.innerWidth <= 768 || !sectionEls.length) return;
+    if (scrollRafId !== null) return; // skip if a frame is already scheduled
+    scrollRafId = requestAnimationFrame(() => {
+      scrollRafId = null;
+      const vh = window.innerHeight;
+      for (const el of sectionEls) {
+        const top = el.getBoundingClientRect().top;
+        el.style.setProperty('--section-parallax', ((top - vh * 0.5) * 0.1).toFixed(2));
+      }
+    });
+  }
   function toggleMobileMenu() { mobileMenuOpen = !mobileMenuOpen; if (mobileMenuOpen) $showSettings = false; }
   function closeMobileMenu() { mobileMenuOpen = false; }
 
@@ -373,6 +413,29 @@
       });
     }
 
+    // ── SCROLL REVEAL — animate tiles as they enter the viewport ─
+    tileObserver = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            el.classList.add('sr-visible');
+            tileObserver?.unobserve(el);
+            // Clean up animation classes so hover transforms continue to work.
+            // Fallback timeout handles prefers-reduced-motion where transitions may not fire.
+            const cleanup = () => { el.classList.remove('scroll-reveal', 'sr-visible'); };
+            el.addEventListener('transitionend', cleanup, { once: true });
+            setTimeout(cleanup, 600); // fallback: 600 ms > longest transition (500 ms)
+          }
+        }
+      },
+      { threshold: 0.08, rootMargin: '0px 0px -20px 0px' }
+    );
+    // Cache section elements for parallax and observe initial tiles
+    requestAnimationFrame(() => {
+      sectionEls = [...document.querySelectorAll<HTMLElement>('.section')];
+      observeNewTiles();
+    });
 
     // Bitcoin peer-to-peer network visualization: anchor nodes (peers) with faint
     // connections, data packets (transactions) traveling between them, and expanding pings (confirmations).
@@ -617,6 +680,8 @@
     window.removeEventListener('scroll', handleScroll);
     if (sectionObserver) sectionObserver.disconnect();
     netAnimCleanup?.();
+    if (tileObserver) { tileObserver.disconnect(); tileObserver = null; }
+    if (scrollRafId !== null) { cancelAnimationFrame(scrollRafId); scrollRafId = null; }
   });
 </script>
 
