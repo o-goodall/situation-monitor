@@ -97,7 +97,7 @@
     Extreme:   '#8B0000',   // Major wars ≥10,000 casualties
     High:      '#FF4500',   // Minor wars 1,000–9,999
     Turbulent: '#FFA500',   // Conflicts 100–999
-    Low:       '#FFD580',   // Skirmishes <100
+    Low:       '#FFD580',   // Skirmishes 1–99
   };
 
   /** Ranking for de-duplication: higher = more severe */

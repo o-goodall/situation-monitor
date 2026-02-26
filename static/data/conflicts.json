@@ -5,8 +5,18 @@
     "severity": "Extreme"
   },
   {
-    "conflict": "India–Pakistan border conflict",
-    "countries": ["India", "Bangladesh", "Thailand"],
+    "conflict": "India armed conflicts",
+    "countries": ["India"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Bangladesh political violence",
+    "countries": ["Bangladesh"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Thailand insurgency",
+    "countries": ["Thailand"],
     "severity": "Extreme"
   },
   {
@@ -21,7 +31,12 @@
   },
   {
     "conflict": "Lebanon conflict",
-    "countries": ["Lebanon", "Jordan"],
+    "countries": ["Lebanon"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Jordan regional conflict",
+    "countries": ["Jordan"],
     "severity": "Extreme"
   },
   {
