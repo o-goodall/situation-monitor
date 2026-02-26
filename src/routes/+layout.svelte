@@ -145,7 +145,9 @@
 
   async function fetchBtc() {
     try {
-      const d = await fetch('/api/bitcoin').then(r=>r.json());
+      const r = await fetch('/api/bitcoin');
+      if (!r.ok) return;
+      const d = await r.json();
       // If WebSocket is connected, skip overwriting the real-time price
       if (!$btcWsConnected && d.price) {
         $prevPrice = $btcPrice;
@@ -172,7 +174,9 @@
 
   async function fetchDCA() {
     try {
-      const d = await fetch('/api/dca').then(r=>r.json());
+      const r = await fetch('/api/dca');
+      if (!r.ok) return;
+      const d = await r.json();
       $fearGreed = d.fearGreed; $fearGreedLabel = d.fearGreedLabel;
       $difficultyChange = d.difficultyChange; $fundingRate = d.fundingRate; $audUsd = d.audUsd;
       if (typeof d.hashrate === 'number') $btcHashrate = parseFloat((d.hashrate / 1e18).toFixed(2));
@@ -184,7 +188,9 @@
   async function fetchPoly() {
     try {
       const kw = encodeURIComponent(JSON.stringify($settings.polymarket.keywords));
-      $markets = (await fetch(`/api/polymarket?keywords=${kw}`).then(r=>r.json())).markets ?? [];
+      const r = await fetch(`/api/polymarket?keywords=${kw}`);
+      if (!r.ok) return;
+      $markets = (await r.json()).markets ?? [];
       $marketsUpdated = new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit'});
     } catch {}
   }
@@ -201,7 +207,9 @@
     try {
       const urls = getEnabledFeedUrls($settings.news);
       const src = encodeURIComponent(JSON.stringify(urls));
-      const items = (await fetch(`/api/news?sources=${src}`).then(r=>r.json())).items ?? [];
+      const r = await fetch(`/api/news?sources=${src}`);
+      if (!r.ok) return;
+      const items = (await r.json()).items ?? [];
       // Filter out entertainment/media noise so documentaries about conflicts don't appear as real threats
       const filteredItems = items.filter((item: { title?: string; description?: string }) => {
         const text = (item.title ?? '') + ' ' + (item.description ?? '');
@@ -229,7 +237,9 @@
     try {
       const ytdStart = `${new Date().getFullYear()}-01-01`;
       const url = `/api/markets?since=${encodeURIComponent(ytdStart)}`;
-      const d = await fetch(url).then(r=>r.json());
+      const r = await fetch(url);
+      if (!r.ok) return;
+      const d = await r.json();
       $goldPriceUsd = d.gold?.priceUsd ?? null; $goldYtdPct = d.gold?.ytdPct ?? null;
       $sp500Price = d.sp500?.price ?? null; $sp500YtdPct = d.sp500?.ytdPct ?? null;
       $cpiAnnual = d.cpiAnnual ?? null;
@@ -239,7 +249,9 @@
 
   async function fetchMa200() {
     try {
-      const d = await fetch('/api/bitcoin/ma200').then(r=>r.json());
+      const r = await fetch('/api/bitcoin/ma200');
+      if (!r.ok) return;
+      const d = await r.json();
       $btcMa200 = d.ma200 ?? null;
     } catch {}
   }
@@ -353,7 +365,7 @@
       const NODE_COUNT = () => mobile ? 10 : 32;
       const CONN_DIST = () => mobile ? 150 : 220;
 
-      let resizeTimer: any;
+      let resizeTimer: ReturnType<typeof setTimeout> | undefined;
       function resize() {
         clearTimeout(resizeTimer);
         resizeTimer = setTimeout(() => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; mobile = window.innerWidth < 768; init(); }, 200);

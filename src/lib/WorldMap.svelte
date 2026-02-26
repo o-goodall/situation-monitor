@@ -3,6 +3,7 @@
   import { goto } from '$app/navigation';
   import type { ThreatEvent } from '../routes/api/events/+server';
   import type { CountryThreat } from '../routes/api/global-threats/+server';
+  import type { Selection as D3Selection, ZoomBehavior, GeoPath, GeoProjection } from 'd3';
 
   export let polymarketThreats: { question: string; url: string; probability: number; topOutcome: string }[] = [];
 
@@ -42,20 +43,14 @@
   }
 
   let mapContainer: HTMLDivElement;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let d3Module: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let svg: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let mapGroup: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let projection: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let path: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let zoom: any = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let polyGroup: any = null; // separate SVG group for polymarket markers (re-rendered on prop change)
+  let d3Module: typeof import('d3') | null = null;
+  let svg: D3Selection<SVGSVGElement, unknown, null, undefined> | null = null;
+  let mapGroup: D3Selection<SVGGElement, unknown, SVGSVGElement, undefined> | null = null;
+  let projection: GeoProjection | null = null;
+  let path: GeoPath | null = null;
+  let zoom: ZoomBehavior<SVGSVGElement, unknown> | null = null;
+  let polyGroup: D3Selection<SVGGElement, unknown, SVGGElement, undefined> | null = null; // separate SVG group for polymarket markers (re-rendered on prop change)
+  let threatMarkerGroup: D3Selection<SVGGElement, unknown, SVGGElement, undefined> | null = null; // separate SVG group for global conflict markers (re-rendered on refresh)
 
   const WIDTH = 900;
   const HEIGHT = 460;
@@ -78,8 +73,7 @@
   // country colours and hotspot markers up to date without reloading the page.
   const THREAT_REFRESH_INTERVAL_MS = 5 * 60 * 1000;
   let refreshTimer: ReturnType<typeof setInterval> | null = null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let countryPaths: any = null; // D3 selection retained for live colour updates
+  let countryPaths: D3Selection<SVGPathElement, GeoJSON.Feature, SVGGElement, unknown> | null = null; // D3 selection retained for live colour updates
 
   const MAX_MAJOR_EVENTS = 8;
 
@@ -309,7 +303,9 @@
       path = d3.geoPath().projection(projection);
 
       // World atlas from local static asset (avoids CDN round-trip)
-      const world = await fetch('/countries-110m.json').then(r => r.json());
+      const worldRes = await fetch('/countries-110m.json');
+      if (!worldRes.ok) throw new Error(`Failed to load world topology: HTTP ${worldRes.status}`);
+      const world = await worldRes.json();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const countries = topojson.feature(world, world.objects.countries as any) as unknown as GeoJSON.FeatureCollection;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -323,17 +319,16 @@
         .attr('stroke', 'none');
 
       // Countries — shaded by live threat level so severity is immediately visible
-      mapGroup.selectAll('path.wm-country')
+      mapGroup.selectAll<SVGPathElement, GeoJSON.Feature>('path.wm-country')
         .data(countries.features)
         .enter().append('path')
-        .attr('class', (d: any) => String(d.id) === trendingIsoId ? 'wm-country wm-country--trending' : 'wm-country')
+        .attr('class', (d: GeoJSON.Feature) => String(d.id ?? '') === trendingIsoId ? 'wm-country wm-country--trending' : 'wm-country')
         .attr('d', path as unknown as string)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        .attr('fill', (d: any) => getCountryFillById(String(d.id)))
+        .attr('fill', (d: GeoJSON.Feature) => getCountryFillById(String(d.id ?? '')))
         .attr('stroke', 'none');
 
       // Retain selection so live refreshes can update fills in-place
-      countryPaths = mapGroup.selectAll('path.wm-country');
+      countryPaths = mapGroup.selectAll<SVGPathElement, GeoJSON.Feature>('path.wm-country');
 
       // Country borders
       mapGroup.append('path')
@@ -391,56 +386,10 @@
       }
 
       // ── Global conflict event markers (one solid dot per country) ───
-      // Only rendered when there is an active story for this zone.
-      for (const ct of globalThreatData.threats) {
-        if (ct.stories.length === 0) continue;
-        const pos = projection([ct.lon, ct.lat]);
-        if (!pos) continue;
-        const [x, y] = pos;
-        const isoId = LOCATION_TO_ISO_ID[ct.country];
-        const wikiSev = isoId ? wikiConflictCountryFills.get(isoId) : null;
-        const col = ct.isTrending ? '#ff2200' : (WIKI_SEVERITY_COLORS[wikiSev ?? ''] ?? '#ffffff');
-        const r = wikiSev === 'Extreme' ? 5.5 : wikiSev === 'High' ? 4 : 3;
+      // Rendered in a dedicated group so refreshThreats() can update them in-place.
+      threatMarkerGroup = mapGroup.append('g').attr('id', 'wm-threat-group');
 
-        // Trending country: pulsing red glow rings
-        if (ct.isTrending) {
-          mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 10)
-            .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1.5)
-            .attr('class', 'wm-trending-ring wm-trending-ring--outer');
-          mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 5)
-            .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1)
-            .attr('class', 'wm-trending-ring');
-        }
-
-        // Solid core dot
-        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
-          .attr('fill', col).attr('fill-opacity', 0.85);
-
-        // "New" badge — subtle circular dot in Bitcoin orange, disappears on hover
-        const isNew = ct.hasNew && !seenCountries.has(ct.country);
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let badge: any = null;
-        if (isNew) {
-          badge = mapGroup.append('circle')
-            .attr('cx', x + r + 2).attr('cy', y - r - 2).attr('r', 3)
-            .attr('fill', '#F7931A').attr('pointer-events', 'none');
-        }
-
-        // Hit area with tap/click navigation to /intel/[country]
-        mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 6)
-          .attr('fill', 'transparent').attr('class', 'wm-hit')
-          .on('click', () => {
-            if (badge) { badge.remove(); badge = null; markCountrySeen(ct.country, seenCountries); }
-            goto(`/intel/${encodeURIComponent(ct.country)}`);
-          })
-          .on('mouseenter', (e: MouseEvent) => {
-            const sevLabel = wikiSev ? ({ Extreme: 'Major war', High: 'Minor war', Turbulent: 'Conflict', Low: 'Skirmish' }[wikiSev] ?? wikiSev) : 'Active';
-            const tipLines = [`Conflict: ${ct.isTrending ? '🔥 Trending (24 h)' : sevLabel}`, 'Click to view stories'];
-            showTip(e, ct.country, col, tipLines);
-          })
-          .on('mousemove', moveTip)
-          .on('mouseleave', hideTip);
-      }
+      renderThreatMarkers();
 
       // Create a dedicated group for polymarket markers (so they can be updated independently)
       polyGroup = mapGroup.append('g').attr('id', 'wm-poly-group');
@@ -462,6 +411,61 @@
       console.error('WorldMap init failed', err);
       mapError = 'Failed to load world map data.';
       mapLoading = false;
+    }
+  }
+
+  /** Renders (or re-renders) global conflict markers into the dedicated threat group */
+  function renderThreatMarkers() {
+    if (!threatMarkerGroup || !projection) return;
+    threatMarkerGroup.selectAll('*').remove();
+
+    for (const ct of threats) {
+      if (ct.stories.length === 0) continue;
+      const pos = projection([ct.lon, ct.lat]);
+      if (!pos) continue;
+      const [x, y] = pos;
+      const isoId = LOCATION_TO_ISO_ID[ct.country];
+      const wikiSev = isoId ? wikiConflictCountryFills.get(isoId) : null;
+      const col = ct.isTrending ? '#ff2200' : (WIKI_SEVERITY_COLORS[wikiSev ?? ''] ?? '#ffffff');
+      const r = wikiSev === 'Extreme' ? 5.5 : wikiSev === 'High' ? 4 : 3;
+
+      // Trending country: pulsing red glow rings
+      if (ct.isTrending) {
+        threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 10)
+          .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1.5)
+          .attr('class', 'wm-trending-ring wm-trending-ring--outer');
+        threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 5)
+          .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1)
+          .attr('class', 'wm-trending-ring');
+      }
+
+      // Solid core dot
+      threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
+        .attr('fill', col).attr('fill-opacity', 0.85);
+
+      // "New" badge — subtle circular dot in Bitcoin orange, disappears on hover
+      const isNew = ct.hasNew && !seenCountries.has(ct.country);
+      let badge: D3Selection<SVGCircleElement, unknown, SVGGElement, undefined> | null = null;
+      if (isNew) {
+        badge = threatMarkerGroup.append('circle')
+          .attr('cx', x + r + 2).attr('cy', y - r - 2).attr('r', 3)
+          .attr('fill', '#F7931A').attr('pointer-events', 'none');
+      }
+
+      // Hit area with tap/click navigation to /intel/[country]
+      threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 6)
+        .attr('fill', 'transparent').attr('class', 'wm-hit')
+        .on('click', () => {
+          if (badge) { badge.remove(); badge = null; markCountrySeen(ct.country, seenCountries); }
+          goto(`/intel/${encodeURIComponent(ct.country)}`);
+        })
+        .on('mouseenter', (e: MouseEvent) => {
+          const sevLabel = wikiSev ? ({ Extreme: 'Major war', High: 'Minor war', Turbulent: 'Conflict', Low: 'Skirmish' }[wikiSev] ?? wikiSev) : 'Active';
+          const tipLines = [`Conflict: ${ct.isTrending ? '🔥 Trending (24 h)' : sevLabel}`, 'Click to view stories'];
+          showTip(e, ct.country, col, tipLines);
+        })
+        .on('mousemove', moveTip)
+        .on('mouseleave', hideTip);
     }
   }
 
@@ -531,8 +535,11 @@
 
       // Update every country fill and trending class to reflect the new threat levels
       countryPaths
-        .attr('fill', (d: { id: unknown }) => getCountryFillById(String(d.id)))
-        .classed('wm-country--trending', (d: { id: unknown }) => String(d.id) === trendingIsoId);
+        .attr('fill', (d: GeoJSON.Feature) => getCountryFillById(String(d.id ?? '')))
+        .classed('wm-country--trending', (d: GeoJSON.Feature) => String(d.id ?? '') === trendingIsoId);
+
+      // Re-render the conflict marker dots to reflect updated stories, trending and new badges
+      renderThreatMarkers();
 
       threatsUpdatedAt = updatedAt
         ? new Date(updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
