@@ -16,8 +16,8 @@
 
   const SERIES_CFG: { key: SeriesKey; label: string; color: string; strokeWidth: number }[] = [
     { key: 'btc',   label: 'BTC',   color: '#f7931a', strokeWidth: 2.5 },
-    { key: 'sp500', label: 'S&P',   color: '#888',    strokeWidth: 1.8 },
-    { key: 'gold',  label: 'Gold',  color: '#c9a84c', strokeWidth: 1.8 },
+    { key: 'sp500', label: 'S&P',   color: '#888',    strokeWidth: 2.0 },
+    { key: 'gold',  label: 'Gold',  color: '#c9a84c', strokeWidth: 2.0 },
   ];
 
   // ── Normalise to 100 at first data point ────────────────────
