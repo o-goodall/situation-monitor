@@ -447,40 +447,52 @@
       const col = ct.isTrending ? '#ff2200' : (WIKI_SEVERITY_COLORS[wikiSev ?? ''] ?? '#ffffff');
       const r = wikiSev === 'Extreme' ? 5.5 : wikiSev === 'High' ? 4 : 3;
 
-      // Trending country: pulsing red glow rings
+      // Wrap all elements for this ping in a group so the whole marker can be removed on click
+      const markerGroup = threatMarkerGroup.append('g');
+
+      // Trending country: pulsing red glow rings + subtle "!" indicator
       if (ct.isTrending) {
-        threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 10)
+        markerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 10)
           .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1.5)
           .attr('class', 'wm-trending-ring wm-trending-ring--outer');
-        threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 5)
+        markerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 5)
           .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1)
           .attr('class', 'wm-trending-ring');
+        markerGroup.append('text')
+          .attr('x', x + r + 3).attr('y', y - r + 1)
+          .attr('fill', '#ff4400').attr('font-size', '8px').attr('font-weight', '900')
+          .attr('font-family', 'monospace').attr('pointer-events', 'none')
+          .text('!');
       }
 
-      // Solid core dot with white outline stroke for visibility on both light and dark backgrounds
-      threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
+      // Solid core dot with bitcoin-orange glow ring for visibility
+      markerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
         .attr('fill', col).attr('fill-opacity', 0.85)
-        .attr('stroke', 'rgba(255,255,255,0.7)').attr('stroke-width', 0.8);
+        .attr('stroke', '#F7931A').attr('stroke-width', 0.8).attr('stroke-opacity', 0.65)
+        .attr('class', 'wm-ping-glow');
 
-      // "New" badge — subtle circular dot in Bitcoin orange, disappears on hover
+      // "New" badge — subtle circular dot in Bitcoin orange
       const isNew = ct.hasNew && !seenCountries.has(ct.country);
-      let badge: D3Selection<SVGCircleElement, unknown, SVGGElement, undefined> | null = null;
       if (isNew) {
-        badge = threatMarkerGroup.append('circle')
+        markerGroup.append('circle')
           .attr('cx', x + r + 2).attr('cy', y - r - 2).attr('r', 3)
           .attr('fill', '#F7931A').attr('pointer-events', 'none');
       }
 
-      // Hit area with tap/click navigation to /intel/[country]
-      threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 6)
+      // Hit area — click removes entire ping marker and navigates to /intel/[country]
+      markerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 6)
         .attr('fill', 'transparent').attr('class', 'wm-hit')
         .on('click', () => {
-          if (badge) { badge.remove(); badge = null; markCountrySeen(ct.country, seenCountries); }
+          markerGroup.remove();
+          if (isNew) markCountrySeen(ct.country, seenCountries);
           goto(`/intel/${encodeURIComponent(ct.country)}`);
         })
         .on('mouseenter', (e: MouseEvent) => {
-          const sevLabel = wikiSev ? ({ Extreme: 'Major war', High: 'Minor war', Turbulent: 'Conflict', Low: 'Skirmish' }[wikiSev] ?? wikiSev) : 'Active';
-          const tipLines = [`Conflict: ${ct.isTrending ? '🔥 Trending (24 h)' : sevLabel}`, 'Click to view stories'];
+          const sevLabel = wikiSev
+            ? ({ Extreme: 'Major war', High: 'Minor war', Turbulent: 'Conflict', Low: 'Skirmish' }[wikiSev] ?? wikiSev)
+            : ({ extreme: 'Critical', high: 'High alert', turbulent: 'Elevated' }[ct.severity] ?? 'Monitoring');
+          const tipPrefix = wikiSev ? 'Conflict' : 'Activity';
+          const tipLines = [`${tipPrefix}: ${ct.isTrending ? '🔥 Trending (24 h)' : sevLabel}`, 'Click to view stories'];
           showTip(e, ct.country, col, tipLines);
         })
         .on('mousemove', moveTip)
@@ -805,6 +817,10 @@
   @keyframes wm-new-badge-blink {
     0%, 100% { opacity: 1; }
     50%       { opacity: 0.55; }
+  }
+  /* Bitcoin-orange glow ring on conflict ping markers — static, no animation */
+  :global(.wm-ping-glow) {
+    filter: drop-shadow(0 0 2px rgba(247, 147, 26, 0.5));
   }
   /* Trending country — pulsing red glow rings on the SVG marker */
   :global(.wm-trending-ring) {
