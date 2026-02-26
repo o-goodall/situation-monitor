@@ -215,13 +215,8 @@
   // DCA zone background GIF: red=low(cheap/fear), amber=mid, green=high(expensive/greed)
   $: dcaZoneGif = $btcPrice <= 0 ? '' : $btcPrice <= (low+third) ? '/dca-red.gif' : $btcPrice <= (low+2*third) ? '/dca-amber.gif' : '/dca-green.gif';
 
-  let dcaFlipped = false; // flip state for DCA formula back-face
-
   $: s        = $settings.dca;
-  $: dcaDays  = Math.max(0,Math.floor((Date.now()-new Date(s.startDate).getTime())/86400000));
-  $: invested = dcaDays*s.dailyAmount;
   $: currentVal = s.btcHeld*$btcPrice;
-  $: perf     = invested>0?((currentVal-invested)/invested)*100:0;
   $: goalPct  = s.goalBtc>0?Math.min(100,(s.btcHeld/s.goalBtc)*100):0;
   $: satsHeld = Math.round(s.btcHeld*1e8);
   $: satsLeft = Math.max(0,Math.round((s.goalBtc-s.btcHeld)*1e8));
@@ -231,7 +226,8 @@
   $: freqDesc  = ({daily:'daily buy',weekly:'weekly buy',fortnightly:'fortnightly buy',monthly:'monthly buy'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'fortnightly buy';
   $: freqHint  = ({daily:'How much to buy today',weekly:'How much to buy this week',fortnightly:'How much to buy this fortnight',monthly:'How much to buy this month'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'How much to buy this fortnight';
 
-  $: cpiLoss = (()=>{if($cpiAnnual===null)return 0;const y=Math.max(.1,dcaDays/365.25);return(1-1/Math.pow(1+$cpiAnnual/100,y))*100;})();
+  // Annual CPI purchasing power erosion (fixed 1-year window)
+  $: annualCpiLoss = (()=>{if($cpiAnnual===null)return 0;return(1-1/Math.pow(1+$cpiAnnual/100,1))*100;})();
 
   // BTC priced in gold troy ounces
   $: btcInGoldOz = ($btcPrice > 0 && $goldPriceUsd !== null && $goldPriceUsd > 0)
@@ -575,10 +571,7 @@
       <div class="zone-glass"></div>
 
       <!-- Flip container -->
-      <div class="dca-flip-scene">
-        {#if !dcaFlipped}
-          <!-- FRONT FACE — signal view -->
-          <div class="dca-face">
+      <div class="dca-face">
             <div class="gc-head">
               <div>
                 <p class="gc-title">DCA Signal</p>
@@ -647,34 +640,6 @@
             {/if}
 
           </div>
-
-        {:else}
-          <!-- BACK FACE — formula explanation -->
-          <div class="dca-face">
-            <div class="dca-formula-head">
-              <p class="eyebrow orange">The Formula</p>
-            </div>
-            <ol class="formula-steps">
-              <li><strong>Price position</strong> — 100% allocation at your low price target, tapering linearly to 0% at high.</li>
-              <li><strong>Signal boosts</strong> increase allocation when conditions are favourable:
-                <ul>
-                  <li>Fear &amp; Greed ≤ 40 → <span class="formula-boost">+10%</span> <span class="dim">(extreme ≤ 20 → +20%)</span></li>
-                  <li>Mining difficulty drop &gt; 5% → <span class="formula-boost">+10%</span></li>
-                  <li>Futures funding rate negative → <span class="formula-boost">+10%</span></li>
-                  <li>Within 365 days of halving → <span class="formula-boost">+10%</span></li>
-                </ul>
-              </li>
-              <li><strong>Final amount</strong> = Max DCA × price% × (1 + total boosts%). Rounded to nearest $50 AUD.</li>
-              <li>Price above your high target → <strong class="dn">PASS</strong> — skip this period entirely.</li>
-            </ol>
-          </div>
-        {/if}
-      </div>
-      {#if !dcaFlipped}
-        <button class="dca-info-btn" on:click={() => dcaFlipped = true} aria-label="Show DCA formula">?</button>
-      {:else}
-        <button class="dca-info-btn" on:click={() => dcaFlipped = false} aria-label="Back to signal view">↩</button>
-      {/if}
     </div>
 
     <!-- BITCOIN NETWORK — expanded with mempool data -->
@@ -905,7 +870,7 @@
           </div>
         {/each}
       </div>
-      {#if $cpiAnnual!==null}<p class="dim" style="margin-top:14px;line-height:1.6;">Purchasing power erosion (annualized): <span style="color:var(--dn);">−{cpiLoss.toFixed(1)}%</span></p>{/if}
+      {#if $cpiAnnual!==null}<p class="dim" style="margin-top:14px;line-height:1.6;">Purchasing power erosion (annual): <span style="color:var(--dn);">−{annualCpiLoss.toFixed(1)}%</span></p>{/if}
     </div>
 
     <!-- GHOSTFOLIO -->
@@ -1231,10 +1196,15 @@
       width: 33.333%;
       flex-shrink: 0;
       height: 100%;
-      overflow-y: auto;
+      overflow-y: hidden;
       overflow-x: hidden;
-      -webkit-overflow-scrolling: touch;
       overscroll-behavior-y: contain;
+    }
+
+    /* Intel page still scrolls — it has a lot of content */
+    .swipe-page:nth-child(3) {
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     /* On mobile, sections fill their swipe-page */
@@ -1270,30 +1240,16 @@
   @media (max-width:700px) {
     .section {
       padding:20px 14px 0;
-      /* Fallback for browsers without svh support */
-      min-height:100vh;
-      /* svh = small viewport height, excludes browser UI chrome on mobile */
-      min-height:100svh;
       width:100%;
-    }
-    /* Fade the bottom of each section so the next section stays hidden until scrolled into view */
-    .section::after {
-      content:''; pointer-events:none;
-      position:sticky; bottom:0; left:0; right:0;
-      display:block;
-      /* Height large enough to cover any accidental section peek-through */
-      height:64px;
-      background:linear-gradient(to bottom, transparent, var(--bg));
-      margin-top:-64px;
     }
     .section-header {
       margin-bottom:16px;
     }
     .section-divider { margin-top:16px; }
-    /* Bottom padding for each section — enough space before the next section */
-    #signal    { padding-bottom:32px; }
-    #portfolio { padding-bottom:32px; }
-    #intel     { padding-bottom:80px; }
+    /* Remove bottom padding — pages are fixed, no scroll */
+    #signal    { padding-bottom:8px; }
+    #portfolio { padding-bottom:8px; }
+    #intel     { padding-bottom:16px; }
     /* Uniform tile gap across all section grids on mobile */
     .port-grid   { gap:8px; }
     .intel-grid  { gap:8px; }
