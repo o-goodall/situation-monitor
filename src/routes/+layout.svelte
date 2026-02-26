@@ -32,8 +32,9 @@
 
   // After any SvelteKit navigation, scroll to a deferred section target if one is pending.
   // Also handles scrollTarget passed via navigation state (e.g. from the country page back button).
-  afterNavigate((navigation) => {
-    const stateTarget = (navigation.to?.state as { scrollTarget?: string } | null)?.scrollTarget ?? null;
+  // NOTE: SvelteKit's NavigationTarget does not expose history state; use $page.state instead.
+  afterNavigate(() => {
+    const stateTarget = ($page.state as { scrollTarget?: string } | undefined)?.scrollTarget ?? null;
     const target = pendingScrollTarget ?? stateTarget;
     pendingScrollTarget = null;
     if (target) {
