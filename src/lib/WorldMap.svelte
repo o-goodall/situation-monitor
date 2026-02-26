@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { goto } from '$app/navigation';
   import type { ThreatEvent } from '../routes/api/events/+server';
   import type { CountryThreat } from '../routes/api/global-threats/+server';
 
@@ -91,16 +92,16 @@
 
   /** Colour scheme for global-threat markers keyed by severity */
   const GLOBAL_THREAT_COLORS: Record<string, string> = {
-    extreme:  '#ff2200',   // CLED Extreme
-    high:     '#ffaa00',   // CLED High
-    turbulent:'#ffcc00',   // CLED Turbulent
+    extreme:  '#cc1100',   // CLED Extreme — deep red
+    high:     '#e85d04',   // CLED High — strong orange/red
+    turbulent:'#f59e0b',   // CLED Turbulent — yellow/orange
   };
 
   /** Semi-transparent fills matching GLOBAL_THREAT_COLORS for country shading */
   const GLOBAL_THREAT_COUNTRY_FILLS: Record<string, string> = {
-    extreme:  'rgba(255,34,0,0.32)',
-    high:     'rgba(255,170,0,0.25)',
-    turbulent:'rgba(255,204,0,0.15)',
+    extreme:  'rgba(204,17,0,0.32)',
+    high:     'rgba(232,93,4,0.25)',
+    turbulent:'rgba(245,158,11,0.18)',
   };
 
   /** Maps global-threat location names to ISO 3166-1 numeric country IDs (topojson) */
@@ -392,28 +393,19 @@
             .attr('fill', '#F7931A').attr('pointer-events', 'none');
         }
 
-        // Build tooltip lines: severity label (or trending label), then each story
-        const severityLabel = ct.isTrending ? '🔥 Trending (24 h)' : ct.severity === 'extreme' ? 'Extreme' : ct.severity === 'high' ? 'High' : 'Turbulent';
-        const tipLines: string[] = [`Severity: ${severityLabel}`];
-        for (const s of ct.stories) {
-          tipLines.push(`▸ ${s.title.slice(0, 70)}`);
-          const dateStr = new Date(s.date).toLocaleDateString();
-          const casStr  = s.casualties !== null ? ` · ~${s.casualties} casualties` : '';
-          tipLines.push(`  ${dateStr}${casStr}`);
-          if (s.summary) tipLines.push(`  ${s.summary.slice(0, 100)}`);
-        }
-        const firstLink = ct.stories[0]?.link;
-
-        // Hit area with tooltip
+        // Hit area with tap/click navigation to /intel/[country]
         mapGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 6)
           .attr('fill', 'transparent').attr('class', 'wm-hit')
-          .on('mouseenter', (e: MouseEvent) => {
+          .on('click', () => {
             if (badge) { badge.remove(); badge = null; markCountrySeen(ct.country, seenCountries); }
+            goto(`/intel/${encodeURIComponent(ct.country)}`);
+          })
+          .on('mouseenter', (e: MouseEvent) => {
+            const tipLines = [`Severity: ${ct.isTrending ? '🔥 Trending (24 h)' : ct.severity === 'extreme' ? 'Extreme' : ct.severity === 'high' ? 'High' : 'Turbulent'}`, 'Click to view stories'];
             showTip(e, ct.country, col, tipLines);
           })
           .on('mousemove', moveTip)
-          .on('mouseleave', hideTip)
-          .on('click', () => firstLink && window.open(firstLink, '_blank', 'noopener,noreferrer'));
+          .on('mouseleave', hideTip);
       }
 
       // Create a dedicated group for polymarket markers (so they can be updated independently)
@@ -591,6 +583,28 @@
 </script>
 
 <div class="wm-outer">
+  {#if tickerItems.length > 0}
+  <div class="wm-stories" aria-label="Major developing stories">
+    <div class="wm-ticker-label">
+      <span class="wm-stories-title">BREAKING</span>
+      <span class="wm-stories-badge">LIVE</span>
+    </div>
+    <div class="wm-ticker-track" aria-live="polite">
+      <div class="wm-ticker-reel">
+        {#each [...tickerItems, ...tickerItems] as item, i}
+          <a href={item.link} target="_blank" rel="noopener noreferrer" class="wm-story" aria-label="{item.title}" aria-hidden={i >= tickerItems.length ? 'true' : undefined}>
+            <span class="wm-story-dot" style="background:{item.dotColor};box-shadow:0 0 5px {item.dotColor};"></span>
+            <span class="wm-story-loc">{item.location}</span>
+            <span class="wm-story-title">{item.title}</span>
+            <span class="wm-story-age">{ago(item.pubDate)}</span>
+            <span class="wm-story-sep" aria-hidden="true">◆</span>
+          </a>
+        {/each}
+      </div>
+    </div>
+  </div>
+  {/if}
+
   <div class="wm-wrap" bind:this={mapContainer}>
     {#if mapLoading}
       <div class="wm-state">
@@ -626,10 +640,10 @@
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;"></span><span>Extreme</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffaa00;"></span><span>High</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffcc00;"></span><span>Turbulent</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#ff2200;box-shadow:0 0 4px #ff2200;"></span><span style="color:#ff6655;">Trending 24h</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#cc1100;"></span><span>Extreme</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#e85d04;"></span><span>High</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#f59e0b;"></span><span>Turbulent</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#cc1100;box-shadow:0 0 4px #cc1100;"></span><span style="color:#ff6655;">Trending 24h</span></div>
       {#if polymarketThreats.length > 0}
         <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #f59e0b;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#f59e0b;">Market signals</span></div>
       {/if}
@@ -640,28 +654,6 @@
       {/if}
     </button>
   </div>
-
-  {#if tickerItems.length > 0}
-  <div class="wm-stories" aria-label="Major developing stories">
-    <div class="wm-ticker-label">
-      <span class="wm-stories-title">BREAKING</span>
-      <span class="wm-stories-badge">LIVE</span>
-    </div>
-    <div class="wm-ticker-track" aria-live="polite">
-      <div class="wm-ticker-reel">
-        {#each [...tickerItems, ...tickerItems] as item, i}
-          <a href={item.link} target="_blank" rel="noopener noreferrer" class="wm-story" aria-label="{item.title}" aria-hidden={i >= tickerItems.length ? 'true' : undefined}>
-            <span class="wm-story-dot" style="background:{item.dotColor};box-shadow:0 0 5px {item.dotColor};"></span>
-            <span class="wm-story-loc">{item.location}</span>
-            <span class="wm-story-title">{item.title}</span>
-            <span class="wm-story-age">{ago(item.pubDate)}</span>
-            <span class="wm-story-sep" aria-hidden="true">◆</span>
-          </a>
-        {/each}
-      </div>
-    </div>
-  </div>
-  {/if}
 
 
 </div>
@@ -677,10 +669,10 @@
     position: relative;
     width: 100%;
     /* 300px = section top padding (48px) + section header (~80px) + tile padding (40px) + tile header (~60px) + footer gap (72px) */
-    height: calc(100vh - 300px);
-    min-height: 460px;
+    height: calc(100vh - 340px);
+    min-height: 420px;
     background: #0d1b2a;
-    border-radius: 10px 10px 0 0;
+    border-radius: 0 0 10px 10px;
     overflow: hidden;
   }
   .wm-svg { width: 100%; height: 100%; display: block; }
@@ -772,8 +764,8 @@
     --ticker-duration: 40s;
     background: #0a1420;
     border: 1px solid rgba(0,200,255,0.18);
-    border-top: none;
-    border-radius: 0 0 10px 10px;
+    border-bottom: none;
+    border-radius: 10px 10px 0 0;
     display: flex;
     align-items: center;
     overflow: hidden;
@@ -842,10 +834,10 @@
 
   @media (max-width: 768px) {
     .wm-wrap {
-      height: calc(100svh - 230px);
-      min-height: 300px;
-      max-height: 700px;
-      border-radius: 10px 10px 0 0;
+      height: calc(100svh - 270px);
+      min-height: 260px;
+      max-height: 600px;
+      border-radius: 0 0 10px 10px;
     }
     .wm-story-title { max-width: 200px; }
   }

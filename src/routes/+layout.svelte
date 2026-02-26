@@ -25,6 +25,7 @@
   let scrolled = false;
   let mobileMenuOpen = false;
   let sectionObserver: IntersectionObserver | null = null;
+  let showDcaFormula = false;
 
   const FEED_CATEGORIES: { key: FeedCategory; label: string; hint: string }[] = [
     { key: 'global',   label: '🌍 Global / Major News', hint: 'Breaking world events' },
@@ -662,8 +663,6 @@
   <div class="drawer-inner">
     <div class="dg"><p class="dg-hd">DCA Stack</p>
       <div class="dfields">
-        <label class="df"><span class="dlbl">Start date</span><input type="date" bind:value={$settings.dca.startDate} class="dinp"/></label>
-        <label class="df"><span class="dlbl">Daily AUD</span><input type="number" bind:value={$settings.dca.dailyAmount} class="dinp"/></label>
         <label class="df"><span class="dlbl">Low Price (USD)</span><input type="number" bind:value={$settings.dca.lowPrice} class="dinp"/></label>
         <label class="df"><span class="dlbl">High Price (USD)</span><input type="number" bind:value={$settings.dca.highPrice} class="dinp"/></label>
         <label class="df"><span class="dlbl">Max DCA (AUD)</span><input type="number" bind:value={$settings.dca.maxDcaAud} class="dinp"/></label>
@@ -676,6 +675,26 @@
           </select>
         </label>
       </div>
+      <button class="dca-explain-btn" on:click={() => showDcaFormula = !showDcaFormula} aria-expanded={showDcaFormula}>
+        {showDcaFormula ? '▴ Hide Explanation' : '? Explanation'}
+      </button>
+      {#if showDcaFormula}
+      <div class="dca-formula-box">
+        <ol class="formula-steps">
+          <li><strong>Price position</strong> — 100% allocation at your low price target, tapering linearly to 0% at high.</li>
+          <li><strong>Signal boosts</strong> increase allocation when conditions are favourable:
+            <ul>
+              <li>Fear &amp; Greed ≤ 40 → <span class="formula-boost">+10%</span> <span class="dim">(extreme ≤ 20 → +20%)</span></li>
+              <li>Mining difficulty drop &gt; 5% → <span class="formula-boost">+10%</span></li>
+              <li>Futures funding rate negative → <span class="formula-boost">+10%</span></li>
+              <li>Within 365 days of halving → <span class="formula-boost">+10%</span></li>
+            </ul>
+          </li>
+          <li><strong>Final amount</strong> = Max DCA × price% × (1 + total boosts%). Rounded to nearest $50 AUD.</li>
+          <li>Price above your high target → <strong style="color:var(--dn);">PASS</strong> — skip this period entirely.</li>
+        </ol>
+      </div>
+      {/if}
     </div>
     <div class="dg"><p class="dg-hd">Display Currency <span class="dhint">BTC price second currency</span></p>
       <div class="dfields" style="align-items:flex-end;">
@@ -758,8 +777,6 @@
     <div class="mobile-settings">
       <div class="dg"><p class="dg-hd">DCA Stack</p>
         <div class="dfields">
-          <label class="df"><span class="dlbl">Start date</span><input type="date" bind:value={$settings.dca.startDate} class="dinp"/></label>
-          <label class="df"><span class="dlbl">Daily AUD</span><input type="number" bind:value={$settings.dca.dailyAmount} class="dinp"/></label>
           <label class="df"><span class="dlbl">Low Price (USD)</span><input type="number" bind:value={$settings.dca.lowPrice} class="dinp"/></label>
           <label class="df"><span class="dlbl">High Price (USD)</span><input type="number" bind:value={$settings.dca.highPrice} class="dinp"/></label>
           <label class="df"><span class="dlbl">Max DCA (AUD)</span><input type="number" bind:value={$settings.dca.maxDcaAud} class="dinp"/></label>
@@ -772,6 +789,26 @@
             </select>
           </label>
         </div>
+        <button class="dca-explain-btn" on:click={() => showDcaFormula = !showDcaFormula} aria-expanded={showDcaFormula}>
+          {showDcaFormula ? '▴ Hide Explanation' : '? Explanation'}
+        </button>
+        {#if showDcaFormula}
+        <div class="dca-formula-box">
+          <ol class="formula-steps">
+            <li><strong>Price position</strong> — 100% allocation at your low price target, tapering linearly to 0% at high.</li>
+            <li><strong>Signal boosts</strong> increase allocation when conditions are favourable:
+              <ul>
+                <li>Fear &amp; Greed ≤ 40 → <span class="formula-boost">+10%</span></li>
+                <li>Mining difficulty drop &gt; 5% → <span class="formula-boost">+10%</span></li>
+                <li>Futures funding rate negative → <span class="formula-boost">+10%</span></li>
+                <li>Within 365 days of halving → <span class="formula-boost">+10%</span></li>
+              </ul>
+            </li>
+            <li><strong>Final amount</strong> = Max DCA × price% × (1 + boosts%). Rounded to nearest $50 AUD.</li>
+            <li>Price above your high target → <strong style="color:var(--dn);">PASS</strong>.</li>
+          </ol>
+        </div>
+        {/if}
       </div>
       <div class="dg"><p class="dg-hd">News Feeds <span class="dhint">toggle categories on/off</span></p>
         <div class="feed-list" style="margin-bottom:8px;">
@@ -1167,6 +1204,13 @@
   .dlbl { font-size:.58rem; color:rgba(255,255,255,.25); font-weight:500; text-transform:uppercase; letter-spacing:.1em; }
   .dinp { width:100%; background:rgba(255,255,255,.04); border:1px solid rgba(255,255,255,.1); border-radius:6px; padding:8px 10px; color:#eaeaea; font-family:inherit; font-size:.78rem; transition:border-color .2s,box-shadow .2s; }
   .dinp:focus { outline:none; border-color:var(--orange); box-shadow:0 0 0 3px rgba(247,147,26,.12),0 0 16px rgba(247,147,26,.18); }
+  .dca-explain-btn { margin-top:10px; background:rgba(247,147,26,.08); border:1px solid rgba(247,147,26,.2); border-radius:6px; padding:5px 12px; color:rgba(247,147,26,.8); font-size:.65rem; font-family:inherit; cursor:pointer; transition:background .2s,border-color .2s; }
+  .dca-explain-btn:hover { background:rgba(247,147,26,.14); border-color:rgba(247,147,26,.4); }
+  .dca-formula-box { margin-top:10px; padding:12px 14px; background:rgba(0,0,0,.2); border:1px solid rgba(255,255,255,.06); border-radius:8px; }
+  .formula-steps { margin:0; padding-left:18px; font-size:.68rem; color:rgba(255,255,255,.6); line-height:1.6; }
+  .formula-steps li { margin-bottom:6px; }
+  .formula-steps ul { margin:4px 0 0; padding-left:14px; }
+  .formula-boost { color:#4ade80; font-weight:700; }
   .dtags { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
   .dtag { display:inline-flex; align-items:center; gap:5px; padding:3px 10px; background:rgba(247,147,26,.07); border:1px solid rgba(247,147,26,.2); border-radius:999px; font-size:.68rem; color:rgba(255,255,255,.55); }
   .dtag-x { background:none; border:none; color:rgba(255,255,255,.25); cursor:pointer; font-size:1rem; padding:0; line-height:1; transition:color .15s; }

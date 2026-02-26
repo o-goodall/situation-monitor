@@ -2,12 +2,19 @@ import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import Parser from 'rss-parser';
 
-const parser = new Parser();
+const parser = new Parser({
+  requestOptions: {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; SituationMonitor/1.0; +https://situation-monitor.vercel.app)',
+      'Accept': 'application/rss+xml, application/xml, text/xml, */*',
+    },
+  },
+});
 
 /**
  * GET /api/global-threats
  *
- * Fetches conflict stories from Al Jazeera, BBC, and Reuters RSS feeds,
+ * Fetches conflict stories from Al Jazeera, BBC, and AP News RSS feeds,
  * aggregated by country.  Displays the 50 most severe conflict zones from
  * the CLED Conflict Index, categorised as Extreme, High, or Turbulent.
  * Stories are sourced from multiple RSS feeds and supplement the static zone list.
@@ -19,7 +26,7 @@ const parser = new Parser();
 const RSS_SOURCES: { name: string; url: string; preFiltered: boolean }[] = [
   { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/subjects/conflict.xml', preFiltered: true },
   { name: 'BBC',        url: 'https://feeds.bbci.co.uk/news/world/rss.xml',             preFiltered: false },
-  { name: 'Reuters',    url: 'https://feeds.reuters.com/reuters/topNews',               preFiltered: false },
+  { name: 'AP News',    url: 'https://apnews.com/hub/world-news?deviceType=rss',         preFiltered: false },
 ];
 
 const ARTICLES_LIMIT = 50;
