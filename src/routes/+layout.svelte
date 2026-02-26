@@ -6,6 +6,7 @@
   import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
   import SettingsPersonalizationToggle from '$lib/SettingsPersonalizationToggle.svelte';
   import WelcomeScreen from '$lib/WelcomeScreen.svelte';
+  import NetworkAnimation from '$lib/components/NetworkAnimation.svelte';
   import type { FeedCategory } from '$lib/settings';
   import {
     settings, showSettings, saved, time, lightMode, activeSection,
@@ -372,215 +373,6 @@
       });
     }
 
-
-    // Bitcoin peer-to-peer network visualization: anchor nodes (peers) with faint
-    // connections, data packets (transactions) traveling between them, and expanding pings (confirmations).
-    (function() {
-      const canvas = document.getElementById('net-canvas') as HTMLCanvasElement;
-      if (!canvas) return;
-      const ctx = canvas.getContext('2d')!;
-      let W: number, H: number, animId: number;
-      const ORANGE = 'rgba(247,147,26,';
-      const AMBER  = 'rgba(255,180,60,';
-
-      let mobile = window.innerWidth < 768;
-      const NODE_COUNT = () => mobile ? 10 : 32;
-      const CONN_DIST = () => mobile ? 150 : 220;
-
-      let resizeTimer: ReturnType<typeof setTimeout> | undefined;
-      function resize() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(() => { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; mobile = window.innerWidth < 768; init(); }, 200);
-        if (!W) { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
-      }
-
-      class Node {
-        x: number; y: number; baseX: number; baseY: number;
-        driftAngle: number; driftSpeed: number; radius: number;
-        constructor() {
-          this.baseX = this.x = Math.random() * (W || window.innerWidth);
-          this.baseY = this.y = Math.random() * (H || window.innerHeight);
-          this.driftAngle = Math.random() * Math.PI * 2;
-          this.driftSpeed = 0.001 + Math.random() * 0.002;
-          this.radius = 1.5 + Math.random() * 1.5;
-        }
-        update() {
-          this.driftAngle += this.driftSpeed;
-          this.x = this.baseX + Math.sin(this.driftAngle) * 12;
-          this.y = this.baseY + Math.cos(this.driftAngle * 0.7) * 10;
-        }
-        draw() {
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-          ctx.fillStyle = ORANGE + '0.25)';
-          ctx.fill();
-        }
-      }
-
-      class Transmission {
-        from: Node; to: Node; progress: number; speed: number; hue: string; size: number;
-        trail: {x:number,y:number,a:number}[];
-        constructor(from: Node, to: Node) {
-          this.from = from; this.to = to;
-          this.progress = 0;
-          this.speed = 0.008 + Math.random() * 0.012;
-          this.hue = Math.random() < 0.65 ? 'o' : 'a';
-          this.size = 1.5 + Math.random() * 1.5;
-          this.trail = [];
-        }
-        update(): boolean {
-          this.progress += this.speed;
-          const x = this.from.x + (this.to.x - this.from.x) * this.progress;
-          const y = this.from.y + (this.to.y - this.from.y) * this.progress;
-          this.trail.push({x, y, a: 1});
-          if (this.trail.length > 12) this.trail.shift();
-          this.trail.forEach(t => t.a *= 0.88);
-          return this.progress >= 1;
-        }
-        draw() {
-          const col = this.hue === 'o' ? ORANGE : AMBER;
-          // Trail
-          for (const t of this.trail) {
-            ctx.beginPath();
-            ctx.arc(t.x, t.y, this.size * t.a * 0.6, 0, Math.PI * 2);
-            ctx.fillStyle = col + (t.a * 0.3) + ')';
-            ctx.fill();
-          }
-          // Head
-          const x = this.from.x + (this.to.x - this.from.x) * this.progress;
-          const y = this.from.y + (this.to.y - this.from.y) * this.progress;
-          ctx.beginPath();
-          ctx.arc(x, y, this.size, 0, Math.PI * 2);
-          ctx.fillStyle = col + '0.7)';
-          ctx.shadowBlur = 6;
-          ctx.shadowColor = col + '0.5)';
-          ctx.fill();
-          ctx.shadowBlur = 0;
-        }
-      }
-
-      class Ping {
-        x: number; y: number; radius: number; maxRadius: number; alpha: number;
-        constructor(x: number, y: number) {
-          this.x = x; this.y = y;
-          this.radius = 1.5; this.maxRadius = 22 + Math.random() * 14;
-          this.alpha = 0.65;
-        }
-        update(): boolean {
-          this.radius += 0.45;
-          this.alpha *= 0.955;
-          return this.radius >= this.maxRadius || this.alpha < 0.02;
-        }
-        draw() {
-          // Outer ring
-          ctx.beginPath();
-          ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-          ctx.strokeStyle = ORANGE + this.alpha + ')';
-          ctx.lineWidth = 1;
-          ctx.stroke();
-          // Inner faint fill dot for confirmed-block feel
-          if (this.radius < 8) {
-            ctx.beginPath();
-            ctx.arc(this.x, this.y, Math.max(0, 3 - this.radius * 0.3), 0, Math.PI * 2);
-            ctx.fillStyle = ORANGE + (this.alpha * 0.4) + ')';
-            ctx.fill();
-          }
-        }
-      }
-
-      let nodes: Node[] = [];
-      let transmissions: Transmission[] = [];
-      let pings: Ping[] = [];
-      let spawnTimer = 0;
-
-      function init() {
-        nodes = [];
-        transmissions = [];
-        pings = [];
-        for (let i = 0; i < NODE_COUNT(); i++) nodes.push(new Node());
-      }
-
-      function spawnTransmission() {
-        if (nodes.length < 2) return;
-        const a = nodes[Math.floor(Math.random() * nodes.length)];
-        // Find a nearby node
-        const connDist = CONN_DIST();
-        let best: Node | null = null, bestDist = Infinity;
-        for (const n of nodes) {
-          if (n === a) continue;
-          const dx = n.x - a.x, dy = n.y - a.y;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          if (d < connDist && d < bestDist) { best = n; bestDist = d; }
-        }
-        if (best) transmissions.push(new Transmission(a, best));
-      }
-
-      function loop() {
-        ctx.clearRect(0, 0, W, H);
-
-        // Draw faint connections
-        const cd = CONN_DIST();
-        for (let i = 0; i < nodes.length; i++) {
-          for (let j = i + 1; j < nodes.length; j++) {
-            const dx = nodes[i].x - nodes[j].x, dy = nodes[i].y - nodes[j].y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < cd) {
-              const a = (1 - dist / cd) * 0.04;
-              ctx.beginPath();
-              ctx.moveTo(nodes[i].x, nodes[i].y);
-              ctx.lineTo(nodes[j].x, nodes[j].y);
-              ctx.strokeStyle = ORANGE + a + ')';
-              ctx.lineWidth = 0.5;
-              ctx.stroke();
-            }
-          }
-        }
-
-        // Update & draw nodes
-        nodes.forEach(n => { n.update(); n.draw(); });
-
-        // Spawn transmissions periodically
-        spawnTimer++;
-        const spawnRate = mobile ? 120 : 50;
-        if (spawnTimer >= spawnRate) {
-          spawnTransmission();
-          // Occasional burst — less frequent on mobile
-          if (Math.random() < (mobile ? 0.1 : 0.2)) { spawnTransmission(); spawnTransmission(); }
-          spawnTimer = 0;
-        }
-
-        // Update & draw transmissions
-        const chainConnDist = CONN_DIST();
-        transmissions = transmissions.filter(t => {
-          const done = t.update();
-          t.draw();
-          if (done) {
-            pings.push(new Ping(t.to.x, t.to.y));
-            // Chain: ~55% on desktop, ~30% on mobile to reduce CPU load
-            if (Math.random() < (mobile ? 0.3 : 0.55)) {
-              const from = t.to;
-              let chainTo: Node | null = null, chainDist = Infinity;
-              for (const n of nodes) {
-                if (n === from) continue;
-                const dx = n.x - from.x, dy = n.y - from.y;
-                const d = Math.sqrt(dx * dx + dy * dy);
-                if (d < chainConnDist && d < chainDist) { chainTo = n; chainDist = d; }
-              }
-              if (chainTo) transmissions.push(new Transmission(from, chainTo));
-            }
-          }
-          return !done;
-        });
-
-        // Update & draw pings
-        pings = pings.filter(p => { const done = p.update(); p.draw(); return !done; });
-
-        animId = requestAnimationFrame(loop);
-      }
-
-      resize(); init(); loop();
-      window.addEventListener('resize', resize, { passive: true });
-    })();
   });
 
   onDestroy(() => {
@@ -593,7 +385,7 @@
   });
 </script>
 
-<canvas id="net-canvas" aria-hidden="true"></canvas>
+<NetworkAnimation />
 
 <!-- ══ WELCOME SCREEN (mobile only) ════════════════════════════ -->
 <WelcomeScreen />
@@ -949,10 +741,6 @@
 </nav>
 
 <style>
-  /* Canvas */
-  #net-canvas { position:fixed; inset:0; width:100%; height:100%; z-index:-1; pointer-events:none; will-change:transform; transition:opacity .5s; }
-  :global(html.light) #net-canvas { opacity:0.2; }
-
   /* ── LAYOUT TOKENS ───────────────────────────────────────── */
   /* Height of the sticky mobile bottom nav — used for clearance calculations */
   :root { --bottom-nav-h: 72px; }
