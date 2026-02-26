@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { goto } from '$app/navigation';
+  import { activeSection } from '$lib/store';
 
   const country = $page.params.country;
 
@@ -26,9 +27,9 @@
   let error = '';
 
   const SEVERITY_COLOR: Record<string, string> = {
-    extreme: '#cc1100',
-    high: '#e85d04',
-    turbulent: '#f59e0b',
+    extreme: '#b91c1c',
+    high: '#f97316',
+    turbulent: '#eab308',
   };
 
   const SEVERITY_LABEL: Record<string, string> = {
@@ -42,6 +43,11 @@
       const m = Math.floor((Date.now() - new Date(d).getTime()) / 60000);
       return m < 60 ? `${m}m ago` : m < 1440 ? `${Math.floor(m / 60)}h ago` : `${Math.floor(m / 1440)}d ago`;
     } catch { return ''; }
+  }
+
+  function goBack() {
+    $activeSection = 'intel';
+    history.back();
   }
 
   onMount(async () => {
@@ -71,7 +77,7 @@
 
 <div class="country-page">
   <div class="country-inner">
-    <button class="back-btn" on:click={() => goto('/#intel')} aria-label="Back to Intel">
+    <button class="back-btn" on:click={goBack} aria-label="Back to Intel">
       ← Back
     </button>
 
@@ -83,7 +89,7 @@
     {:else if error}
       <div class="state-wrap">
         <p class="err-msg">{error}</p>
-        <button class="back-btn" on:click={() => goto('/#intel')}>← Return to Intel</button>
+        <button class="back-btn" on:click={goBack}>← Return to Intel</button>
       </div>
     {:else if threat}
       <div class="country-header">
