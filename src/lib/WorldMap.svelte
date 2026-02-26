@@ -4,6 +4,7 @@
   import type { ThreatEvent } from '../routes/api/events/+server';
   import type { CountryThreat } from '../routes/api/global-threats/+server';
   import type { Selection as D3Selection, ZoomBehavior, GeoPath, GeoProjection } from 'd3';
+  import staticConflictsData from '../../static/data/conflicts.json';
 
   export let polymarketThreats: { question: string; url: string; probability: number; topOutcome: string }[] = [];
 
@@ -247,16 +248,19 @@
       // Load seen-country keys from localStorage so "New" badges reflect fresh visits
       seenCountries = loadSeenIds();
 
-      // Build Wikipedia conflict fill map: ISO ID → severity (from conflicts.json)
+      // Build Wikipedia conflict fill map: ISO ID → severity
+      // Seed from static data first so colours always show, then apply live API data (higher severity wins).
       wikiConflictCountryFills = new Map<string, string>();
-      for (const entry of conflictsData) {
-        for (const rawCountry of entry.countries) {
-          const country = WIKI_COUNTRY_ALIAS[rawCountry] ?? rawCountry;
-          const isoId = LOCATION_TO_ISO_ID[country];
-          if (!isoId) continue;
-          const existingSev = wikiConflictCountryFills.get(isoId);
-          if (!existingSev || (WIKI_SEVERITY_RANK[entry.severity] ?? -1) > (WIKI_SEVERITY_RANK[existingSev] ?? -1)) {
-            wikiConflictCountryFills.set(isoId, entry.severity);
+      for (const source of [staticConflictsData as Array<{ conflict: string; countries: string[]; severity: string }>, conflictsData]) {
+        for (const entry of source) {
+          for (const rawCountry of entry.countries) {
+            const country = WIKI_COUNTRY_ALIAS[rawCountry] ?? rawCountry;
+            const isoId = LOCATION_TO_ISO_ID[country];
+            if (!isoId) continue;
+            const existingSev = wikiConflictCountryFills.get(isoId);
+            if (!existingSev || (WIKI_SEVERITY_RANK[entry.severity] ?? -1) > (WIKI_SEVERITY_RANK[existingSev] ?? -1)) {
+              wikiConflictCountryFills.set(isoId, entry.severity);
+            }
           }
         }
       }
@@ -682,15 +686,16 @@
     <button class="wm-legend" class:wm-legend--min={legendMinimized} on:click={() => legendMinimized = !legendMinimized} title={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-label={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-expanded={!legendMinimized}>
       <div class="wm-leg-title">THREAT {#if legendMinimized}<span class="wm-leg-expand">▸</span>{:else}<span class="wm-leg-expand">▾</span>{/if}</div>
       {#if !legendMinimized}
-      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(139,0,0,0.45);"></span><span class="wm-leg-sub">Country by Wikipedia conflict</span></div>
+      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(139,0,0,0.45);"></span><span class="wm-leg-sub">Country fill = conflict severity</span></div>
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#8B0000;"></span><span>Major war ≥10k</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#FF4500;"></span><span>Minor war 1k–9.9k</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#FFA500;"></span><span>Conflict 100–999</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#FFD580;"></span><span>Skirmish 1–99</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#FFD580;"></span><span>Skirmish &lt;100</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#b91c1c;box-shadow:0 0 4px #b91c1c;"></span><span style="color:#ff6655;">Trending 24h</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#ffffff;border:1px solid rgba(255,255,255,0.4);"></span><span>News – no conflict data</span></div>
       {#if polymarketThreats.length > 0}
         <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #eab308;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#eab308;">Market signals</span></div>
       {/if}
