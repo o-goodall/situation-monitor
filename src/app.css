@@ -18,6 +18,8 @@
   --glass-bd2: rgba(255,255,255,0.16);
   /* Liquid Glass tokens */
   --glass-blur: 24px;
+  --glass-blur-mobile: 18px;
+  --glass-blur-tile-mobile: 14px;
   --glass-sheen: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 50%, transparent 100%);
   --glass-inner: inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.10);
   --t1: rgba(255,255,255,0.92);
@@ -557,8 +559,8 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   @media (max-width:600px) { .gc { padding:16px 14px; border-radius:var(--r-md); } }
   /* Reduce blur on mobile for better paint performance */
   @media (max-width:768px) {
-    .gc { backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px); }
-    .stat-tile { backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); }
+    .gc { backdrop-filter:blur(var(--glass-blur-mobile)); -webkit-backdrop-filter:blur(var(--glass-blur-mobile)); }
+    .stat-tile { backdrop-filter:blur(var(--glass-blur-tile-mobile)); -webkit-backdrop-filter:blur(var(--glass-blur-tile-mobile)); }
   }
 
   /* Hashrate tile — flex column so the chart fills remaining tile height */

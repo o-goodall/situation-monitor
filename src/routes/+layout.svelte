@@ -29,6 +29,7 @@
   let sectionObserver: IntersectionObserver | null = null;
   let showDcaFormula = false;
   let pendingScrollTarget: string | null = null;
+  let netAnimCleanup: (() => void) | null = null;
 
   // After any SvelteKit navigation, scroll to a deferred section target if one is pending.
   // Also handles scrollTarget passed via navigation state (e.g. from the country page back button).
@@ -386,6 +387,8 @@
       let mobile = window.innerWidth < 768;
       const NODE_COUNT = () => mobile ? 10 : 32;
       const CONN_DIST = () => mobile ? 150 : 220;
+      const MAX_TRANSMISSIONS = () => mobile ? 6 : 18;
+      const MAX_PINGS = () => mobile ? 4 : 12;
 
       let resizeTimer: ReturnType<typeof setTimeout> | undefined;
       function resize() {
@@ -542,26 +545,27 @@
         // Spawn transmissions periodically
         spawnTimer++;
         const spawnRate = mobile ? 120 : 50;
-        const maxTransmissions = mobile ? 6 : 18;
-        if (spawnTimer >= spawnRate && transmissions.length < maxTransmissions) {
-          spawnTransmission();
-          // Occasional burst — less frequent on mobile
-          if (Math.random() < (mobile ? 0.1 : 0.2) && transmissions.length < maxTransmissions - 2) { spawnTransmission(); spawnTransmission(); }
+        const maxT = MAX_TRANSMISSIONS();
+        if (spawnTimer >= spawnRate) {
           spawnTimer = 0;
-        } else if (spawnTimer >= spawnRate) {
-          spawnTimer = 0;
+          if (transmissions.length < maxT) {
+            spawnTransmission();
+            // Occasional burst — each spawn checked individually to stay within cap
+            if (Math.random() < (mobile ? 0.1 : 0.2) && transmissions.length < maxT) { spawnTransmission(); }
+            if (Math.random() < (mobile ? 0.05 : 0.1) && transmissions.length < maxT) { spawnTransmission(); }
+          }
         }
 
         // Update & draw transmissions
         const chainConnDist = CONN_DIST();
+        const maxP = MAX_PINGS();
         transmissions = transmissions.filter(t => {
           const done = t.update();
           t.draw();
           if (done) {
-            const maxPings = mobile ? 4 : 12;
-            if (pings.length < maxPings) pings.push(new Ping(t.to.x, t.to.y));
+            if (pings.length < maxP) pings.push(new Ping(t.to.x, t.to.y));
             // Chain: ~55% on desktop, ~30% on mobile to reduce CPU load
-            if (Math.random() < (mobile ? 0.3 : 0.55) && transmissions.length < (mobile ? 6 : 18) - 1) {
+            if (Math.random() < (mobile ? 0.3 : 0.55) && transmissions.length < maxT - 1) {
               const from = t.to;
               let chainTo: Node | null = null, chainDist = Infinity;
               for (const n of nodes) {
@@ -590,10 +594,18 @@
         if (document.hidden) {
           cancelAnimationFrame(animId);
         } else {
-          loop();
+          // Start a fresh loop frame; animId will be updated inside loop()
+          animId = requestAnimationFrame(loop);
         }
       }
       document.addEventListener('visibilitychange', handleVisibility);
+
+      // Store cleanup so onDestroy can remove the listener and cancel the frame
+      netAnimCleanup = () => {
+        cancelAnimationFrame(animId);
+        document.removeEventListener('visibilitychange', handleVisibility);
+        window.removeEventListener('resize', resize);
+      };
     })();
   });
 
@@ -604,6 +616,7 @@
     if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
     window.removeEventListener('scroll', handleScroll);
     if (sectionObserver) sectionObserver.disconnect();
+    netAnimCleanup?.();
   });
 </script>
 
