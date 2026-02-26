@@ -243,7 +243,7 @@
         Promise.all([import('d3'), import('topojson-client')]),
         fetchEvents(),
         fetchGlobalThreats().catch(() => ({ threats: [] as CountryThreat[], updatedAt: '' })),
-        fetch('/data/conflicts.json').then(r => r.json()).catch(() => []) as Promise<Array<{ conflict: string; countries: string[]; severity: string }>>,
+        fetch('/api/conflicts').then(r => r.json()).catch(() => []) as Promise<Array<{ conflict: string; countries: string[]; severity: string }>>,
       ]);
       d3Module = d3;
 
