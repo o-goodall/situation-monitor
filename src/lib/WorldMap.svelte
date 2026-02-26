@@ -437,8 +437,12 @@
     if (!threatMarkerGroup || !projection) return;
     threatMarkerGroup.selectAll('*').remove();
 
+    const renderedCountries = new Set<string>();
     for (const ct of threats) {
       if (ct.stories.length === 0) continue;
+      // De-duplicate: skip if a marker for this country was already rendered
+      if (renderedCountries.has(ct.country)) continue;
+      renderedCountries.add(ct.country);
       const pos = projection([ct.lon, ct.lat]);
       if (!pos) continue;
       const [x, y] = pos;
@@ -506,9 +510,13 @@
     polyGroup.selectAll('*').remove();
 
     const POLY_MARKET_COLOR = '#f59e0b'; // amber
+    const renderedPolyLabels = new Set<string>();
     for (const m of polymarketThreats) {
       const geo = geolocateMarket(m.question);
       if (!geo) continue;
+      // De-duplicate: only render one diamond per geo location label
+      if (renderedPolyLabels.has(geo.label)) continue;
+      renderedPolyLabels.add(geo.label);
       const pos = projection([geo.lon, geo.lat]);
       if (!pos) continue;
       const [x, y] = pos;
