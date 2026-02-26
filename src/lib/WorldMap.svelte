@@ -90,18 +90,32 @@
     low:      '#0088ff',
   };
 
-  /** Colour scheme for global-threat markers keyed by severity */
-  const GLOBAL_THREAT_COLORS: Record<string, string> = {
-    extreme:  '#b91c1c',   // CLED Extreme — deep red
-    high:     '#f97316',   // CLED High — clear orange
-    turbulent:'#eab308',   // CLED Turbulent — clear yellow
+  /** Wikipedia conflict severity → solid colour for pings/markers */
+  const WIKI_SEVERITY_COLORS: Record<string, string> = {
+    Extreme:   '#8B0000',   // Major wars ≥10,000 casualties
+    High:      '#FF4500',   // Minor wars 1,000–9,999
+    Turbulent: '#FFA500',   // Conflicts 100–999
+    Low:       '#FFD580',   // Skirmishes/clashes 1–99
   };
 
-  /** Semi-transparent fills matching GLOBAL_THREAT_COLORS for country shading */
-  const GLOBAL_THREAT_COUNTRY_FILLS: Record<string, string> = {
-    extreme:  'rgba(185,28,28,0.32)',
-    high:     'rgba(249,115,22,0.25)',
-    turbulent:'rgba(234,179,8,0.18)',
+  /** Wikipedia conflict severity → semi-transparent fill for country shading */
+  const WIKI_SEVERITY_FILLS: Record<string, string> = {
+    Extreme:   'rgba(139,0,0,0.45)',
+    High:      'rgba(255,69,0,0.38)',
+    Turbulent: 'rgba(255,165,0,0.28)',
+    Low:       'rgba(255,213,128,0.18)',
+  };
+
+  /** Ranking for de-duplication: higher = more severe */
+  const WIKI_SEVERITY_RANK: Record<string, number> = { Extreme: 3, High: 2, Turbulent: 1, Low: 0 };
+
+  /** Alias map: Wikipedia country names → LOCATION_TO_ISO_ID keys */
+  const WIKI_COUNTRY_ALIAS: Record<string, string> = {
+    'Democratic Republic of the Congo': 'DR Congo',
+    'Republic of the Congo': 'Republic of Congo',
+    'East Timor': 'Timor-Leste',
+    'Nagorno-Karabakh': 'Armenia',
+    'Ivory Coast': "Côte d'Ivoire",
   };
 
   /** Maps global-threat location names to ISO 3166-1 numeric country IDs (topojson) */
@@ -157,7 +171,9 @@
     'Solomon Islands': '090', 'Vanuatu': '548', 'Samoa': '882', 'Tonga': '776',
   };
 
-  /** ISO numeric ID → global-threat severity (highest for that country) */
+  /** ISO numeric ID → Wikipedia conflict severity (highest for that country) */
+  let wikiConflictCountryFills = new Map<string, string>();
+  /** ISO numeric ID → CLED-based global-threat severity (for trending detection only) */
   let globalThreatCountryFills = new Map<string, string>();
   /** ISO numeric ID of the currently trending country (for glow effect) */
   let trendingIsoId: string | null = null;
@@ -176,11 +192,11 @@
   }
   let seenCountries = new Set<string>();
 
-  /** Returns the fill for a country based on global-threat severity */
+  /** Returns the fill for a country based on Wikipedia conflict severity */
   function getCountryFillById(id: string): string {
     if (id === trendingIsoId) return 'rgba(255,20,20,0.55)'; // trending: strong red
-    const gtSeverity = globalThreatCountryFills.get(id);
-    if (gtSeverity) return GLOBAL_THREAT_COUNTRY_FILLS[gtSeverity] ?? '#1e3248';
+    const wikiSev = wikiConflictCountryFills.get(id);
+    if (wikiSev) return WIKI_SEVERITY_FILLS[wikiSev] ?? '#1e3248';
     return '#1e3248';
   }
 
@@ -223,17 +239,32 @@
     mapError   = '';
 
     try {
-      const [[d3, topojson], eventData, globalThreatData] = await Promise.all([
+      const [[d3, topojson], eventData, globalThreatData, conflictsData] = await Promise.all([
         Promise.all([import('d3'), import('topojson-client')]),
         fetchEvents(),
         fetchGlobalThreats().catch(() => ({ threats: [] as CountryThreat[], updatedAt: '' })),
+        fetch('/api/conflicts').then(r => r.json()).catch(() => []) as Promise<Array<{ conflict: string; countries: string[]; severity: string }>>,
       ]);
       d3Module = d3;
 
       // Load seen-country keys from localStorage so "New" badges reflect fresh visits
       seenCountries = loadSeenIds();
 
-      // Build global-threat country fill map: ISO ID → severity (from multi-source RSS)
+      // Build Wikipedia conflict fill map: ISO ID → severity (from conflicts.json)
+      wikiConflictCountryFills = new Map<string, string>();
+      for (const entry of conflictsData) {
+        for (const rawCountry of entry.countries) {
+          const country = WIKI_COUNTRY_ALIAS[rawCountry] ?? rawCountry;
+          const isoId = LOCATION_TO_ISO_ID[country];
+          if (!isoId) continue;
+          const existingSev = wikiConflictCountryFills.get(isoId);
+          if (!existingSev || (WIKI_SEVERITY_RANK[entry.severity] ?? -1) > (WIKI_SEVERITY_RANK[existingSev] ?? -1)) {
+            wikiConflictCountryFills.set(isoId, entry.severity);
+          }
+        }
+      }
+
+      // Build global-threat map for trending detection only
       globalThreatCountryFills = new Map<string, string>();
       trendingIsoId = null;
       for (const ct of globalThreatData.threats) {
@@ -366,8 +397,10 @@
         const pos = projection([ct.lon, ct.lat]);
         if (!pos) continue;
         const [x, y] = pos;
-        const col = ct.isTrending ? '#ff2200' : (GLOBAL_THREAT_COLORS[ct.severity] ?? '#ffcc00');
-        const r = ct.severity === 'extreme' ? 5.5 : ct.severity === 'high' ? 4 : 3;
+        const isoId = LOCATION_TO_ISO_ID[ct.country];
+        const wikiSev = isoId ? wikiConflictCountryFills.get(isoId) : null;
+        const col = ct.isTrending ? '#ff2200' : (WIKI_SEVERITY_COLORS[wikiSev ?? ''] ?? '#ffffff');
+        const r = wikiSev === 'Extreme' ? 5.5 : wikiSev === 'High' ? 4 : 3;
 
         // Trending country: pulsing red glow rings
         if (ct.isTrending) {
@@ -401,7 +434,8 @@
             goto(`/intel/${encodeURIComponent(ct.country)}`);
           })
           .on('mouseenter', (e: MouseEvent) => {
-            const tipLines = [`Severity: ${ct.isTrending ? '🔥 Trending (24 h)' : ct.severity === 'extreme' ? 'Extreme' : ct.severity === 'high' ? 'High' : 'Turbulent'}`, 'Click to view stories'];
+            const sevLabel = wikiSev ? ({ Extreme: 'Major war', High: 'Minor war', Turbulent: 'Conflict', Low: 'Skirmish' }[wikiSev] ?? wikiSev) : 'Active';
+            const tipLines = [`Conflict: ${ct.isTrending ? '🔥 Trending (24 h)' : sevLabel}`, 'Click to view stories'];
             showTip(e, ct.country, col, tipLines);
           })
           .on('mousemove', moveTip)
@@ -570,7 +604,9 @@
     }
     const now24 = Date.now() - 24 * 60 * 60 * 1000;
     for (const ct of threats) {
-      const col = ct.isTrending ? '#ff2200' : (GLOBAL_THREAT_COLORS[ct.severity] ?? '#ffcc00');
+      const isoId = LOCATION_TO_ISO_ID[ct.country];
+      const wikiSev = isoId ? wikiConflictCountryFills.get(isoId) : null;
+      const col = ct.isTrending ? '#ff2200' : (WIKI_SEVERITY_COLORS[wikiSev ?? ''] ?? '#ffffff');
       for (const s of ct.stories) {
         if (seen.has(s.link)) continue;
         if (new Date(s.date).getTime() < now24) continue;
@@ -636,13 +672,14 @@
     <button class="wm-legend" class:wm-legend--min={legendMinimized} on:click={() => legendMinimized = !legendMinimized} title={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-label={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-expanded={!legendMinimized}>
       <div class="wm-leg-title">THREAT {#if legendMinimized}<span class="wm-leg-expand">▸</span>{:else}<span class="wm-leg-expand">▾</span>{/if}</div>
       {#if !legendMinimized}
-      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(185,28,28,0.32);"></span><span class="wm-leg-sub">Country shaded by conflict</span></div>
+      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(139,0,0,0.45);"></span><span class="wm-leg-sub">Country by Wikipedia conflict</span></div>
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#b91c1c;"></span><span>Extreme</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#f97316;"></span><span>High</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#eab308;"></span><span>Turbulent</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#8B0000;"></span><span>Major war ≥10k</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#FF4500;"></span><span>Minor war 1k–9.9k</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#FFA500;"></span><span>Conflict 100–999</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#FFD580;"></span><span>Skirmish 1–99</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#b91c1c;box-shadow:0 0 4px #b91c1c;"></span><span style="color:#ff6655;">Trending 24h</span></div>
       {#if polymarketThreats.length > 0}
         <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #eab308;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#eab308;">Market signals</span></div>

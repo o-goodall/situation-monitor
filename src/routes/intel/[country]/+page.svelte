@@ -47,7 +47,9 @@
 
   function goBack() {
     $activeSection = 'intel';
-    goto('/#intel', { replaceState: false });
+    // Replace the country page entry in history so back/forward navigation
+    // is not broken on either desktop or mobile.
+    goto('/', { replaceState: true });
   }
 
   onMount(async () => {
@@ -77,10 +79,6 @@
 
 <div class="country-page">
   <div class="country-inner">
-    <button class="back-btn" on:click={goBack} aria-label="Back to Intel">
-      ← Back
-    </button>
-
     {#if loading}
       <div class="state-wrap">
         <span class="spinner"></span>
@@ -93,6 +91,7 @@
       </div>
     {:else if threat}
       <div class="country-header">
+        <button class="back-btn" on:click={goBack} aria-label="Back to Intel">← Back</button>
         <h1 class="country-name">{threat.country}</h1>
         {#if threat.severity}
           <span class="severity-badge" style="background:{SEVERITY_COLOR[threat.severity]}22;border-color:{SEVERITY_COLOR[threat.severity]}55;color:{SEVERITY_COLOR[threat.severity]};">
@@ -155,7 +154,7 @@
     font-size: .75rem;
     padding: 6px 12px;
     cursor: pointer;
-    margin-bottom: 28px;
+    flex-shrink: 0;
     transition: border-color .15s, color .15s;
   }
   .back-btn:hover {
@@ -168,6 +167,7 @@
     gap: 14px;
     flex-wrap: wrap;
     margin-bottom: 20px;
+    padding-top: 8px;
   }
   .country-name {
     margin: 0;

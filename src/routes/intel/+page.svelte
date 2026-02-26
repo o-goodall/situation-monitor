@@ -1,5 +1,4 @@
-<script>
-  import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
-  onMount(() => goto('/#intel', { replaceState: true }));
+<script lang="ts">
+  import IntelSection from '$lib/sections/IntelSection.svelte';
 </script>
+<IntelSection />
