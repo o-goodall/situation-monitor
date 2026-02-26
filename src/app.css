@@ -501,21 +501,27 @@ html.light .skeleton { background: linear-gradient(90deg, rgba(0,0,0,.04) 25%, r
 
   /* ── GLASS CARD ─────────────────────────────────────────── */
   .gc {
-    background: rgba(255,255,255,0.05); backdrop-filter: blur(10px) saturate(130%);
-    -webkit-backdrop-filter: blur(10px) saturate(130%);
-    border: 1px solid rgba(255,255,255,0.08); border-radius: var(--r-md); padding: 24px;
-    box-shadow: 0 4px 20px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08);
+    /* Liquid Glass: semi-transparent white (~25% opacity in dark mode is rgba(255,255,255,0.08) to keep dark aesthetics) */
+    background: rgba(255,255,255,0.08); backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    border: 1px solid rgba(255,255,255,0.12); border-radius: var(--r-lg); padding: 24px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.30), inset 0 1px 0 rgba(255,255,255,.12);
     transition: border-color .3s, box-shadow .3s, transform .25s; position: relative; overflow: hidden;
   }
-  .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(247,147,26,.25),transparent); }
-  .gc:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.13); box-shadow:0 8px 24px rgba(0,0,0,.28); }
+  /* Gradient sheen — diagonal light refraction highlight (z-index:0, below top-edge line) */
+  .gc::after { content:''; pointer-events:none; position:absolute; inset:0; border-radius:inherit;
+    background:linear-gradient(135deg,rgba(255,255,255,.10) 0%,rgba(255,255,255,.03) 50%,transparent 100%); z-index:0; }
+  /* Top-edge highlight line sits above the sheen (z-index:1) */
+  .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(247,147,26,.25),transparent); z-index:1; }
+  .gc > * { position:relative; z-index:1; }
+  .gc:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.18); box-shadow:0 8px 28px rgba(0,0,0,.32); }
   .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; }
   .gc-title { font-family:inherit; font-size:.72rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.08em; }
   @media (max-width:600px) { .gc { padding:16px 14px; border-radius:var(--r-md); } }
   /* Reduce blur on mobile for better paint performance */
   @media (max-width:768px) {
-    .gc { backdrop-filter:blur(8px) saturate(120%); -webkit-backdrop-filter:blur(8px) saturate(120%); }
-    .stat-tile { backdrop-filter:blur(6px); }
+    .gc { backdrop-filter:blur(12px) saturate(160%); -webkit-backdrop-filter:blur(12px) saturate(160%); }
+    .stat-tile { backdrop-filter:blur(8px); }
   }
 
   /* Hashrate tile — flex column so the chart fills remaining tile height */
