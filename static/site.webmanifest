@@ -1,0 +1,19 @@
+{
+  "name": "GL4NCE Situation Monitor",
+  "short_name": "GL4NCE",
+  "icons": [
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    }
+  ],
+  "theme_color": "#040201",
+  "background_color": "#040201",
+  "display": "standalone"
+}
