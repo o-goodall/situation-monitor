@@ -1,6 +1,8 @@
 <script lang="ts">
   import '../app.css';
   import { onMount, onDestroy } from 'svelte';
+  import { page } from '$app/stores';
+  import { goto } from '$app/navigation';
   import { loadSettings, getEnabledFeedUrls } from '$lib/settings';
   import SettingsPersonalizationToggle from '$lib/SettingsPersonalizationToggle.svelte';
   import WelcomeScreen from '$lib/WelcomeScreen.svelte';
@@ -38,14 +40,27 @@
   const BREAKING_NEWS_TIMEOUT_MS = 3 * 60 * 1000; // clear breaking badge after 3 minutes
 
   function navigateTo(section: 'signal' | 'portfolio' | 'intel') {
-    $activeSection = section;
     mobileMenuOpen = false;
-    // On mobile, navigation is handled by the swipeable pages via $activeSection.
-    // On desktop, scroll the section into view.
     if (typeof window !== 'undefined' && window.innerWidth > 768) {
+      $activeSection = section;
       const el = document.getElementById(section);
       if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       else window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      goto(`/${section}`);
+    }
+  }
+
+  $: urlSection = $page.url.pathname.replace('/', '') as 'signal' | 'portfolio' | 'intel' | 'settings' | '';
+  $: effectiveSection = (urlSection || $activeSection) as 'signal' | 'portfolio' | 'intel' | 'settings';
+
+  function handleSettingsClick() {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      goto('/settings');
+      mobileMenuOpen = false;
+    } else {
+      $showSettings = !$showSettings;
+      mobileMenuOpen = false;
     }
   }
 
@@ -593,15 +608,15 @@
 
   <!-- Desktop nav — left-aligned after brand (Electric Xtra style) -->
   <nav class="page-nav desktop-only" aria-label="Main navigation">
-    <button class="nav-link" class:nav-link--active={$activeSection==='signal'}    on:click={()=>navigateTo('signal')}>
+    <button class="nav-link" class:nav-link--active={effectiveSection==='signal'}    on:click={()=>navigateTo('signal')}>
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M15.31 8h-6.62A1.5 1.5 0 0 0 7.5 10.5V11a2 2 0 0 0 2 2h5a2 2 0 0 1 2 2v.5a1.5 1.5 0 0 1-1.5 1.5H8.69"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
       Signal
     </button>
-    <button class="nav-link" class:nav-link--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')}>
+    <button class="nav-link" class:nav-link--active={effectiveSection==='portfolio'} on:click={()=>navigateTo('portfolio')}>
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
       Portfolio
     </button>
-    <button class="nav-link" class:nav-link--active={$activeSection==='intel'}     on:click={()=>navigateTo('intel')}>
+    <button class="nav-link" class:nav-link--active={effectiveSection==='intel'}     on:click={()=>navigateTo('intel')}>
       <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       Intel
     </button>
@@ -875,20 +890,20 @@
 
 <!-- ══ MOBILE BOTTOM NAVIGATION ══════════════════════════════ -->
 <nav class="bottom-nav mobile-only" aria-label="Section navigation">
-  <button class="bnav-btn" class:bnav-btn--active={$activeSection==='signal'} on:click={()=>navigateTo('signal')} aria-label="Signal section" aria-current={$activeSection==='signal'?'page':undefined}>
+  <button class="bnav-btn" class:bnav-btn--active={effectiveSection==='signal'} on:click={()=>navigateTo('signal')} aria-label="Signal section" aria-current={effectiveSection==='signal'?'page':undefined}>
     <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M15.31 8h-6.62A1.5 1.5 0 0 0 7.5 10.5V11a2 2 0 0 0 2 2h5a2 2 0 0 1 2 2v.5a1.5 1.5 0 0 1-1.5 1.5H8.69"/><line x1="12" y1="6" x2="12" y2="8"/><line x1="12" y1="16" x2="12" y2="18"/></svg>
     <span class="bnav-label">Signal</span>
   </button>
-  <button class="bnav-btn" class:bnav-btn--active={$activeSection==='portfolio'} on:click={()=>navigateTo('portfolio')} aria-label="Portfolio section" aria-current={$activeSection==='portfolio'?'page':undefined}>
+  <button class="bnav-btn" class:bnav-btn--active={effectiveSection==='portfolio'} on:click={()=>navigateTo('portfolio')} aria-label="Portfolio section" aria-current={effectiveSection==='portfolio'?'page':undefined}>
     <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
     <span class="bnav-label">Portfolio</span>
   </button>
-  <button class="bnav-btn" class:bnav-btn--active={$activeSection==='intel'} on:click={()=>navigateTo('intel')} aria-label="Intel section" aria-current={$activeSection==='intel'?'page':undefined}>
+  <button class="bnav-btn" class:bnav-btn--active={effectiveSection==='intel'} on:click={()=>navigateTo('intel')} aria-label="Intel section" aria-current={effectiveSection==='intel'?'page':undefined}>
     <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     <span class="bnav-label">Intel</span>
   </button>
   <!-- Settings button in bottom nav -->
-  <button class="bnav-btn" class:bnav-btn--active={mobileMenuOpen} on:click={toggleMobileMenu}
+  <button class="bnav-btn" class:bnav-btn--active={effectiveSection==='settings' || mobileMenuOpen} on:click={handleSettingsClick}
     aria-label="{mobileMenuOpen ? 'Close settings' : 'Open settings'}"
     aria-expanded={mobileMenuOpen} aria-controls="mobile-menu">
     <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true">

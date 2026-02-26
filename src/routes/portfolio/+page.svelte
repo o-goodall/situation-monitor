@@ -1,5 +1,4 @@
-<script>
-  import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
-  onMount(() => goto('/#portfolio', { replaceState: true }));
+<script lang="ts">
+  import PortfolioSection from '$lib/sections/PortfolioSection.svelte';
 </script>
+<PortfolioSection />

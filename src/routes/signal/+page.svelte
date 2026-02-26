@@ -1,5 +1,4 @@
-<script>
-  import { onMount } from 'svelte';
-  import { goto } from '$app/navigation';
-  onMount(() => goto('/#signal', { replaceState: true }));
+<script lang="ts">
+  import SignalSection from '$lib/sections/SignalSection.svelte';
 </script>
+<SignalSection />
