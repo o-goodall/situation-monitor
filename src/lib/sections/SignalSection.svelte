@@ -135,6 +135,7 @@
 
     <!-- BTC Price — USD and user currency side by side -->
     <div class="stat-tile stat-tile--chart stat-tile--wide">
+      <span class="tile-header">Bitcoin Price</span>
       {#if $priceHistory.length >= 2}
         <div class="tile-spark" aria-hidden="true"><Sparkline prices={$priceHistory} height={52} opacity={0.28} /></div>
       {/if}
@@ -160,6 +161,7 @@
 
     <!-- BTC in Gold + ATH row -->
     <div class="stat-tile stat-tile--static stat-tile--btc-gold" data-tooltip="Bitcoin priced in gold (troy ounces)">
+      <span class="tile-header">Bitcoin in Gold</span>
       <!-- 1 ₿ header with foil glimmer -->
       <div class="btc-gold-badge-row">
         <span class="btc-gold-badge-btc btc-glimmer">1 ₿</span>
@@ -221,6 +223,7 @@
 
     <!-- Halving countdown + sats per currency combined -->
     <div class="stat-tile halving-tile stat-tile--static" data-tooltip="Estimated blocks remaining until next Bitcoin halving · Satoshis per {displayCur}">
+      <span class="tile-header">Halving</span>
       {#if $halvingDays > 0}
         <div class="price-pair" aria-live="polite" aria-atomic="true">
           <span class="stat-n halving-n">{$halvingDays.toLocaleString()}</span>
