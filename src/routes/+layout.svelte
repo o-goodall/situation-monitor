@@ -30,11 +30,13 @@
   let showDcaFormula = false;
   let pendingScrollTarget: string | null = null;
 
-  // After any SvelteKit navigation, scroll to a deferred section target if one is pending
-  afterNavigate(() => {
-    if (pendingScrollTarget) {
-      const target = pendingScrollTarget;
-      pendingScrollTarget = null;
+  // After any SvelteKit navigation, scroll to a deferred section target if one is pending.
+  // Also handles scrollTarget passed via navigation state (e.g. from the country page back button).
+  afterNavigate((navigation) => {
+    const stateTarget = (navigation.to?.state as { scrollTarget?: string } | null)?.scrollTarget ?? null;
+    const target = pendingScrollTarget ?? stateTarget;
+    pendingScrollTarget = null;
+    if (target) {
       requestAnimationFrame(() => {
         const el = document.getElementById(target);
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
