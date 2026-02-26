@@ -43,6 +43,11 @@
     return null;
   }
 
+  // Module-level caches to avoid re-fetching static data on every initMap() call
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let _worldCache: any | null = null;
+  let _conflictApiCache: Array<{ conflict: string; countries: string[]; severity: string }> | null = null;
+
   let mapContainer: HTMLDivElement;
   let d3Module: typeof import('d3') | null = null;
   let svg: D3Selection<SVGSVGElement, unknown, null, undefined> | null = null;
@@ -241,8 +246,11 @@
         Promise.all([import('d3'), import('topojson-client')]),
         fetchEvents(),
         fetchGlobalThreats().catch(() => ({ threats: [] as CountryThreat[], updatedAt: '' })),
-        fetch('/api/conflicts').then(r => r.json()).catch(() => []) as Promise<Array<{ conflict: string; countries: string[]; severity: string }>>,
+        _conflictApiCache !== null
+          ? Promise.resolve(_conflictApiCache)
+          : fetch('/api/conflicts').then(r => r.json()).catch(() => []) as Promise<Array<{ conflict: string; countries: string[]; severity: string }>>,
       ]);
+      if (_conflictApiCache === null) _conflictApiCache = conflictsData;
       d3Module = d3;
 
       // Load seen-country keys from localStorage so "New" badges reflect fresh visits
@@ -309,10 +317,13 @@
         .translate([WIDTH / 2, HEIGHT / 2 + 20]);
       path = d3.geoPath().projection(projection);
 
-      // World atlas from local static asset (avoids CDN round-trip)
-      const worldRes = await fetch('/countries-110m.json');
-      if (!worldRes.ok) throw new Error(`Failed to load world topology: HTTP ${worldRes.status}`);
-      const world = await worldRes.json();
+      // World atlas from local static asset (avoids CDN round-trip); cached in memory after first load
+      if (_worldCache === null) {
+        const worldRes = await fetch('/countries-110m.json');
+        if (!worldRes.ok) throw new Error(`Failed to load world topology: HTTP ${worldRes.status}`);
+        _worldCache = await worldRes.json();
+      }
+      const world = _worldCache;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const countries = topojson.feature(world, world.objects.countries as any) as unknown as GeoJSON.FeatureCollection;
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -426,6 +437,8 @@
     if (!threatMarkerGroup || !projection) return;
     threatMarkerGroup.selectAll('*').remove();
 
+    const DOT_GREEN = '#22c55e'; // solid green center dot for all conflict pings
+
     for (const ct of threats) {
       if (ct.stories.length === 0) continue;
       const pos = projection([ct.lon, ct.lat]);
@@ -433,7 +446,6 @@
       const [x, y] = pos;
       const isoId = LOCATION_TO_ISO_ID[ct.country];
       const wikiSev = isoId ? wikiConflictCountryFills.get(isoId) : null;
-      const col = ct.isTrending ? '#ff2200' : (WIKI_SEVERITY_COLORS[wikiSev ?? ''] ?? '#ffffff');
       const r = wikiSev === 'Extreme' ? 5.5 : wikiSev === 'High' ? 4 : 3;
 
       // Trending country: pulsing red glow rings
@@ -444,12 +456,18 @@
         threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 5)
           .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1)
           .attr('class', 'wm-trending-ring');
+      } else if (wikiSev === 'Extreme' || wikiSev === 'High') {
+        // Major/Minor wars: GPU-accelerated CSS pulse ring (transform + opacity only)
+        threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 5)
+          .attr('fill', 'none').attr('stroke', DOT_GREEN).attr('stroke-width', 1)
+          .attr('class', 'wm-ping-pulse');
       }
+      // Conflicts + Skirmishes (Turbulent/Low): static dot only — no pulse ring
 
-      // Solid core dot with white outline stroke for visibility on both light and dark backgrounds
+      // Solid green center dot — no white outer stroke
       threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
-        .attr('fill', col).attr('fill-opacity', 0.85)
-        .attr('stroke', 'rgba(255,255,255,0.7)').attr('stroke-width', 0.8);
+        .attr('fill', DOT_GREEN).attr('fill-opacity', 0.9)
+        .attr('stroke', 'none');
 
       // "New" badge — subtle circular dot in Bitcoin orange, disappears on hover
       const isNew = ct.hasNew && !seenCountries.has(ct.country);
@@ -470,7 +488,7 @@
         .on('mouseenter', (e: MouseEvent) => {
           const sevLabel = wikiSev ? ({ Extreme: 'Major war', High: 'Minor war', Turbulent: 'Conflict', Low: 'Skirmish' }[wikiSev] ?? wikiSev) : 'Active';
           const tipLines = [`Conflict: ${ct.isTrending ? '🔥 Trending (24 h)' : sevLabel}`, 'Click to view stories'];
-          showTip(e, ct.country, col, tipLines);
+          showTip(e, ct.country, DOT_GREEN, tipLines);
         })
         .on('mousemove', moveTip)
         .on('mouseleave', hideTip);
@@ -796,16 +814,30 @@
     50%       { opacity: 0.55; }
   }
   /* Trending country — pulsing red glow rings on the SVG marker */
-  :global(.wm-trending-ring) { animation: wm-trending-ring-pulse 1.6s ease-in-out infinite; }
+  :global(.wm-trending-ring) {
+    animation: wm-trending-ring-pulse 1.6s ease-in-out infinite;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
   :global(.wm-trending-ring--outer) { animation: wm-trending-ring-pulse 1.6s ease-in-out infinite .4s; }
   @keyframes wm-trending-ring-pulse {
-    0%, 100% { opacity: 0.8; }
-    50%       { opacity: 0.15; }
+    0%, 100% { transform: scale(1);   opacity: 0.8; }
+    50%       { transform: scale(1.1); opacity: 0.15; }
   }
-  /* Trending country fill — pulsing red glow on the country shape */
+  /* Major/Minor war ping: GPU-accelerated CSS pulse ring (transform + opacity only) */
+  :global(.wm-ping-pulse) {
+    animation: wm-ping-pulse 2s ease-out infinite;
+    will-change: transform, opacity;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+  @keyframes wm-ping-pulse {
+    0%   { transform: scale(1);   opacity: 0.7; }
+    100% { transform: scale(2.2); opacity: 0; }
+  }
+  /* Trending country fill — pulsing on the country shape (no drop-shadow filter) */
   :global(.wm-country--trending) {
     animation: wm-country-trending 1.8s ease-in-out infinite;
-    filter: drop-shadow(0 0 4px rgba(255,20,20,0.6));
   }
   @keyframes wm-country-trending {
     0%, 100% { opacity: 0.75; }
@@ -893,6 +925,9 @@
       border-radius: 0 0 10px 10px;
     }
     .wm-story-title { max-width: 200px; }
+    :global(.wm-ping-pulse) { animation-duration: 3s; }
+    :global(.wm-trending-ring) { animation-duration: 2.4s; }
+    :global(.wm-trending-ring--outer) { animation-duration: 2.4s; }
   }
 
 </style>
