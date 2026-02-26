@@ -2,7 +2,20 @@ import { json } from '@sveltejs/kit';
 import type { RequestEvent } from '@sveltejs/kit';
 import Parser from 'rss-parser';
 
-const parser = new Parser({
+// Custom RSS item fields for media/image extraction
+interface RssMediaItem {
+  title?: string;
+  link?: string;
+  pubDate?: string;
+  content?: string;
+  contentSnippet?: string;
+  'content:encoded'?: string;
+  mediaContent?: { '$'?: { url?: string }; url?: string };
+  mediaThumbnail?: { '$'?: { url?: string }; url?: string };
+  enclosure?: { url?: string; type?: string };
+}
+
+const parser = new Parser<Record<string, unknown>, RssMediaItem>({
   customFields: {
     item: [
       ['media:content', 'mediaContent', { keepArray: false }],
@@ -12,7 +25,7 @@ const parser = new Parser({
   },
 });
 
-function extractImageUrl(item: any): string {
+function extractImageUrl(item: RssMediaItem): string {
   // Try media:content
   if (item.mediaContent?.['$']?.url) return item.mediaContent['$'].url;
   if (item.mediaContent?.url) return item.mediaContent.url;
@@ -42,7 +55,7 @@ export async function GET({ url }: RequestEvent) {
       if (result.status === 'fulfilled') {
         const feed = result.value;
         const sourceName = feed.title?.replace(' - World', '').replace(' News', '').replace(' - Homepage', '') ?? sources[i];
-        feed.items?.slice(0, 5).forEach((item: any) => {
+        feed.items?.slice(0, 5).forEach((item: RssMediaItem) => {
           if (item.title && item.link) {
             // Clean description: strip HTML tags, limit to 120 chars
             let desc = (item.contentSnippet || item.content || '').replace(/<[^>]*>/g, '').trim();
