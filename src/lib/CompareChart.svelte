@@ -16,8 +16,8 @@
 
   const SERIES_CFG: { key: SeriesKey; label: string; color: string; strokeWidth: number }[] = [
     { key: 'btc',   label: 'BTC',   color: '#f7931a', strokeWidth: 2.5 },
-    { key: 'sp500', label: 'S&P',   color: '#888',    strokeWidth: 1.8 },
-    { key: 'gold',  label: 'Gold',  color: '#c9a84c', strokeWidth: 1.8 },
+    { key: 'sp500', label: 'S&P',   color: '#888',    strokeWidth: 2.0 },
+    { key: 'gold',  label: 'Gold',  color: '#c9a84c', strokeWidth: 2.0 },
   ];
 
   // ── Normalise to 100 at first data point ────────────────────
@@ -167,6 +167,13 @@
 
     const g = svg.append('g').attr('transform', `translate(${margin.left},${margin.top})`);
 
+    // Subtle backplate behind chart plotting area — improves legibility on glass tiles
+    g.append('rect')
+      .attr('x', 0).attr('y', 0)
+      .attr('width', iW).attr('height', iH)
+      .attr('fill', 'rgba(0,0,0,0.12)')
+      .attr('rx', 2);
+
     // Gridlines — horizontal (aligned with Y tick positions)
     const yTicks = yTickValues ?? yScale.ticks(5);
     g.append('g').attr('class', 'grid-h')
@@ -212,8 +219,9 @@
       .call(yAxisBuilder)
       .call(ax => ax.select('.domain').remove())
       .call(ax => ax.selectAll('text')
-        .attr('fill', 'rgba(255,255,255,0.35)')
+        .attr('fill', 'rgba(255,255,255,0.45)')
         .attr('font-size', '9px')
+        .attr('font-weight', '500')
         .attr('font-family', 'monospace')
         .attr('x', -4)
       );
@@ -240,8 +248,9 @@
       )
       .call(ax => ax.select('.domain').remove())
       .call(ax => ax.selectAll('text')
-        .attr('fill', 'rgba(255,255,255,0.35)')
+        .attr('fill', 'rgba(255,255,255,0.45)')
         .attr('font-size', '9px')
+        .attr('font-weight', '500')
         .attr('font-family', 'monospace')
         .attr('dy', '1.2em')
       );
