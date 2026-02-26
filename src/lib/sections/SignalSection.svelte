@@ -79,6 +79,10 @@
   let btcGoldStartRatio: number | null = null;
   let btcGoldRangeLoading = false;
 
+  // Bitcoin in Gold all-time high: 40.33 oz, hit 17 Dec 2024
+  const BTC_GOLD_ATH = 40.33;
+  const BTC_GOLD_ATH_DATE = '17 Dec 2024';
+
   async function fetchBtcGoldRange() {
     btcGoldRangeLoading = true;
     try {
@@ -87,23 +91,6 @@
       btcGoldStartRatio = d.startRatio ?? null;
     } catch { btcGoldPctChange = null; btcGoldStartRatio = null; }
     finally { btcGoldRangeLoading = false; }
-  }
-
-  let auMedianIncome: number | null = null;
-  let auIncomePct: number | null = null;
-  let auMedianHouse: number | null = null;
-  let auHousePct: number | null = null;
-  let auAffordabilityRatio: number | null = null;
-
-  async function fetchAuData() {
-    try {
-      const d = await fetch('/api/australia').then(res => res.json());
-      auMedianIncome       = d.medianIncome       ?? null;
-      auIncomePct          = d.incomePctChange     ?? null;
-      auMedianHouse        = d.medianHousePrice    ?? null;
-      auHousePct           = d.housePctChange      ?? null;
-      auAffordabilityRatio = d.affordabilityRatio  ?? null;
-    } catch {}
   }
 
   $: btcInGoldOz = ($btcPrice > 0 && $goldPriceUsd !== null && $goldPriceUsd > 0)
@@ -129,7 +116,6 @@
     fetchBtcChart();
     fetchHashrateChart();
     fetchBtcGoldRange();
-    fetchAuData();
     personalizationEnabled = getStoredSettings().enabled;
   });
 </script>
@@ -172,7 +158,7 @@
       </div>
     </div>
 
-    <!-- BTC in Gold + AU Snapshot — moved from signal grid -->
+    <!-- BTC in Gold + ATH row -->
     <div class="stat-tile stat-tile--static stat-tile--btc-gold" data-tooltip="Bitcoin priced in gold (troy ounces)">
       <!-- 1 ₿ header with foil glimmer -->
       <div class="btc-gold-badge-row">
@@ -189,42 +175,45 @@
           <span class="btc-gold-strip-n muted">—</span>
         {/if}
       </div>
-      <!-- Year ago + % change -->
+      <!-- Year ago + % change, then ATH row -->
       {#if btcGoldRangeLoading}
         <span class="btc-gold-strip-spot muted">…</span>
-      {:else if btcGoldStartRatio !== null && btcGoldPctChange !== null}
+      {:else}
         <div class="btc-gold-history">
-          <div class="btc-gold-hist-row">
-            <span class="btc-gold-hist-label">1yr ago</span>
-            <span class="btc-gold-hist-val">{n(btcGoldStartRatio, 2)} oz</span>
-          </div>
-          <div class="btc-gold-hist-row">
-            <span class="btc-gold-hist-label">change</span>
-            <span class="btc-gold-hist-pct" style="color:{btcGoldPctChange >= 0 ? 'var(--up)' : 'var(--dn)'}">{btcGoldPctChange >= 0 ? '+' : ''}{btcGoldPctChange.toFixed(1)}%</span>
-          </div>
-        </div>
-      {/if}
-      {#if displayCur === 'AUD'}
-        <div class="au-strip-rows">
-          <div class="au-strip-row">
-            <span class="au-strip-label">🇦🇺 Med. Income</span>
-            <span class="au-strip-val">
-              {auMedianIncome !== null ? '$' + Math.round(auMedianIncome / 1000) + 'k' : '$100k'}
-              {#if auIncomePct !== null}<span class="au-chg" style="color:{auIncomePct >= 0 ? 'var(--up)' : 'var(--dn)'}">{auIncomePct >= 0 ? '+' : ''}{auIncomePct.toFixed(1)}%</span>{/if}
-            </span>
-          </div>
-          <div class="au-strip-row">
-            <span class="au-strip-label">🇦🇺 Med. House</span>
-            <span class="au-strip-val">
-              {auMedianHouse !== null ? '$' + Math.round(auMedianHouse / 1000) + 'k' : '$815k'}
-              {#if auHousePct !== null}<span class="au-chg" style="color:{auHousePct >= 0 ? 'var(--up)' : 'var(--dn)'}">{auHousePct >= 0 ? '+' : ''}{auHousePct.toFixed(1)}%</span>{/if}
-            </span>
-          </div>
-          {#if auAffordabilityRatio !== null}
-            <div class="au-strip-row au-strip-row--ratio">
-              <span class="au-strip-label">House/Income Ratio</span>
-              <span class="au-strip-val au-ratio-val">{auAffordabilityRatio}× <span class="au-ratio-sub">yr income</span></span>
+          {#if btcGoldStartRatio !== null && btcGoldPctChange !== null}
+            <div class="btc-gold-hist-row">
+              <span class="btc-gold-hist-label">1yr ago</span>
+              <span class="btc-gold-hist-val">{n(btcGoldStartRatio, 2)} oz</span>
             </div>
+            <div class="btc-gold-hist-row">
+              <span class="btc-gold-hist-label">change</span>
+              <span class="btc-gold-hist-pct" style="color:{btcGoldPctChange >= 0 ? 'var(--up)' : 'var(--dn)'}">{btcGoldPctChange >= 0 ? '+' : ''}{btcGoldPctChange.toFixed(1)}%</span>
+            </div>
+          {/if}
+          <!-- ATH row -->
+          {#if btcInGoldOz !== null && btcInGoldOz >= BTC_GOLD_ATH}
+            <div class="btc-gold-hist-row btc-gold-ath-row">
+              <span class="btc-gold-hist-label btc-gold-ath-new">★ NEW ATH</span>
+              <span class="btc-gold-hist-pct" style="color:var(--up);">+{((btcInGoldOz / BTC_GOLD_ATH - 1) * 100).toFixed(1)}%</span>
+            </div>
+            <div class="btc-gold-hist-row">
+              <span class="btc-gold-hist-label">prev ATH</span>
+              <span class="btc-gold-hist-val">{BTC_GOLD_ATH} oz</span>
+            </div>
+          {:else}
+            <div class="btc-gold-hist-row btc-gold-ath-row">
+              <span class="btc-gold-hist-label">ATH</span>
+              <span class="btc-gold-hist-val">{BTC_GOLD_ATH} oz</span>
+            </div>
+            {#if btcInGoldOz !== null}
+              <div class="btc-gold-hist-row">
+                <span class="btc-gold-hist-label">▼ from ATH</span>
+                <span class="btc-gold-hist-pct" style="color:var(--dn);">{(((btcInGoldOz / BTC_GOLD_ATH) - 1) * 100).toFixed(1)}%</span>
+              </div>
+              <div class="btc-gold-hist-row btc-gold-ath-date">
+                <span class="btc-gold-hist-label">{BTC_GOLD_ATH_DATE}</span>
+              </div>
+            {/if}
           {/if}
         </div>
       {/if}
