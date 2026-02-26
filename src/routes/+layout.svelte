@@ -51,7 +51,7 @@
     }
   }
 
-  $: urlSection = $page.url.pathname.replace('/', '') as 'signal' | 'portfolio' | 'intel' | 'settings' | '';
+  $: urlSection = $page.url.pathname.slice(1).split('/')[0] as 'signal' | 'portfolio' | 'intel' | 'settings' | '';
   $: effectiveSection = (urlSection || $activeSection) as 'signal' | 'portfolio' | 'intel' | 'settings';
 
   function handleSettingsClick() {
