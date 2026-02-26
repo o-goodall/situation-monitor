@@ -1214,6 +1214,64 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
     #intel.section { padding-top: 20px; padding-bottom: 80px; }
   }
 
+  /* ── INTEL DASHBOARD GRID ────────────────────────────── */
+  .intel-dashboard-grid { display:flex; flex-direction:column; gap:16px; }
+  .intel-summary-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+  @media (max-width:600px) { .intel-summary-row { grid-template-columns:1fr; } }
+
+  /* ── INTEL SUMMARY TILE (clickable button-as-tile) ────── */
+  .intel-summary-tile {
+    cursor:pointer; text-align:left; font-family:inherit;
+    display:flex; flex-direction:column; gap:10px; min-height:180px;
+  }
+  .intel-summary-tile:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.22); box-shadow:0 12px 36px rgba(0,0,0,.42),inset 0 1px 0 rgba(255,255,255,.24),inset 0 -1px 0 rgba(0,0,0,.10); }
+  .intel-summary-tile:focus-visible { outline:2px solid var(--orange); outline-offset:2px; border-radius:var(--r-md); }
+  :global(html.light) .intel-summary-tile:hover { border-color:rgba(0,0,0,.15); box-shadow:0 8px 28px rgba(0,0,0,.10),inset 0 1px 0 rgba(255,255,255,.95); }
+
+  /* ── INTEL TILE PREVIEW CONTENT ──────────────────────── */
+  .intel-tile-preview { flex:1; display:flex; flex-direction:column; gap:8px; overflow:hidden; }
+  .intel-tile-preview-item { display:flex; flex-direction:column; gap:3px; }
+  .intel-tile-preview-title {
+    font-size:.78rem; color:var(--t1); line-height:1.4;
+    display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  }
+  :global(html.light) .intel-tile-preview-title { color:rgba(0,0,0,.72); }
+  .intel-tile-open-hint {
+    font-size:.55rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--t3); margin-top:auto; padding-top:8px; align-self:flex-end; transition:color .2s;
+  }
+  .intel-summary-tile:hover .intel-tile-open-hint { color:var(--orange); }
+  :global(html.light) .intel-summary-tile:hover .intel-tile-open-hint { color:#c77a10; }
+
+  /* ── TILE MODAL BACKDROP ─────────────────────────────── */
+  .tile-modal-backdrop {
+    position:fixed; inset:0; z-index:200;
+    background:rgba(0,0,0,.6);
+    backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+    display:flex; align-items:center; justify-content:center; padding:24px;
+  }
+
+  /* ── TILE MODAL ──────────────────────────────────────── */
+  .tile-modal {
+    position:relative; width:min(92vw,920px); max-height:82vh;
+    overflow-y:auto; overflow-x:hidden; padding:28px;
+  }
+  /* Suppress the default gc hover lift inside the modal */
+  .tile-modal:hover { transform:none; }
+
+  /* ── TILE MODAL CLOSE BUTTON ─────────────────────────── */
+  .tile-modal-close {
+    position:absolute; top:14px; right:14px;
+    width:28px; height:28px; border-radius:50%;
+    background:rgba(255,255,255,.07); border:1px solid rgba(255,255,255,.12);
+    color:var(--t2); cursor:pointer; font-size:.75rem;
+    display:flex; align-items:center; justify-content:center; font-family:inherit;
+    transition:background .15s,color .15s,border-color .15s;
+  }
+  .tile-modal-close:hover { background:rgba(255,255,255,.14); color:var(--t1); border-color:rgba(255,255,255,.22); }
+  :global(html.light) .tile-modal-close { background:rgba(0,0,0,.04); border-color:rgba(0,0,0,.1); color:rgba(0,0,0,.5); }
+  :global(html.light) .tile-modal-close:hover { background:rgba(0,0,0,.08); color:rgba(0,0,0,.75); }
+
   /* Prediction market — PolyMarket-inspired */
   .mkt {
     display:block; border-bottom:1px solid rgba(255,255,255,.05);
