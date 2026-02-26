@@ -47,7 +47,12 @@
 
   function goBack() {
     $activeSection = 'intel';
-    goto('/intel', { replaceState: true });
+    // On desktop the global monitor is at '/'; '/intel' only exists as a mobile route
+    if (window.innerWidth > 768) {
+      goto('/');
+    } else {
+      goto('/intel', { replaceState: true });
+    }
   }
 
   afterNavigate(() => {
