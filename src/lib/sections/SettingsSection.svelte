@@ -141,8 +141,16 @@
 </div>
 
 <style>
-  .settings-page { max-width: 600px; margin: 0 auto; padding: 20px 16px 80px; }
-  .settings-page-header { margin-bottom: 20px; }
-  .settings-page-title { font-size: 1.1rem; font-weight: 700; color: var(--t1); }
+  .settings-page { max-width: 600px; margin: 0 auto; padding: 20px 16px calc(var(--bottom-nav-h, 72px) + 24px); }
+  .settings-page-header { margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid rgba(247,147,26,0.18); }
+  .settings-page-title {
+    font-size: 1.15rem; font-weight: 700; color: var(--t1);
+    position: relative; display: inline-block; padding-bottom: 8px;
+  }
+  .settings-page-title::after {
+    content: ''; position: absolute; bottom: 0; left: 0;
+    width: 24px; height: 2px; background: var(--orange);
+  }
   .settings-page-body { display: flex; flex-direction: column; }
+  :global(html.light) .settings-page-header { border-bottom-color: rgba(247,147,26,0.2); }
 </style>

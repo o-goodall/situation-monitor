@@ -1,341 +1,342 @@
 [
   {
-    "conflict": "Sudanese civil war",
-    "countries": [
-      "Sudan"
-    ],
+    "conflict": "Myanmar civil war",
+    "countries": ["Myanmar"],
     "severity": "Extreme"
   },
   {
-    "conflict": "Russian invasion of Ukraine",
-    "countries": [
-      "Russia",
-      "Ukraine"
-    ],
+    "conflict": "India–Pakistan border conflict",
+    "countries": ["India", "Bangladesh", "Thailand"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "China border tensions",
+    "countries": ["China"],
     "severity": "Extreme"
   },
   {
     "conflict": "Israeli–Palestinian conflict",
-    "countries": [
-      "Palestine",
-      "Israel"
-    ],
+    "countries": ["Israel", "Palestine"],
     "severity": "Extreme"
   },
   {
-    "conflict": "Myanmar civil war",
-    "countries": [
-      "Myanmar"
-    ],
+    "conflict": "Lebanon conflict",
+    "countries": ["Lebanon", "Jordan"],
     "severity": "Extreme"
   },
   {
-    "conflict": "Mexican drug war",
-    "countries": [
-      "Mexico"
-    ],
+    "conflict": "Iraqi insurgency",
+    "countries": ["Iraq"],
     "severity": "Extreme"
   },
   {
-    "conflict": "Nigerian conflicts",
-    "countries": [
-      "Nigeria"
-    ],
-    "severity": "Extreme"
-  },
-  {
-    "conflict": "Yemeni civil war",
-    "countries": [
-      "Yemen"
-    ],
-    "severity": "Extreme"
-  },
-  {
-    "conflict": "DR Congo conflicts",
-    "countries": [
-      "DR Congo"
-    ],
-    "severity": "Extreme"
-  },
-  {
-    "conflict": "Afghan conflict",
-    "countries": [
-      "Afghanistan"
-    ],
+    "conflict": "Iranian conflict",
+    "countries": ["Iran"],
     "severity": "Extreme"
   },
   {
     "conflict": "Syrian civil war",
-    "countries": [
-      "Syria"
-    ],
+    "countries": ["Syria"],
     "severity": "Extreme"
   },
   {
     "conflict": "Somali civil war",
-    "countries": [
-      "Somalia"
-    ],
-    "severity": "High"
+    "countries": ["Somalia"],
+    "severity": "Extreme"
   },
   {
-    "conflict": "Ethiopia–Amhara conflict",
-    "countries": [
-      "Ethiopia"
-    ],
-    "severity": "High"
+    "conflict": "DR Congo conflicts",
+    "countries": ["Democratic Republic of the Congo"],
+    "severity": "Extreme"
   },
   {
-    "conflict": "Pakistan insurgency",
-    "countries": [
-      "Pakistan"
-    ],
-    "severity": "High"
+    "conflict": "Central African Republic conflict",
+    "countries": ["Central African Republic"],
+    "severity": "Extreme"
   },
   {
-    "conflict": "Iraq insurgency",
-    "countries": [
-      "Iraq"
-    ],
-    "severity": "High"
+    "conflict": "Rwanda conflict",
+    "countries": ["Rwanda"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "South Sudan conflict",
+    "countries": ["South Sudan"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Burundi conflict",
+    "countries": ["Burundi"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Uganda conflict",
+    "countries": ["Uganda"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Algeria conflict",
+    "countries": ["Algeria"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Benin conflict",
+    "countries": ["Benin"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Burkina Faso insurgency",
+    "countries": ["Burkina Faso"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Cameroon anglophone conflict",
+    "countries": ["Cameroon"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Chad conflict",
+    "countries": ["Chad"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Ivory Coast conflict",
+    "countries": ["Ivory Coast"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Libya conflict",
+    "countries": ["Libya"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Mali insurgency",
+    "countries": ["Mali"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Mauritania conflict",
+    "countries": ["Mauritania"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Morocco conflict",
+    "countries": ["Morocco"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Niger insurgency",
+    "countries": ["Niger"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Nigerian conflicts",
+    "countries": ["Nigeria"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Togo conflict",
+    "countries": ["Togo"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Tunisia conflict",
+    "countries": ["Tunisia"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Mexican drug war",
+    "countries": ["Mexico"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Belize gang violence",
+    "countries": ["Belize"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "El Salvador gang conflict",
+    "countries": ["El Salvador"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Honduras gang violence",
+    "countries": ["Honduras"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Guatemala gang conflict",
+    "countries": ["Guatemala"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Nicaragua political conflict",
+    "countries": ["Nicaragua"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "United States domestic violence",
+    "countries": ["United States"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Sudanese civil war",
+    "countries": ["Sudan"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Ethiopia conflicts",
+    "countries": ["Ethiopia"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Egypt conflict",
+    "countries": ["Egypt"],
+    "severity": "Extreme"
+  },
+  {
+    "conflict": "Russian invasion of Ukraine",
+    "countries": ["Ukraine", "Russia", "Belarus"],
+    "severity": "Extreme"
   },
   {
     "conflict": "Colombian conflict",
-    "countries": [
-      "Colombia"
-    ],
-    "severity": "High"
-  },
-  {
-    "conflict": "Haiti crisis",
-    "countries": [
-      "Haiti"
-    ],
+    "countries": ["Colombia"],
     "severity": "High"
   },
   {
     "conflict": "Venezuela crisis",
-    "countries": [
-      "Venezuela"
-    ],
+    "countries": ["Venezuela"],
     "severity": "High"
   },
   {
-    "conflict": "Mozambique insurgency",
-    "countries": [
-      "Mozambique"
-    ],
+    "conflict": "Afghan conflict",
+    "countries": ["Afghanistan"],
     "severity": "High"
   },
   {
-    "conflict": "Sahel insurgency",
-    "countries": [
-      "Mali",
-      "Burkina Faso",
-      "Niger"
-    ],
+    "conflict": "Pakistan insurgency",
+    "countries": ["Pakistan"],
     "severity": "High"
   },
   {
-    "conflict": "South Sudan conflict",
-    "countries": [
-      "South Sudan"
-    ],
-    "severity": "High"
-  },
-  {
-    "conflict": "Libya conflict",
-    "countries": [
-      "Libya"
-    ],
-    "severity": "High"
-  },
-  {
-    "conflict": "Chad conflict",
-    "countries": [
-      "Chad"
-    ],
-    "severity": "High"
-  },
-  {
-    "conflict": "Central African Republic conflict",
-    "countries": [
-      "Central African Republic"
-    ],
-    "severity": "High"
-  },
-  {
-    "conflict": "Lebanon conflict",
-    "countries": [
-      "Lebanon"
-    ],
+    "conflict": "Tajikistan conflict",
+    "countries": ["Tajikistan"],
     "severity": "High"
   },
   {
     "conflict": "Ecuador gang violence",
-    "countries": [
-      "Ecuador"
-    ],
+    "countries": ["Ecuador"],
     "severity": "High"
   },
   {
-    "conflict": "Iran–proxy conflict",
-    "countries": [
-      "Iran"
-    ],
+    "conflict": "Yemeni civil war",
+    "countries": ["Yemen"],
     "severity": "High"
   },
   {
-    "conflict": "Cameroon anglophone crisis",
-    "countries": [
-      "Cameroon"
-    ],
+    "conflict": "Saudi Arabia–Yemen conflict",
+    "countries": ["Saudi Arabia"],
+    "severity": "High"
+  },
+  {
+    "conflict": "UAE–Yemen conflict",
+    "countries": ["United Arab Emirates"],
+    "severity": "High"
+  },
+  {
+    "conflict": "Turkey–Syria conflict",
+    "countries": ["Turkey"],
+    "severity": "High"
+  },
+  {
+    "conflict": "Haiti crisis",
+    "countries": ["Haiti"],
+    "severity": "High"
+  },
+  {
+    "conflict": "Bhutan conflict",
+    "countries": ["Bhutan"],
     "severity": "Turbulent"
   },
   {
-    "conflict": "Kenya insurgency",
-    "countries": [
-      "Kenya"
-    ],
-    "severity": "Turbulent"
-  },
-  {
-    "conflict": "Uganda conflict",
-    "countries": [
-      "Uganda"
-    ],
-    "severity": "Turbulent"
-  },
-  {
-    "conflict": "India–Pakistan tensions",
-    "countries": [
-      "India",
-      "Pakistan"
-    ],
+    "conflict": "Indonesia insurgency",
+    "countries": ["Indonesia"],
     "severity": "Turbulent"
   },
   {
     "conflict": "Philippines insurgency",
-    "countries": [
-      "Philippines"
-    ],
+    "countries": ["Philippines"],
     "severity": "Turbulent"
   },
   {
-    "conflict": "Bangladesh unrest",
-    "countries": [
-      "Bangladesh"
-    ],
+    "conflict": "Angola conflict",
+    "countries": ["Angola"],
     "severity": "Turbulent"
   },
   {
-    "conflict": "Burundi conflict",
-    "countries": [
-      "Burundi"
-    ],
+    "conflict": "Papua New Guinea conflict",
+    "countries": ["Papua New Guinea"],
     "severity": "Turbulent"
   },
   {
-    "conflict": "Belarus unrest",
-    "countries": [
-      "Belarus"
-    ],
+    "conflict": "Brazil gang violence",
+    "countries": ["Brazil"],
     "severity": "Turbulent"
   },
   {
-    "conflict": "Taiwan Strait tensions",
-    "countries": [
-      "Taiwan"
-    ],
+    "conflict": "Mozambique insurgency",
+    "countries": ["Mozambique"],
     "severity": "Turbulent"
   },
   {
-    "conflict": "North Korea tensions",
-    "countries": [
-      "North Korea"
-    ],
+    "conflict": "Tanzania conflict",
+    "countries": ["Tanzania"],
     "severity": "Turbulent"
   },
   {
-    "conflict": "Georgia–South Ossetia tensions",
-    "countries": [
-      "Georgia"
-    ],
-    "severity": "Turbulent"
+    "conflict": "Malaysia tensions",
+    "countries": ["Malaysia"],
+    "severity": "Low"
+  },
+  {
+    "conflict": "Sahrawi conflict",
+    "countries": ["Sahrawi Republic"],
+    "severity": "Low"
+  },
+  {
+    "conflict": "Laos conflict",
+    "countries": ["Laos"],
+    "severity": "Low"
   },
   {
     "conflict": "Peru political violence",
-    "countries": [
-      "Peru"
-    ],
-    "severity": "Turbulent"
-  },
-  {
-    "conflict": "Honduras gang violence",
-    "countries": [
-      "Honduras"
-    ],
-    "severity": "Turbulent"
-  },
-  {
-    "conflict": "Guatemala gang violence",
-    "countries": [
-      "Guatemala"
-    ],
-    "severity": "Turbulent"
-  },
-  {
-    "conflict": "Jamaica gang violence",
-    "countries": [
-      "Jamaica"
-    ],
-    "severity": "Turbulent"
-  },
-  {
-    "conflict": "Trinidad and Tobago gang violence",
-    "countries": [
-      "Trinidad and Tobago"
-    ],
-    "severity": "Turbulent"
-  },
-  {
-    "conflict": "Djibouti–Eritrea border",
-    "countries": [
-      "Djibouti",
-      "Eritrea"
-    ],
+    "countries": ["Peru"],
     "severity": "Low"
   },
   {
-    "conflict": "Morocco–Algeria tensions",
-    "countries": [
-      "Morocco",
-      "Algeria"
-    ],
+    "conflict": "Senegal tensions",
+    "countries": ["Senegal"],
     "severity": "Low"
   },
   {
-    "conflict": "Kosovo–Serbia tensions",
-    "countries": [
-      "Kosovo",
-      "Serbia"
-    ],
+    "conflict": "Gambia tensions",
+    "countries": ["Gambia"],
     "severity": "Low"
   },
   {
     "conflict": "Armenia–Azerbaijan border",
-    "countries": [
-      "Armenia",
-      "Azerbaijan"
-    ],
+    "countries": ["Armenia", "Azerbaijan"],
     "severity": "Low"
   },
   {
-    "conflict": "India–China border tensions",
-    "countries": [
-      "India",
-      "China"
-    ],
+    "conflict": "Georgia conflict",
+    "countries": ["Georgia"],
+    "severity": "Low"
+  },
+  {
+    "conflict": "Paraguay political conflict",
+    "countries": ["Paraguay"],
     "severity": "Low"
   }
 ]
