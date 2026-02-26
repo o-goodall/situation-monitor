@@ -798,7 +798,7 @@
             <li><strong>Price position</strong> — 100% allocation at your low price target, tapering linearly to 0% at high.</li>
             <li><strong>Signal boosts</strong> increase allocation when conditions are favourable:
               <ul>
-                <li>Fear &amp; Greed ≤ 40 → <span class="formula-boost">+10%</span></li>
+                <li>Fear &amp; Greed ≤ 40 → <span class="formula-boost">+10%</span> <span class="dim">(≤ 20 → +20%)</span></li>
                 <li>Mining difficulty drop &gt; 5% → <span class="formula-boost">+10%</span></li>
                 <li>Futures funding rate negative → <span class="formula-boost">+10%</span></li>
                 <li>Within 365 days of halving → <span class="formula-boost">+10%</span></li>

@@ -216,9 +216,7 @@
   $: dcaZoneGif = $btcPrice <= 0 ? '' : $btcPrice <= (low+third) ? '/dca-red.gif' : $btcPrice <= (low+2*third) ? '/dca-amber.gif' : '/dca-green.gif';
 
   $: s        = $settings.dca;
-  $: invested = 0; // kept for compatibility
   $: currentVal = s.btcHeld*$btcPrice;
-  $: perf     = invested>0?((currentVal-invested)/invested)*100:0;
   $: goalPct  = s.goalBtc>0?Math.min(100,(s.btcHeld/s.goalBtc)*100):0;
   $: satsHeld = Math.round(s.btcHeld*1e8);
   $: satsLeft = Math.max(0,Math.round((s.goalBtc-s.btcHeld)*1e8));
@@ -228,7 +226,8 @@
   $: freqDesc  = ({daily:'daily buy',weekly:'weekly buy',fortnightly:'fortnightly buy',monthly:'monthly buy'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'fortnightly buy';
   $: freqHint  = ({daily:'How much to buy today',weekly:'How much to buy this week',fortnightly:'How much to buy this fortnight',monthly:'How much to buy this month'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'How much to buy this fortnight';
 
-  $: cpiLoss = (()=>{if($cpiAnnual===null)return 0;return(1-1/Math.pow(1+$cpiAnnual/100,1))*100;})();
+  // Annual CPI purchasing power erosion (fixed 1-year window)
+  $: annualCpiLoss = (()=>{if($cpiAnnual===null)return 0;return(1-1/Math.pow(1+$cpiAnnual/100,1))*100;})();
 
   // BTC priced in gold troy ounces
   $: btcInGoldOz = ($btcPrice > 0 && $goldPriceUsd !== null && $goldPriceUsd > 0)
@@ -871,7 +870,7 @@
           </div>
         {/each}
       </div>
-      {#if $cpiAnnual!==null}<p class="dim" style="margin-top:14px;line-height:1.6;">Purchasing power erosion (annualized): <span style="color:var(--dn);">−{cpiLoss.toFixed(1)}%</span></p>{/if}
+      {#if $cpiAnnual!==null}<p class="dim" style="margin-top:14px;line-height:1.6;">Purchasing power erosion (annual): <span style="color:var(--dn);">−{annualCpiLoss.toFixed(1)}%</span></p>{/if}
     </div>
 
     <!-- GHOSTFOLIO -->
