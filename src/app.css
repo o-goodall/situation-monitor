@@ -212,6 +212,30 @@ body::after {
 }
 .fade-in-up { animation: fadeInUp 0.4s ease-out both; }
 
+/* ── SCROLL REVEAL ─────────────────────────────────────── */
+.scroll-reveal {
+  opacity: 0;
+  transition: opacity 0.5s ease-out;
+  will-change: opacity;
+}
+.scroll-reveal.sr-visible { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal { opacity: 1 !important; transition: none !important; will-change: auto; }
+}
+
+/* ── MOBILE PAGE TRANSITION ────────────────────────────── */
+@keyframes mobPageEnter {
+  from { opacity: 0; transform: translate3d(0, 12px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+.mob-page-enter {
+  animation: mobPageEnter 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+  will-change: transform, opacity;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mob-page-enter { animation: none !important; }
+}
+
 @keyframes shimmer {
   0%   { background-position: -200% 0; }
   100% { background-position:  200% 0; }
@@ -363,7 +387,7 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   @media (min-width:701px) {
     .section { scroll-snap-align: start; }
   }
-  .section::before { content: ''; position: absolute; inset: -20% 0; z-index: -1; background: radial-gradient(ellipse at 50% 30%, rgba(247,147,26,.04) 0%, transparent 70%); transform: translateY(0); transition: transform 0.6s ease-out; pointer-events: none; }
+  .section::before { content: ''; position: absolute; inset: -20% 0; z-index: -1; background: radial-gradient(ellipse at 50% 30%, rgba(247,147,26,.04) 0%, transparent 70%); transform: translateY(calc(var(--section-parallax, 0) * 1px)); will-change: transform; pointer-events: none; }
   .section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
   .pg-container { margin-bottom: 20px; }
 
