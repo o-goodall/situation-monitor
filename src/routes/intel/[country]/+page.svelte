@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { afterNavigate, goto } from '$app/navigation';
   import { page } from '$app/stores';
-  import { goto } from '$app/navigation';
   import { activeSection } from '$lib/store';
 
   const country = $page.params.country;
@@ -47,10 +47,12 @@
 
   function goBack() {
     $activeSection = 'intel';
-    // Replace the country page entry in history so back/forward navigation
-    // is not broken on either desktop or mobile.
-    goto('/', { replaceState: true });
+    goto('/intel', { replaceState: true });
   }
+
+  afterNavigate(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  });
 
   onMount(async () => {
     try {

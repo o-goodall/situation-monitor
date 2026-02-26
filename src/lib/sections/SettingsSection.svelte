@@ -153,4 +153,120 @@
   }
   .settings-page-body { display: flex; flex-direction: column; }
   :global(html.light) .settings-page-header { border-bottom-color: rgba(247,147,26,0.2); }
+
+  /* ── APPEARANCE ROW ──────────────────────────────────────── */
+  .mob-appearance-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 0; margin-bottom: 4px;
+    border-bottom: 1px solid rgba(255,255,255,.05);
+  }
+  .mob-appearance-label {
+    font-family: inherit; font-size: .62rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .1em; color: rgba(255,255,255,.4);
+  }
+  .mob-theme-btn {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 14px; border-radius: 4px; background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1); cursor: pointer;
+    font-family: inherit; font-size: .62rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .08em; color: rgba(255,255,255,.55);
+    transition: background .2s, border-color .2s, color .2s;
+  }
+  .mob-theme-btn:hover { color: var(--orange); border-color: rgba(247,147,26,.4); background: rgba(247,147,26,.1); }
+
+  /* ── MOBILE SETTINGS GROUPS ──────────────────────────────── */
+  .mobile-settings { display: flex; flex-direction: column; gap: 0; }
+
+  .dg { padding: 16px 0; border-bottom: 1px solid rgba(255,255,255,.05); }
+  .dg:last-of-type { border-bottom: none; }
+  .dg-hd {
+    font-size: .65rem; font-weight: 700; color: rgba(255,255,255,.4);
+    margin: 0 0 12px; display: flex; align-items: center; gap: 8px;
+    font-family: inherit; letter-spacing: .08em; text-transform: uppercase;
+  }
+  .dhint { font-size: .6rem; color: rgba(255,255,255,.2); font-weight: 400; font-family: inherit; text-transform: none; letter-spacing: 0; }
+
+  .dfields { display: flex; gap: 10px; flex-wrap: wrap; }
+  .df { display: flex; flex-direction: column; gap: 5px; flex: 1; min-width: 130px; }
+  .dlbl { font-size: .58rem; color: rgba(255,255,255,.28); font-weight: 500; text-transform: uppercase; letter-spacing: .1em; }
+
+  .dinp {
+    width: 100%; background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12);
+    border-radius: 7px; padding: 9px 12px; color: #eaeaea;
+    font-family: inherit; font-size: .82rem;
+    transition: border-color .2s, box-shadow .2s;
+    -webkit-appearance: none; appearance: none;
+  }
+  .dinp:focus {
+    outline: none; border-color: var(--orange);
+    box-shadow: 0 0 0 3px rgba(247,147,26,.12), 0 0 16px rgba(247,147,26,.15);
+  }
+  select.dinp { cursor: pointer; }
+
+  .dinp-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .dinp-row .dinp { min-width: 120px; }
+
+  /* ── DCA FORMULA ─────────────────────────────────────────── */
+  .dca-explain-btn {
+    margin-top: 10px; background: rgba(247,147,26,.08);
+    border: 1px solid rgba(247,147,26,.2); border-radius: 6px;
+    padding: 5px 12px; color: rgba(247,147,26,.8); font-size: .65rem;
+    font-family: inherit; cursor: pointer;
+    transition: background .2s, border-color .2s;
+  }
+  .dca-explain-btn:hover { background: rgba(247,147,26,.14); border-color: rgba(247,147,26,.4); }
+  .dca-formula-box {
+    margin-top: 10px; padding: 12px 14px;
+    background: rgba(0,0,0,.2); border: 1px solid rgba(255,255,255,.06); border-radius: 8px;
+  }
+  .formula-steps { margin: 0; padding-left: 18px; font-size: .68rem; color: rgba(255,255,255,.6); line-height: 1.6; }
+  .formula-steps li { margin-bottom: 6px; }
+  .formula-steps ul { margin: 4px 0 0; padding-left: 14px; }
+  .formula-boost { color: #4ade80; font-weight: 700; }
+
+  /* ── CURRENCY PRESETS ───────────────────────────────────── */
+  .curr-preset {
+    padding: 5px 12px; font-size: .62rem; font-weight: 600; font-family: inherit;
+    background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.1);
+    border-radius: 4px; color: rgba(255,255,255,.45); cursor: pointer;
+    transition: background .2s, border-color .2s, color .2s;
+    letter-spacing: .04em;
+  }
+  .curr-preset:hover { border-color: rgba(247,147,26,.45); color: var(--orange); background: rgba(247,147,26,.12); }
+  .curr-preset.curr-preset--active { background: rgba(247,147,26,.15); border-color: var(--orange); color: var(--orange); }
+
+  /* ── FEED TOGGLES ────────────────────────────────────────── */
+  .feed-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+  .feed-toggle {
+    display: flex; align-items: center; gap: 7px; cursor: pointer;
+    padding: 6px 12px; border-radius: 5px;
+    background: rgba(255,255,255,.03); border: 1px solid rgba(255,255,255,.07);
+    transition: all .2s; font-size: .68rem; color: var(--t2, rgba(255,255,255,.55));
+  }
+  .feed-toggle:hover { border-color: rgba(247,147,26,.22); }
+  .feed-toggle input[type="checkbox"] { accent-color: var(--orange); width: 13px; height: 13px; cursor: pointer; flex-shrink: 0; }
+  .feed-toggle input[type="checkbox"]:checked + .feed-name { color: rgba(255,255,255,.9); }
+  .feed-name { font-size: .65rem; font-weight: 500; transition: color .2s; }
+  .feed-custom { display: flex; align-items: center; gap: 6px; }
+  .dtag-x { background: none; border: none; color: rgba(255,255,255,.25); cursor: pointer; font-size: 1rem; padding: 2px 4px; line-height: 1; transition: color .15s; }
+  .dtag-x:hover { color: #f43f5e; }
+
+  /* ── LIGHT MODE ──────────────────────────────────────────── */
+  :global(html.light) .mob-appearance-row { border-bottom-color: rgba(0,0,0,.06); }
+  :global(html.light) .mob-appearance-label { color: rgba(0,0,0,.45); }
+  :global(html.light) .mob-theme-btn { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.1); color: rgba(0,0,0,.55); }
+  :global(html.light) .mob-theme-btn:hover { color: #c77a10; border-color: rgba(200,120,16,.45); background: rgba(247,147,26,.1); }
+  :global(html.light) .dg { border-bottom-color: rgba(0,0,0,.06); }
+  :global(html.light) .dg-hd { color: rgba(0,0,0,.6); }
+  :global(html.light) .dhint { color: rgba(0,0,0,.35); }
+  :global(html.light) .dlbl { color: rgba(0,0,0,.5); }
+  :global(html.light) .dinp { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.12); color: #111; }
+  :global(html.light) .dinp:focus { border-color: var(--orange); }
+  :global(html.light) .curr-preset { background: rgba(0,0,0,.03); border-color: rgba(0,0,0,.1); color: rgba(0,0,0,.5); }
+  :global(html.light) .curr-preset:hover { border-color: rgba(200,120,16,.45); color: #c77a10; background: rgba(247,147,26,.1); }
+  :global(html.light) .curr-preset.curr-preset--active { background: rgba(247,147,26,.1); }
+  :global(html.light) .feed-toggle { background: rgba(0,0,0,.02); border-color: rgba(0,0,0,.08); color: rgba(0,0,0,.65); }
+  :global(html.light) .feed-toggle:hover { border-color: rgba(247,147,26,.3); }
+  :global(html.light) .feed-toggle input[type="checkbox"]:checked + .feed-name { color: rgba(0,0,0,.9); }
+  :global(html.light) .dtag-x { color: rgba(0,0,0,.3); }
 </style>
