@@ -47,16 +47,20 @@
 
   function goBack() {
     $activeSection = 'intel';
-    // On desktop the global monitor is at '/'; '/intel' only exists as a mobile route
+    // On desktop the global monitor is at '/'; '/intel' only exists as a mobile route.
+    // Pass scrollTarget so afterNavigate in the layout scrolls to the intel section.
     if (window.innerWidth > 768) {
-      goto('/');
+      goto('/', { state: { scrollTarget: 'intel' } });
     } else {
-      goto('/intel', { replaceState: true });
+      goto('/intel');
     }
   }
 
   afterNavigate(() => {
+    // Reset both window scroll and the custom page-wrap scroll container (desktop).
     window.scrollTo({ top: 0, behavior: 'instant' });
+    const wrap = document.querySelector('.page-wrap') as HTMLElement | null;
+    if (wrap) wrap.scrollTop = 0;
   });
 
   onMount(async () => {

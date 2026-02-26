@@ -450,15 +450,18 @@ export async function GET(_event: RequestEvent) {
 
     // Build CountryThreat[] — always include all known conflict zones
     const threats: CountryThreat[] = [];
+    const addedCountries = new Set<string>();
     for (const zone of KNOWN_CONFLICT_ZONES) {
       const stories = countryStories.get(zone.country) ?? [];
       const severity = zone.defaultSeverity;
       const hasNew = stories.some(s => now - new Date(s.date).getTime() < NEW_STORY_MS);
       threats.push({ country: zone.country, severity, lat: zone.lat, lon: zone.lon, hasNew, isTrending: trendingCountry === zone.country, stories });
+      addedCountries.add(zone.country);
     }
 
-    // Also include world countries that have active stories
+    // Also include world countries that have active stories, skipping any already added above
     for (const wc of WORLD_COUNTRIES) {
+      if (addedCountries.has(wc.country)) continue;
       const stories = countryStories.get(wc.country);
       if (!stories || stories.length === 0) continue;
       const hasNew = stories.some(s => now - new Date(s.date).getTime() < NEW_STORY_MS);
