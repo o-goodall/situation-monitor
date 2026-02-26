@@ -437,8 +437,6 @@
     if (!threatMarkerGroup || !projection) return;
     threatMarkerGroup.selectAll('*').remove();
 
-    const DOT_GREEN = '#22c55e'; // solid green center dot for all conflict pings
-
     for (const ct of threats) {
       if (ct.stories.length === 0) continue;
       const pos = projection([ct.lon, ct.lat]);
@@ -446,6 +444,7 @@
       const [x, y] = pos;
       const isoId = LOCATION_TO_ISO_ID[ct.country];
       const wikiSev = isoId ? wikiConflictCountryFills.get(isoId) : null;
+      const col = ct.isTrending ? '#ff2200' : (WIKI_SEVERITY_COLORS[wikiSev ?? ''] ?? '#ffffff');
       const r = wikiSev === 'Extreme' ? 5.5 : wikiSev === 'High' ? 4 : 3;
 
       // Trending country: pulsing red glow rings
@@ -456,18 +455,12 @@
         threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 5)
           .attr('fill', 'none').attr('stroke', '#ff2200').attr('stroke-width', 1)
           .attr('class', 'wm-trending-ring');
-      } else if (wikiSev === 'Extreme' || wikiSev === 'High') {
-        // Major/Minor wars: GPU-accelerated CSS pulse ring (transform + opacity only)
-        threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 5)
-          .attr('fill', 'none').attr('stroke', DOT_GREEN).attr('stroke-width', 1)
-          .attr('class', 'wm-ping-pulse');
       }
-      // Conflicts + Skirmishes (Turbulent/Low): static dot only — no pulse ring
 
-      // Solid green center dot — no white outer stroke
+      // Solid core dot with white outline stroke for visibility on both light and dark backgrounds
       threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
-        .attr('fill', DOT_GREEN).attr('fill-opacity', 0.9)
-        .attr('stroke', 'none');
+        .attr('fill', col).attr('fill-opacity', 0.85)
+        .attr('stroke', 'rgba(255,255,255,0.7)').attr('stroke-width', 0.8);
 
       // "New" badge — subtle circular dot in Bitcoin orange, disappears on hover
       const isNew = ct.hasNew && !seenCountries.has(ct.country);
@@ -488,7 +481,7 @@
         .on('mouseenter', (e: MouseEvent) => {
           const sevLabel = wikiSev ? ({ Extreme: 'Major war', High: 'Minor war', Turbulent: 'Conflict', Low: 'Skirmish' }[wikiSev] ?? wikiSev) : 'Active';
           const tipLines = [`Conflict: ${ct.isTrending ? '🔥 Trending (24 h)' : sevLabel}`, 'Click to view stories'];
-          showTip(e, ct.country, DOT_GREEN, tipLines);
+          showTip(e, ct.country, col, tipLines);
         })
         .on('mousemove', moveTip)
         .on('mouseleave', hideTip);
@@ -824,17 +817,6 @@
     0%, 100% { transform: scale(1);   opacity: 0.8; }
     50%       { transform: scale(1.1); opacity: 0.15; }
   }
-  /* Major/Minor war ping: GPU-accelerated CSS pulse ring (transform + opacity only) */
-  :global(.wm-ping-pulse) {
-    animation: wm-ping-pulse 2s ease-out infinite;
-    will-change: transform, opacity;
-    transform-box: fill-box;
-    transform-origin: center;
-  }
-  @keyframes wm-ping-pulse {
-    0%   { transform: scale(1);   opacity: 0.7; }
-    100% { transform: scale(2.2); opacity: 0; }
-  }
   /* Trending country fill — pulsing on the country shape (no drop-shadow filter) */
   :global(.wm-country--trending) {
     animation: wm-country-trending 1.8s ease-in-out infinite;
@@ -925,7 +907,6 @@
       border-radius: 0 0 10px 10px;
     }
     .wm-story-title { max-width: 200px; }
-    :global(.wm-ping-pulse) { animation-duration: 3s; }
     :global(.wm-trending-ring) { animation-duration: 2.4s; }
     :global(.wm-trending-ring--outer) { animation-duration: 2.4s; }
   }
