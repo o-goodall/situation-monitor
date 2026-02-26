@@ -1266,11 +1266,13 @@
   .stat-strip { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
   .stat-tile {
     padding: 16px 14px; text-align: center;
-    background: var(--glass-bg); border: 1px solid var(--glass-bd);
-    border-radius: var(--r-md); backdrop-filter: blur(16px);
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.08);
+    border-radius: var(--r-md); backdrop-filter: blur(10px) saturate(120%);
+    -webkit-backdrop-filter: blur(10px) saturate(120%);
     transition: transform .25s, border-color .25s, box-shadow .25s;
     position: relative; overflow: hidden;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,.2), inset 0 1px 0 rgba(255,255,255,.06);
   }
   .stat-tile::before {
     content:''; position:absolute; bottom:0; left:0; width:0; height:2px;
@@ -1389,21 +1391,21 @@
 
   /* ── GLASS CARD ─────────────────────────────────────────── */
   .gc {
-    background: var(--glass-bg); backdrop-filter: blur(24px) saturate(150%);
-    -webkit-backdrop-filter: blur(24px) saturate(150%);
-    border: 1px solid var(--glass-bd); border-radius: var(--r-md); padding: 24px;
-    box-shadow: 0 6px 28px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.06);
+    background: rgba(255,255,255,0.05); backdrop-filter: blur(10px) saturate(130%);
+    -webkit-backdrop-filter: blur(10px) saturate(130%);
+    border: 1px solid rgba(255,255,255,0.08); border-radius: var(--r-md); padding: 24px;
+    box-shadow: 0 4px 20px rgba(0,0,0,.28), inset 0 1px 0 rgba(255,255,255,.08);
     transition: border-color .3s, box-shadow .3s, transform .25s; position: relative; overflow: hidden;
   }
   .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(247,147,26,.25),transparent); }
-  .gc:hover { transform:translateY(-4px); border-color:rgba(255,255,255,.14); box-shadow:0 10px 28px rgba(0,0,0,.3); }
+  .gc:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.13); box-shadow:0 8px 24px rgba(0,0,0,.28); }
   .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; }
   .gc-title { font-family:inherit; font-size:.72rem; font-weight:700; color:var(--t1); text-transform:uppercase; letter-spacing:.08em; }
   @media (max-width:600px) { .gc { padding:16px 14px; border-radius:var(--r-md); } }
   /* Reduce blur on mobile for better paint performance */
   @media (max-width:768px) {
-    .gc { backdrop-filter:blur(12px) saturate(140%); -webkit-backdrop-filter:blur(12px) saturate(140%); }
-    .stat-tile { backdrop-filter:blur(10px); }
+    .gc { backdrop-filter:blur(8px) saturate(120%); -webkit-backdrop-filter:blur(8px) saturate(120%); }
+    .stat-tile { backdrop-filter:blur(6px); }
   }
 
   /* Hashrate tile — flex column so the chart fills remaining tile height */
@@ -1498,27 +1500,25 @@
   }
   .zone-bg-img {
     width:100%; height:100%; object-fit:cover; object-position:center 30%;
-    opacity:0.18; filter:blur(4px) saturate(120%);
+    opacity:0.18; filter:saturate(120%);
     animation:zoneFadeIn .8s ease-out, gifGlitch 9s ease-in-out 3s infinite;
   }
   /* Frosted glass overlay on top of GIF */
   .zone-glass {
     position:absolute; inset:0; z-index:1;
     background:linear-gradient(180deg, rgba(14,14,14,.72) 0%, rgba(14,14,14,.55) 40%, rgba(14,14,14,.7) 100%);
-    backdrop-filter:blur(2px);
-    -webkit-backdrop-filter:blur(2px);
     animation:glassGlitch 9s ease-in-out 3s infinite;
   }
   @keyframes zoneFadeIn { from{opacity:0;} to{opacity:1;} }
 
   /* DCA Signal tile — periodic glitch: briefly unblurs GIF + reduces glass opacity */
   @keyframes gifGlitch {
-    0%, 78%, 100% { opacity:0.18; filter:blur(4px) saturate(120%); transform:translateX(0); }
-    79%  { opacity:0.45; filter:blur(1.5px) saturate(150%); transform:translateX(3px); }
-    80%  { opacity:0.60; filter:blur(0px) saturate(180%); transform:translateX(-4px); }
-    81%  { opacity:0.50; filter:blur(0.5px) saturate(160%); transform:translateX(2px); }
-    82%  { opacity:0.35; filter:blur(2px) saturate(140%); transform:translateX(-1px); }
-    83%  { opacity:0.20; filter:blur(3.5px) saturate(125%); transform:translateX(0); }
+    0%, 78%, 100% { opacity:0.18; filter:saturate(120%); transform:translateX(0); }
+    79%  { opacity:0.45; filter:saturate(150%); transform:translateX(3px); }
+    80%  { opacity:0.60; filter:saturate(180%); transform:translateX(-4px); }
+    81%  { opacity:0.50; filter:saturate(160%); transform:translateX(2px); }
+    82%  { opacity:0.35; filter:saturate(140%); transform:translateX(-1px); }
+    83%  { opacity:0.20; filter:saturate(125%); transform:translateX(0); }
   }
   @keyframes glassGlitch {
     0%, 78%, 100% { opacity:1; }
@@ -1539,12 +1539,12 @@
   :global(html.light) .zone-glass {
     background:linear-gradient(180deg, rgba(255,255,255,.78) 0%, rgba(255,255,255,.6) 40%, rgba(255,255,255,.75) 100%);
   }
-  :global(html.light) .zone-bg-img { opacity:0.12; filter:blur(5px) saturate(80%); }
+  :global(html.light) .zone-bg-img { opacity:0.12; filter:saturate(80%); }
   :global(html.light) .signal-card { background:linear-gradient(180deg,rgba(247,147,26,.04) 0%,rgba(255,255,255,.72) 80px); }
 
   /* Mobile: slightly more opaque overlay for readability */
   @media (max-width:700px) {
-    .zone-bg-img { opacity:0.14; filter:blur(5px); }
+    .zone-bg-img { opacity:0.14; }
     .zone-glass { background:linear-gradient(180deg, rgba(14,14,14,.78) 0%, rgba(14,14,14,.62) 40%, rgba(14,14,14,.76) 100%); }
     :global(html.light) .zone-glass { background:linear-gradient(180deg, rgba(255,255,255,.82) 0%, rgba(255,255,255,.65) 40%, rgba(255,255,255,.8) 100%); }
   }
@@ -1559,12 +1559,7 @@
 
   /* ── DCA FLIP SCENE ─────────────────────────────────────── */
   .dca-flip-scene { position:relative; z-index:2; }
-  .dca-face { animation:dcaFaceIn .38s cubic-bezier(.25,.46,.45,.94) both; position:relative; }
-  @keyframes dcaFaceIn {
-    from { opacity:0; transform:scale(.97); }
-    to   { opacity:1; transform:scale(1);   }
-  }
-  @media (prefers-reduced-motion:reduce) { .dca-face { animation:none; } }
+  .dca-face { position:relative; }
 
   /* Small "?" info button — bottom-right corner of the DCA front face */
   .dca-info-btn {
@@ -1638,8 +1633,8 @@
   .vband-labels { display:flex; justify-content:space-between; margin-top:5px; font-size:.54rem; color:var(--t3); font-weight:500; }
 
   /* Signals */
-  .sigs  { display:flex; flex-direction:column; gap:9px; padding:14px 0 0; border-top:1px solid rgba(255,255,255,.05); position:relative; z-index:2; }
-  .sig   { display:flex; align-items:center; gap:11px; transition:opacity .2s; cursor:default; }
+  .sigs  { display:flex; flex-direction:row; flex-wrap:wrap; gap:8px; padding:14px 0 0; border-top:1px solid rgba(255,255,255,.05); position:relative; z-index:2; }
+  .sig   { display:flex; align-items:center; gap:8px; transition:opacity .2s; cursor:default; flex:1 1 auto; min-width:120px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:8px; padding:7px 10px; }
   .sig:not(.sig--on) { opacity:.28; }
   .pip-wrap  { position:relative; width:14px; height:14px; flex-shrink:0; }
   .pip       { width:9px; height:9px; border-radius:50%; background:rgba(255,255,255,.1); border:1px solid rgba(255,255,255,.15); transition:all .25s; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); }
@@ -1647,8 +1642,8 @@
   .pip-ring  { position:absolute; inset:0; border-radius:50%; background:rgba(247,147,26,.14); animation:rp 2s ease-out infinite; }
   @keyframes rp { 0%{transform:scale(1);opacity:.8} 100%{transform:scale(2.6);opacity:0} }
   .sig-body  { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
-  .sig-label { font-size:.72rem; color:var(--t1); opacity:.85; line-height:1.3; }
-  .sig-val   { font-size:.58rem; color:var(--orange); opacity:.8; font-variant-numeric:tabular-nums; font-weight:600; }
+  .sig-label { font-size:.68rem; color:var(--t1); opacity:.85; line-height:1.3; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sig-val   { font-size:.56rem; color:var(--orange); opacity:.8; font-variant-numeric:tabular-nums; font-weight:600; }
   .sig-badge { font-size:.6rem; color:var(--orange); font-weight:600; background:rgba(247,147,26,.1); border:1px solid rgba(247,147,26,.22); padding:2px 8px; border-radius:3px; white-space:nowrap; flex-shrink:0; }
   :global(html.light) .sig-val { color:#c77a10; }
 

@@ -14,22 +14,39 @@ const parser = new Parser({
 /**
  * GET /api/global-threats
  *
- * Fetches conflict stories from Al Jazeera, BBC, and AP News RSS feeds,
+ * Fetches conflict stories from multiple international RSS feeds,
  * aggregated by country.  Displays the 50 most severe conflict zones from
  * the CLED Conflict Index, categorised as Extreme, High, or Turbulent.
- * Stories are sourced from multiple RSS feeds and supplement the static zone list.
+ * Stories are sourced from BBC, Guardian, Sky News, France 24, Euronews, DW,
+ * Al Jazeera, Al Arabiya, TRT World, Jerusalem Post, The National, CNA,
+ * WION, Times of India, NHK, and CBC.
  *
  * Refreshed every 30 minutes by the Vercel cron job (vercel.json).
  */
 
 // ── RSS sources — name, URL, and whether keyword filtering is needed ──
 const RSS_SOURCES: { name: string; url: string; preFiltered: boolean }[] = [
-  { name: 'Al Jazeera', url: 'https://www.aljazeera.com/xml/rss/subjects/conflict.xml', preFiltered: true },
-  { name: 'BBC',        url: 'https://feeds.bbci.co.uk/news/world/rss.xml',             preFiltered: false },
-  { name: 'AP News',    url: 'https://apnews.com/hub/world-news?deviceType=rss',         preFiltered: false },
+  // Pre-filtered conflict feeds (no keyword filtering needed)
+  { name: 'Al Jazeera',     url: 'https://www.aljazeera.com/xml/rss/subjects/conflict.xml',     preFiltered: true  },
+  // World news feeds (keyword filtering applied)
+  { name: 'BBC',            url: 'https://feeds.bbci.co.uk/news/world/rss.xml',                 preFiltered: false },
+  { name: 'Guardian',       url: 'https://www.theguardian.com/world/rss',                       preFiltered: false },
+  { name: 'Sky News',       url: 'https://feeds.skynews.com/feeds/rss/world.xml',               preFiltered: false },
+  { name: 'France 24',      url: 'https://www.france24.com/en/rss',                             preFiltered: false },
+  { name: 'Euronews',       url: 'https://feeds.feedburner.com/euronews/en/news',               preFiltered: false },
+  { name: 'DW',             url: 'https://rss.dw.com/xml/rss-en-world',                        preFiltered: false },
+  { name: 'Al Arabiya',     url: 'https://www.alarabiya.net/tools/rss/en.xml',                  preFiltered: false },
+  { name: 'TRT World',      url: 'https://trtworld.com/rss',                                    preFiltered: false },
+  { name: 'Jerusalem Post', url: 'https://www.jpost.com/Rss/RssFeedsHeadlines.aspx',            preFiltered: false },
+  { name: 'The National',   url: 'https://www.thenationalnews.com/rss/',                        preFiltered: false },
+  { name: 'CNA',            url: 'https://www.channelnewsasia.com/rssfeeds/8395986',            preFiltered: false },
+  { name: 'WION',           url: 'https://www.wionews.com/feeds/world.xml',                     preFiltered: false },
+  { name: 'Times of India', url: 'https://timesofindia.indiatimes.com/rssfeeds/296589292.cms',  preFiltered: false },
+  { name: 'NHK',            url: 'https://www3.nhk.or.jp/rss/news/cat6.xml',                   preFiltered: false },
+  { name: 'CBC',            url: 'https://www.cbc.ca/cmlink/rss-world',                        preFiltered: false },
 ];
 
-const ARTICLES_LIMIT = 50;
+const ARTICLES_LIMIT = 30;
 
 // ── Conflict keyword filter (applied to non-pre-filtered feeds) ───────
 const CONFLICT_KEYWORDS = /\b(killed?|dead|deaths?|casualties|attack(?:ed|s)?|bombing|bomb(?:ed|s)?|shooting|shot|missile|airstrike|air.?strike|fighting|clashes?|war|conflict|offensive|explosion|wounded|injured|troops|military|invasion|assault|terror|terrorist|hostage|siege|massacre|genocide|ceasefire|insurgent|rebel|militia)\b/i;

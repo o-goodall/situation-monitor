@@ -92,16 +92,16 @@
 
   /** Colour scheme for global-threat markers keyed by severity */
   const GLOBAL_THREAT_COLORS: Record<string, string> = {
-    extreme:  '#cc1100',   // CLED Extreme — deep red
-    high:     '#e85d04',   // CLED High — strong orange/red
-    turbulent:'#f59e0b',   // CLED Turbulent — yellow/orange
+    extreme:  '#b91c1c',   // CLED Extreme — deep red
+    high:     '#f97316',   // CLED High — clear orange
+    turbulent:'#eab308',   // CLED Turbulent — clear yellow
   };
 
   /** Semi-transparent fills matching GLOBAL_THREAT_COLORS for country shading */
   const GLOBAL_THREAT_COUNTRY_FILLS: Record<string, string> = {
-    extreme:  'rgba(204,17,0,0.32)',
-    high:     'rgba(232,93,4,0.25)',
-    turbulent:'rgba(245,158,11,0.18)',
+    extreme:  'rgba(185,28,28,0.32)',
+    high:     'rgba(249,115,22,0.25)',
+    turbulent:'rgba(234,179,8,0.18)',
   };
 
   /** Maps global-threat location names to ISO 3166-1 numeric country IDs (topojson) */
@@ -636,16 +636,16 @@
     <button class="wm-legend" class:wm-legend--min={legendMinimized} on:click={() => legendMinimized = !legendMinimized} title={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-label={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-expanded={!legendMinimized}>
       <div class="wm-leg-title">THREAT {#if legendMinimized}<span class="wm-leg-expand">▸</span>{:else}<span class="wm-leg-expand">▾</span>{/if}</div>
       {#if !legendMinimized}
-      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(204,17,0,0.32);"></span><span class="wm-leg-sub">Country shaded by conflict</span></div>
+      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(185,28,28,0.32);"></span><span class="wm-leg-sub">Country shaded by conflict</span></div>
       <div class="wm-leg-sep"></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
       <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#cc1100;"></span><span>Extreme</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#e85d04;"></span><span>High</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#f59e0b;"></span><span>Turbulent</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#cc1100;box-shadow:0 0 4px #cc1100;"></span><span style="color:#ff6655;">Trending 24h</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#b91c1c;"></span><span>Extreme</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#f97316;"></span><span>High</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#eab308;"></span><span>Turbulent</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#b91c1c;box-shadow:0 0 4px #b91c1c;"></span><span style="color:#ff6655;">Trending 24h</span></div>
       {#if polymarketThreats.length > 0}
-        <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #f59e0b;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#f59e0b;">Market signals</span></div>
+        <div class="wm-leg-row"><span class="wm-dot" style="background:none;border:1px solid #eab308;transform:rotate(45deg);border-radius:1px;width:7px;height:7px;flex-shrink:0;"></span><span style="color:#eab308;">Market signals</span></div>
       {/if}
       {#if threatsUpdatedAt}
         <div class="wm-leg-sep"></div>
