@@ -159,10 +159,10 @@
       i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     });
     ctx.strokeStyle = resolvedLineColor;
-    ctx.lineWidth = overlays.length > 0 ? 2 : 1.5;
+    ctx.lineWidth = 2;
     ctx.lineJoin = 'round';
     ctx.lineCap = 'round';
-    ctx.shadowBlur = 2;
+    ctx.shadowBlur = 3;
     ctx.shadowColor = resolvedLineColor;
     ctx.stroke();
     ctx.shadowBlur = 0;
@@ -178,7 +178,7 @@
         else ctx.lineTo(x, y);
       });
       ctx.strokeStyle = overlay.color;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 2;
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
       ctx.shadowBlur = 2;

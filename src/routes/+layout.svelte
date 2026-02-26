@@ -29,6 +29,7 @@
   let sectionObserver: IntersectionObserver | null = null;
   let showDcaFormula = false;
   let pendingScrollTarget: string | null = null;
+  let netAnimCleanup: (() => void) | null = null;
 
   // After any SvelteKit navigation, scroll to a deferred section target if one is pending.
   // Also handles scrollTarget passed via navigation state (e.g. from the country page back button).
@@ -386,6 +387,8 @@
       let mobile = window.innerWidth < 768;
       const NODE_COUNT = () => mobile ? 10 : 32;
       const CONN_DIST = () => mobile ? 150 : 220;
+      const MAX_TRANSMISSIONS = () => mobile ? 6 : 18;
+      const MAX_PINGS = () => mobile ? 4 : 12;
 
       let resizeTimer: ReturnType<typeof setTimeout> | undefined;
       function resize() {
@@ -542,22 +545,27 @@
         // Spawn transmissions periodically
         spawnTimer++;
         const spawnRate = mobile ? 120 : 50;
+        const maxT = MAX_TRANSMISSIONS();
         if (spawnTimer >= spawnRate) {
-          spawnTransmission();
-          // Occasional burst — less frequent on mobile
-          if (Math.random() < (mobile ? 0.1 : 0.2)) { spawnTransmission(); spawnTransmission(); }
           spawnTimer = 0;
+          if (transmissions.length < maxT) {
+            spawnTransmission();
+            // Occasional burst — each spawn checked individually to stay within cap
+            if (Math.random() < (mobile ? 0.1 : 0.2) && transmissions.length < maxT) { spawnTransmission(); }
+            if (Math.random() < (mobile ? 0.05 : 0.1) && transmissions.length < maxT) { spawnTransmission(); }
+          }
         }
 
         // Update & draw transmissions
         const chainConnDist = CONN_DIST();
+        const maxP = MAX_PINGS();
         transmissions = transmissions.filter(t => {
           const done = t.update();
           t.draw();
           if (done) {
-            pings.push(new Ping(t.to.x, t.to.y));
+            if (pings.length < maxP) pings.push(new Ping(t.to.x, t.to.y));
             // Chain: ~55% on desktop, ~30% on mobile to reduce CPU load
-            if (Math.random() < (mobile ? 0.3 : 0.55)) {
+            if (Math.random() < (mobile ? 0.3 : 0.55) && transmissions.length < maxT - 1) {
               const from = t.to;
               let chainTo: Node | null = null, chainDist = Infinity;
               for (const n of nodes) {
@@ -580,6 +588,24 @@
 
       resize(); init(); loop();
       window.addEventListener('resize', resize, { passive: true });
+
+      // Pause animation when tab is hidden — saves CPU/GPU when not visible
+      function handleVisibility() {
+        if (document.hidden) {
+          cancelAnimationFrame(animId);
+        } else {
+          // Start a fresh loop frame; animId will be updated inside loop()
+          animId = requestAnimationFrame(loop);
+        }
+      }
+      document.addEventListener('visibilitychange', handleVisibility);
+
+      // Store cleanup so onDestroy can remove the listener and cancel the frame
+      netAnimCleanup = () => {
+        cancelAnimationFrame(animId);
+        document.removeEventListener('visibilitychange', handleVisibility);
+        window.removeEventListener('resize', resize);
+      };
     })();
   });
 
@@ -590,6 +616,7 @@
     if (flashTimer) { clearTimeout(flashTimer); flashTimer = null; }
     window.removeEventListener('scroll', handleScroll);
     if (sectionObserver) sectionObserver.disconnect();
+    netAnimCleanup?.();
   });
 </script>
 
@@ -1352,16 +1379,17 @@
   :global(html.light) .btn-ghost:hover { color:#c77a10; border-color:rgba(200,120,16,.45); background:rgba(247,147,26,.1); box-shadow:0 0 8px rgba(200,120,16,.2); }
 
   /* Light mode — page-level glass cards and content */
-  :global(html.light) .gc { background:rgba(255,255,255,.72); border-color:rgba(0,0,0,.08); box-shadow:0 2px 16px rgba(0,0,0,.06),inset 0 1px 0 rgba(255,255,255,.9); backdrop-filter:blur(16px); }
-  :global(html.light) .gc::before { background:linear-gradient(90deg,transparent,rgba(247,147,26,.15),transparent); }
-  :global(html.light) .gc:hover { border-color:rgba(247,147,26,.2); box-shadow:0 4px 24px rgba(0,0,0,.1); }
-  :global(html.light) .gc-title { color:#111; }
+  :global(html.light) .gc { background:rgba(255,255,255,.78); border-color:rgba(0,0,0,.09); box-shadow:0 4px 20px rgba(0,0,0,.08),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(0,0,0,.04); backdrop-filter:blur(24px); }
+  :global(html.light) .gc::before { background:linear-gradient(90deg,transparent,rgba(255,255,255,.9),transparent); }
+  :global(html.light) .gc::after  { background:linear-gradient(180deg,rgba(255,255,255,.15) 0%,transparent 100%); }
+  :global(html.light) .gc:hover { border-color:rgba(247,147,26,.2); box-shadow:0 8px 28px rgba(0,0,0,.10),inset 0 1px 0 rgba(255,255,255,.95); }
+  :global(html.light) .gc-title { color:rgba(0,0,0,.75); }
   :global(html.light) .eyebrow { color:rgba(0,0,0,.4); }
   :global(html.light) .eyebrow.orange { color:#c77a10; }
   :global(html.light) .dim { color:rgba(0,0,0,.4); }
   :global(html.light) .ts { color:rgba(0,0,0,.3); }
-  :global(html.light) .stat-tile { background:rgba(255,255,255,.65); border-color:rgba(0,0,0,.08); }
-  :global(html.light) .stat-tile:hover { border-color:rgba(247,147,26,.25); box-shadow:0 6px 20px rgba(0,0,0,.08); }
+  :global(html.light) .stat-tile { background:rgba(255,255,255,.78); border-color:rgba(0,0,0,.09); box-shadow:0 4px 16px rgba(0,0,0,.07),inset 0 1px 0 rgba(255,255,255,.95),inset 0 -1px 0 rgba(0,0,0,.04); }
+  :global(html.light) .stat-tile:hover { border-color:rgba(247,147,26,.25); box-shadow:0 8px 24px rgba(0,0,0,.09),inset 0 1px 0 rgba(255,255,255,.95); }
   :global(html.light) .stat-n { color:#111; }
   :global(html.light) .stat-l { color:rgba(0,0,0,.4); }
   :global(html.light) .met-n { color:#111; }
