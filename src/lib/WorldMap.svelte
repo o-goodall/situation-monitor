@@ -446,9 +446,10 @@
           .attr('class', 'wm-trending-ring');
       }
 
-      // Solid core dot
+      // Solid core dot with white outline stroke for visibility on both light and dark backgrounds
       threatMarkerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r)
-        .attr('fill', col).attr('fill-opacity', 0.85);
+        .attr('fill', col).attr('fill-opacity', 0.85)
+        .attr('stroke', 'rgba(255,255,255,0.7)').attr('stroke-width', 0.8);
 
       // "New" badge — subtle circular dot in Bitcoin orange, disappears on hover
       const isNew = ct.hasNew && !seenCountries.has(ct.country);
@@ -813,7 +814,7 @@
 
   /* ── MAJOR STORIES TICKER ───────────────────────────────── */
   .wm-stories {
-    --ticker-duration: 90s;
+    --ticker-duration: 200s;
     background: #0a1420;
     border: 1px solid rgba(0,200,255,0.18);
     border-bottom: none;
