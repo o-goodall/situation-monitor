@@ -112,6 +112,20 @@
   $: freqLabel = ({daily:'day',weekly:'week',fortnightly:'fortnight',monthly:'month'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'fortnight';
   $: freqDesc  = ({daily:'daily buy',weekly:'weekly buy',fortnightly:'fortnightly buy',monthly:'monthly buy'} as Record<string,string>)[s.dcaFrequency??'fortnightly']??'fortnightly buy';
 
+  let dcaSecretClicks = 0;
+  let dcaSecretMode = false;
+  let dcaSecretTimeout: ReturnType<typeof setTimeout> | undefined = undefined;
+  function handleDcaTileClick() {
+    dcaSecretClicks++;
+    clearTimeout(dcaSecretTimeout);
+    if (dcaSecretClicks >= 3) {
+      dcaSecretMode = !dcaSecretMode;
+      dcaSecretClicks = 0;
+    } else {
+      dcaSecretTimeout = setTimeout(() => { dcaSecretClicks = 0; }, 800);
+    }
+  }
+
   onMount(() => {
     fetchBtcChart();
     fetchHashrateChart();
@@ -223,7 +237,7 @@
 
     <!-- Halving countdown + sats per currency combined -->
     <div class="stat-tile halving-tile stat-tile--static" data-tooltip="Estimated blocks remaining until next Bitcoin halving · Satoshis per {displayCur}">
-      <span class="tile-header">Halving</span>
+      <span class="tile-header">Halving | SATS</span>
       {#if $halvingDays > 0}
         <div class="price-pair" aria-live="polite" aria-atomic="true">
           <span class="stat-n halving-n">{$halvingDays.toLocaleString()}</span>
@@ -250,25 +264,30 @@
   <div class="signal-grid">
 
     <!-- DCA SIGNAL CARD — simplified -->
-    <div class="gc signal-card"
-      class:signal-zone--red={dcaZoneGif.includes('red')}
-      class:signal-zone--amber={dcaZoneGif.includes('amber')}
-      class:signal-zone--green={dcaZoneGif.includes('green')}
-      style="--ac:{$accentColor};">
+    <div class="gc"
+      class:signal-card={dcaSecretMode}
+      class:signal-zone--red={dcaSecretMode && dcaZoneGif.includes('red')}
+      class:signal-zone--amber={dcaSecretMode && dcaZoneGif.includes('amber')}
+      class:signal-zone--green={dcaSecretMode && dcaZoneGif.includes('green')}
+      style="--ac:{$accentColor};"
+      on:click={handleDcaTileClick}
+    >
 
-      <!-- Zone background GIF — behind frosted glass -->
-      {#if dcaZoneGif}
+      <!-- Zone background GIF — behind frosted glass (secret mode only) -->
+      {#if dcaSecretMode && dcaZoneGif}
         {#key dcaZoneGif}
           <div class="zone-bg">
             <img src={dcaZoneGif} alt="" class="zone-bg-img" loading="lazy" />
           </div>
         {/key}
       {/if}
-      <!-- Full-tile zone colour tint -->
-      {#if dcaZoneGif}
+      <!-- Full-tile zone colour tint (secret mode only) -->
+      {#if dcaSecretMode && dcaZoneGif}
         <div class="zone-tint" class:zone-tint--red={dcaZoneGif.includes('red')} class:zone-tint--amber={dcaZoneGif.includes('amber')} class:zone-tint--green={dcaZoneGif.includes('green')}></div>
       {/if}
-      <div class="zone-glass"></div>
+      {#if dcaSecretMode}
+        <div class="zone-glass"></div>
+      {/if}
 
       <!-- Flip container -->
       <div class="dca-face">
