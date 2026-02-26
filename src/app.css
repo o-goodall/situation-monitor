@@ -337,13 +337,8 @@ html.light .skeleton { background: linear-gradient(90deg, rgba(0,0,0,.04) 25%, r
 
   .section-divider {
     max-width:1440px; margin:48px auto 0;
-    height:1px; background:linear-gradient(90deg,transparent,rgba(247,147,26,.5),rgba(0,200,255,.25),transparent);
+    height:1px; background:rgba(255,255,255,0.06);
     position:relative;
-  }
-  .section-divider::after {
-    content:''; position:absolute; top:-1px; left:50%; transform:translateX(-50%);
-    width:60px; height:3px; background:linear-gradient(90deg,#f7931a,#00c8ff);
-    box-shadow:0 0 12px rgba(247,147,26,.6);
   }
   @media (max-width:700px) {
     .section {
@@ -354,10 +349,11 @@ html.light .skeleton { background: linear-gradient(90deg, rgba(0,0,0,.04) 25%, r
       margin-bottom:16px;
     }
     .section-divider { margin-top:16px; }
-    /* Remove bottom padding — pages are fixed, no scroll */
-    #signal    { padding-bottom:8px; }
-    #portfolio { padding-bottom:8px; }
-    #intel     { padding-bottom:16px; }
+    /* Signal and Portfolio: fixed viewport height, no body scroll */
+    #signal    { height:calc(100dvh - var(--bottom-nav-h)); min-height:unset; overflow:hidden; padding-bottom:8px; }
+    #portfolio { height:calc(100dvh - var(--bottom-nav-h)); min-height:unset; overflow:hidden; padding-bottom:calc(var(--bottom-nav-h) + 16px); }
+    /* Intel: allow scrolling with clearance for bottom nav */
+    #intel     { padding-bottom:calc(var(--bottom-nav-h) + 16px); }
     /* Uniform tile gap across all section grids on mobile */
     .port-grid   { gap:8px; }
     .intel-grid  { gap:8px; }
@@ -365,6 +361,12 @@ html.light .skeleton { background: linear-gradient(90deg, rgba(0,0,0,.04) 25%, r
     .stat-strip  { margin-bottom:8px; }
     /* Hide Connect Ghostfolio tile on mobile when no token is configured */
     .gc--no-token { display:none; }
+    /* DCA signal indicators: one clean horizontal line */
+    .sigs { flex-wrap:nowrap; overflow-x:hidden; gap:4px; padding:10px 0 0; }
+    .sig  { min-width:0; flex:1; padding:5px 6px; border-radius:6px; gap:4px; }
+    .sig-body { flex-direction:row; align-items:center; gap:3px; }
+    .sig-val  { display:none; }
+    .sig-label { font-size:.55rem; }
   }
   @media (max-width:600px) {
     .section-header { margin-bottom:14px; }
@@ -527,18 +529,16 @@ html.light .skeleton { background: linear-gradient(90deg, rgba(0,0,0,.04) 25%, r
   @media (max-width:768px) {
     .btc-network-card,
     .btc-hashrate-card { display:none; }
-    /* Show BTC price chart on mobile — expand to fill remaining viewport */
+    /* Show BTC price chart on mobile — constrained to avoid bottom nav overlap */
     .btc-chart-card {
       margin-top:10px;
       display:flex; flex-direction:column;
-      min-height: calc(100svh - 430px);
-      max-height: 600px;
+      min-height: calc(100svh - 500px);
+      max-height: calc(100svh - var(--bottom-nav-h) - 200px);
     }
-    .btc-chart-card .chart-container { flex:1; min-height:180px; height:auto; }
+    .btc-chart-card .chart-container { flex:1; min-height:150px; height:auto; }
     :global(.btc-chart-card .cc-wrap) { height:100%; }
-    /* DCA signal: hide only the price band on mobile; show signals and formula button */
-    .signal-card .vband { display:none; }
-    .dca-hero { padding:20px 0 16px; }
+    .dca-hero { padding:20px 0 12px; }
     /* Portfolio: hide detailed tiles, show merged summary only */
     .port-grid { display:none; }
     .mobile-port-summary { display:block; }

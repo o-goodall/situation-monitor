@@ -92,12 +92,12 @@
     Low:       '#FFD580',   // Skirmishes/clashes 1–99
   };
 
-  /** Wikipedia conflict severity → semi-transparent fill for country shading */
+  /** Wikipedia conflict severity → solid colour fill for country shading */
   const WIKI_SEVERITY_FILLS: Record<string, string> = {
-    Extreme:   'rgba(139,0,0,0.45)',
-    High:      'rgba(255,69,0,0.38)',
-    Turbulent: 'rgba(255,165,0,0.28)',
-    Low:       'rgba(255,213,128,0.18)',
+    Extreme:   '#8B0000',   // Major wars ≥10,000 casualties
+    High:      '#FF4500',   // Minor wars 1,000–9,999
+    Turbulent: '#FFA500',   // Conflicts 100–999
+    Low:       '#FFD580',   // Skirmishes 1–99
   };
 
   /** Ranking for de-duplication: higher = more severe */
@@ -110,6 +110,8 @@
     'East Timor': 'Timor-Leste',
     'Nagorno-Karabakh': 'Armenia',
     'Ivory Coast': "Côte d'Ivoire",
+    'United Arab Emirates': 'UAE',
+    'Sahrawi Republic': 'Western Sahara',
   };
 
   /** Maps global-threat location names to ISO 3166-1 numeric country IDs (topojson) */
@@ -154,6 +156,7 @@
     'Eswatini': '748', 'Madagascar': '450', 'Djibouti': '262', 'Eritrea': '232',
     'Gambia': '270', 'Gabon': '266', 'Republic of Congo': '178',
     'Equatorial Guinea': '226', 'Guinea-Bissau': '624', 'Cape Verde': '132',
+    'Mauritania': '478', 'Western Sahara': '732',
     'China': '156', 'Japan': '392', 'South Korea': '410', 'North Korea': '408',
     'Taiwan': '158', 'Vietnam': '704', 'Thailand': '764', 'Cambodia': '116',
     'Laos': '418', 'Malaysia': '458', 'Singapore': '702', 'Brunei': '096',
@@ -190,8 +193,8 @@
   function getCountryFillById(id: string): string {
     if (id === trendingIsoId) return 'rgba(255,20,20,0.55)'; // trending: strong red
     const wikiSev = wikiConflictCountryFills.get(id);
-    if (wikiSev) return WIKI_SEVERITY_FILLS[wikiSev] ?? '#1e3248';
-    return '#1e3248';
+    if (wikiSev) return WIKI_SEVERITY_FILLS[wikiSev] ?? '#ccc';
+    return '#ccc';
   }
 
   function showTip(e: MouseEvent, title: string, color: string, lines: string[] = []) {
