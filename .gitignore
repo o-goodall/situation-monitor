@@ -6,3 +6,4 @@ build
 !.env.example
 .vercel
 package-lock.json
+static/data/.last-revision

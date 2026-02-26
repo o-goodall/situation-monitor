@@ -562,11 +562,11 @@
   $: tickerItems = (() => {
     // Combine events and recent threat stories from all sources (BBC, Reuters, Al Jazeera)
     const seen = new Set<string>();
-    const items: { link: string; location: string; title: string; pubDate: string; dotColor: string }[] = [];
+    const items: { link: string; location: string; title: string; summary: string; pubDate: string; dotColor: string; countrySlug: string }[] = [];
     for (const ev of majorEvents) {
       if (seen.has(ev.link)) continue;
       seen.add(ev.link);
-      items.push({ link: ev.link, location: ev.location, title: ev.title, pubDate: ev.pubDate, dotColor: EVENT_COLORS[ev.level] ?? '#888' });
+      items.push({ link: ev.link, location: ev.location, title: ev.title, summary: '', pubDate: ev.pubDate, dotColor: EVENT_COLORS[ev.level] ?? '#888', countrySlug: '' });
     }
     const now24 = Date.now() - 24 * 60 * 60 * 1000;
     for (const ct of threats) {
@@ -575,7 +575,7 @@
         if (seen.has(s.link)) continue;
         if (new Date(s.date).getTime() < now24) continue;
         seen.add(s.link);
-        items.push({ link: s.link, location: ct.country, title: s.title, pubDate: s.date, dotColor: col });
+        items.push({ link: s.link, location: ct.country, title: s.title, summary: s.summary || s.title, pubDate: s.date, dotColor: col, countrySlug: ct.country });
       }
     }
     return items.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()).slice(0, 30);
@@ -592,10 +592,10 @@
     <div class="wm-ticker-track" aria-live="polite">
       <div class="wm-ticker-reel">
         {#each [...tickerItems, ...tickerItems] as item, i}
-          <a href={item.link} target="_blank" rel="noopener noreferrer" class="wm-story" aria-label="{item.title}" aria-hidden={i >= tickerItems.length ? 'true' : undefined}>
+          <a href={item.countrySlug ? `/intel/${encodeURIComponent(item.countrySlug)}` : item.link} target={item.countrySlug ? '_self' : '_blank'} rel={item.countrySlug ? undefined : 'noopener noreferrer'} class="wm-story" aria-label="{item.title}" aria-hidden={i >= tickerItems.length ? 'true' : undefined}>
             <span class="wm-story-dot" style="background:{item.dotColor};box-shadow:0 0 5px {item.dotColor};"></span>
             <span class="wm-story-loc">{item.location}</span>
-            <span class="wm-story-title">{item.title}</span>
+            <span class="wm-story-title">{item.summary || item.title}</span>
             <span class="wm-story-age">{ago(item.pubDate)}</span>
             <span class="wm-story-sep" aria-hidden="true">◆</span>
           </a>
@@ -761,7 +761,7 @@
 
   /* ── MAJOR STORIES TICKER ───────────────────────────────── */
   .wm-stories {
-    --ticker-duration: 40s;
+    --ticker-duration: 90s;
     background: #0a1420;
     border: 1px solid rgba(0,200,255,0.18);
     border-bottom: none;

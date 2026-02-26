@@ -47,7 +47,7 @@
 
   function goBack() {
     $activeSection = 'intel';
-    history.back();
+    goto('/#intel', { replaceState: false });
   }
 
   onMount(async () => {
