@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
-  import { goto } from '$app/navigation';
   import type { ThreatEvent } from '../routes/api/events/+server';
   import type { CountryThreat } from '../routes/api/global-threats/+server';
   import type { Selection as D3Selection, ZoomBehavior, GeoPath, GeoProjection } from 'd3';
@@ -74,6 +73,12 @@
   let legendMinimized = false;
   let legendAutoHideTimer: ReturnType<typeof setTimeout> | null = null;
   const LEGEND_AUTO_HIDE_DELAY_MS = 1500;
+
+  // ── Country news modal state ───────────────────────────────────
+  let modalOpen = false;
+  let selectedCountry: (CountryThreat & { stories: CountryThreat['stories'] }) | null = null;
+  let selectedMarkerEl: SVGGElement | null = null;
+  let modalEl: HTMLDivElement | null = null;
 
   // Live-refresh state — threats are re-fetched every 5 minutes to keep
   // country colours and hotspot markers up to date without reloading the page.
@@ -218,6 +223,70 @@
     tooltipTop  = e.clientY - rect.top  - 10;
   }
   function hideTip() { tooltipVisible = false; tooltipContent = null; }
+
+  // ── Country news modal functions ───────────────────────────────
+  /**
+   * Opens the country news modal for `ct`, highlights the clicked SVG ping,
+   * and pushes a `?country=` history entry for back-button / shareable-link support.
+   */
+  function openCountryModal(ct: CountryThreat, markerEl: SVGGElement | null = null, pushHistory = true) {
+    // Sort stories newest first
+    selectedCountry = { ...ct, stories: [...ct.stories].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()) };
+    // Highlight the clicked ping
+    if (selectedMarkerEl) selectedMarkerEl.classList.remove('wm-ping--selected');
+    selectedMarkerEl = markerEl;
+    if (markerEl) markerEl.classList.add('wm-ping--selected');
+    modalOpen = true;
+    if (pushHistory) {
+      const url = new URL(window.location.href);
+      url.searchParams.set('country', ct.country);
+      history.pushState({ smModal: true, country: ct.country }, '', url.toString());
+    }
+    // Move focus into modal on next frame
+    requestAnimationFrame(() => modalEl?.focus());
+  }
+
+  function closeModal() {
+    if (!modalOpen) return;
+    modalOpen = false;
+    selectedCountry = null;
+    if (selectedMarkerEl) {
+      selectedMarkerEl.classList.remove('wm-ping--selected');
+      selectedMarkerEl = null;
+    }
+  }
+
+  function handlePopState() {
+    if (modalOpen) closeModal();
+  }
+
+  function handleKeyDown(e: KeyboardEvent) {
+    if (e.key === 'Escape' && modalOpen) {
+      e.preventDefault();
+      history.back();
+    }
+  }
+
+  /** Svelte action: trap keyboard focus inside `node` while mounted */
+  function trapFocus(node: HTMLElement) {
+    const sel = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [contenteditable="true"], [tabindex]:not([tabindex="-1"])';
+    function getItems() { return [...node.querySelectorAll<HTMLElement>(sel)]; }
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return;
+      const items = getItems();
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last)  { e.preventDefault(); first.focus(); }
+      }
+    }
+    node.addEventListener('keydown', onKey);
+    // Focus the node itself first so screen readers announce the dialog before tab-cycling
+    node.focus();
+    return { destroy() { node.removeEventListener('keydown', onKey); } };
+  }
 
   function zoomIn()    { if (svg && zoom) svg.transition().duration(280).call(zoom.scaleBy, 1.5); }
   function zoomOut()   { if (svg && zoom) svg.transition().duration(280).call(zoom.scaleBy, 1/1.5); }
@@ -425,6 +494,17 @@
           .translate(w / 2 * (1 - s), h / 2 * (1 - s))
           .scale(s));
       }
+
+      // Handle ?country= URL param for shareable links — open modal if matching threat found
+      const urlCountry = new URLSearchParams(window.location.search).get('country');
+      if (urlCountry) {
+        const ct = threats.find(t => t.country.toLowerCase() === urlCountry.toLowerCase());
+        if (ct) {
+          // Replace the current URL so back button leads to the clean page, then open modal
+          history.replaceState({}, '', window.location.pathname);
+          openCountryModal(ct, null);
+        }
+      }
     } catch (err) {
       console.error('WorldMap init failed', err);
       mapError = 'Failed to load world map data.';
@@ -483,13 +563,12 @@
           .attr('fill', '#F7931A').attr('pointer-events', 'none');
       }
 
-      // Hit area — click removes entire ping marker and navigates to /intel/[country]
+      // Hit area — click opens country news modal
       markerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', r + 6)
         .attr('fill', 'transparent').attr('class', 'wm-hit')
         .on('click', () => {
-          markerGroup.remove();
           if (isNew) markCountrySeen(ct.country, seenCountries);
-          goto(`/intel/${encodeURIComponent(ct.country)}`);
+          openCountryModal(ct, markerGroup.node() as SVGGElement);
         })
         .on('mouseenter', (e: MouseEvent) => {
           const sevLabel = wikiSev
@@ -624,10 +703,13 @@
     legendAutoHideTimer = setTimeout(() => { legendMinimized = true; }, LEGEND_AUTO_HIDE_DELAY_MS);
     // Periodically refresh live threat data (country colours + hotspot markers)
     refreshTimer = setInterval(refreshThreats, THREAT_REFRESH_INTERVAL_MS);
+    // Back-button support: close modal when user navigates back
+    window.addEventListener('popstate', handlePopState);
   });
   onDestroy(() => {
     if (legendAutoHideTimer) clearTimeout(legendAutoHideTimer);
     if (refreshTimer) clearInterval(refreshTimer);
+    window.removeEventListener('popstate', handlePopState);
   });
 
   function ago(d: string): string {
@@ -663,6 +745,8 @@
     return items.sort((a, b) => new Date(b.pubDate).getTime() - new Date(a.pubDate).getTime()).slice(0, 30);
   })();
 </script>
+
+<svelte:window on:keydown={handleKeyDown} />
 
 <div class="wm-outer">
   {#if tickerItems.length > 0}
@@ -739,8 +823,69 @@
     </button>
   </div>
 
-
 </div>
+
+<!-- ── Country news modal ────────────────────────────────────── -->
+{#if modalOpen && selectedCountry}
+  <!-- Backdrop — click closes modal via history.back() -->
+  <div class="wm-modal-backdrop" on:click={() => history.back()} aria-hidden="true"></div>
+
+  <!-- Dialog panel -->
+  {@const sevColor = selectedCountry.isTrending ? '#ff2200' : ({ extreme: '#b91c1c', high: '#f97316', turbulent: '#eab308' }[selectedCountry.severity] ?? '#888888')}
+  {@const sevLabel = ({ extreme: 'Major conflict', high: 'High alert', turbulent: 'Conflict zone' }[selectedCountry.severity] ?? selectedCountry.severity)}
+  <div
+    class="wm-modal"
+    role="dialog"
+    aria-modal="true"
+    aria-label="{selectedCountry.country} news"
+    tabindex="-1"
+    bind:this={modalEl}
+    use:trapFocus
+  >
+    <!-- Header -->
+    <div class="wm-modal-head">
+      <div class="wm-modal-title-row">
+        <h2 class="wm-modal-country">{selectedCountry.country}</h2>
+        {#if selectedCountry.severity}
+          <span class="wm-modal-badge" style="color:{sevColor};border-color:{sevColor}40;background:{sevColor}15;">
+            {#if selectedCountry.isTrending}🔥 Trending · {/if}{sevLabel}
+          </span>
+        {/if}
+      </div>
+      <button class="wm-modal-close" on:click={() => history.back()} aria-label="Close">✕</button>
+    </div>
+
+    <!-- Stories list -->
+    {#if selectedCountry.stories.length === 0}
+      <p class="wm-modal-empty">No recent stories for this region. Check back later.</p>
+    {:else}
+      <p class="wm-modal-count">{selectedCountry.stories.length} recent {selectedCountry.stories.length === 1 ? 'story' : 'stories'} — most recent first</p>
+      <div class="wm-modal-stories">
+        {#each selectedCountry.stories as story}
+          <a
+            href={story.link}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="wm-modal-story"
+            aria-label="{story.title}"
+          >
+            <div class="wm-modal-meta">
+              <span class="wm-modal-source">{story.source}</span>
+              <span class="wm-modal-age">{ago(story.date)}</span>
+              {#if story.casualties !== null}
+                <span class="wm-modal-cas">~{story.casualties} casualties</span>
+              {/if}
+            </div>
+            <p class="wm-modal-story-title">{story.title}</p>
+            {#if story.summary}
+              <p class="wm-modal-story-summary">{story.summary}</p>
+            {/if}
+          </a>
+        {/each}
+      </div>
+    {/if}
+  </div>
+{/if}
 
 <style>
   .wm-outer {
@@ -934,5 +1079,138 @@
     :global(.wm-trending-ring) { animation-duration: 2.4s; }
     :global(.wm-trending-ring--outer) { animation-duration: 2.4s; }
   }
+
+  /* ── Country news modal ────────────────────────────────────── */
+  .wm-modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(3px);
+    z-index: 1000;
+    animation: wm-backdrop-in 0.2s ease;
+  }
+  @keyframes wm-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
+
+  .wm-modal {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(92vw, 580px);
+    max-height: min(82vh, 700px);
+    background: rgba(9, 17, 30, 0.97);
+    border: 1px solid rgba(0, 200, 255, 0.25);
+    border-radius: 14px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    z-index: 1001;
+    outline: none;
+    animation: wm-modal-in 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* Scrollbar styling */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(0,200,255,0.2) transparent;
+  }
+  @keyframes wm-modal-in {
+    from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+
+  .wm-modal-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 20px 20px 14px;
+    border-bottom: 1px solid rgba(0,200,255,0.12);
+    position: sticky; top: 0;
+    background: rgba(9, 17, 30, 0.98);
+    z-index: 2;
+  }
+  .wm-modal-title-row {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;
+  }
+  .wm-modal-country {
+    margin: 0; font-size: 1.25rem; font-weight: 700; color: rgba(255,255,255,.92);
+    line-height: 1.2;
+  }
+  .wm-modal-badge {
+    font-size: .58rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase;
+    padding: 3px 8px; border-radius: 4px; border: 1px solid; white-space: nowrap;
+  }
+  .wm-modal-close {
+    background: transparent; border: 1px solid rgba(255,255,255,.15); border-radius: 6px;
+    color: rgba(255,255,255,.5); font-size: .9rem; width: 28px; height: 28px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0; transition: color .15s, border-color .15s;
+  }
+  .wm-modal-close:hover { color: #fff; border-color: rgba(255,255,255,.4); }
+
+  .wm-modal-count {
+    padding: 10px 20px 4px; margin: 0;
+    font-size: .65rem; color: rgba(255,255,255,.35); font-family: monospace;
+  }
+  .wm-modal-empty {
+    padding: 24px 20px; margin: 0;
+    font-size: .8rem; color: rgba(255,255,255,.4);
+  }
+  .wm-modal-stories {
+    display: flex; flex-direction: column; gap: 8px;
+    padding: 10px 16px 20px;
+  }
+  .wm-modal-story {
+    display: block; background: rgba(255,255,255,.04);
+    border: 1px solid rgba(255,255,255,.07); border-radius: 10px;
+    padding: 12px 14px; text-decoration: none;
+    transition: background .2s, border-color .2s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .wm-modal-story:hover { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); }
+  .wm-modal-meta {
+    display: flex; align-items: center; gap: 7px; margin-bottom: 6px; flex-wrap: wrap;
+  }
+  .wm-modal-source {
+    font-size: .55rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    color: rgba(0,200,255,.7); font-family: monospace;
+  }
+  .wm-modal-age { font-size: .55rem; color: rgba(255,255,255,.3); font-family: monospace; }
+  .wm-modal-cas { font-size: .55rem; color: #f87171; font-family: monospace; }
+  .wm-modal-story-title {
+    margin: 0 0 5px; font-size: .85rem; font-weight: 600;
+    color: rgba(255,255,255,.88); line-height: 1.4;
+  }
+  .wm-modal-story-summary {
+    margin: 0; font-size: .72rem; color: rgba(255,255,255,.45); line-height: 1.5;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  /* Highlighted ping while modal is open */
+  :global(.wm-ping--selected circle) { filter: drop-shadow(0 0 5px #fff); }
+
+  /* Mobile: sheet slides from bottom */
+  @media (max-width: 768px) {
+    .wm-modal {
+      top: auto; bottom: 0; left: 0; right: 0;
+      transform: none;
+      width: 100%; max-width: none;
+      max-height: 85dvh;
+      border-radius: 16px 16px 0 0;
+      border-bottom: none;
+      animation: wm-modal-in-mobile 0.3s ease;
+    }
+    @keyframes wm-modal-in-mobile {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+  }
+
+  /* Light mode */
+  :global(.light-mode) .wm-modal {
+    background: rgba(244, 245, 247, 0.98);
+    border-color: rgba(0, 0, 0, 0.12);
+  }
+  :global(.light-mode) .wm-modal-head { background: rgba(244, 245, 247, 0.99); }
+  :global(.light-mode) .wm-modal-country { color: rgba(0,0,0,.88); }
+  :global(.light-mode) .wm-modal-story { background: rgba(0,0,0,.04); border-color: rgba(0,0,0,.08); }
+  :global(.light-mode) .wm-modal-story:hover { background: rgba(0,0,0,.07); border-color: rgba(0,0,0,.14); }
+  :global(.light-mode) .wm-modal-story-title { color: rgba(0,0,0,.85); }
+  :global(.light-mode) .wm-modal-story-summary { color: rgba(0,0,0,.5); }
 
 </style>
