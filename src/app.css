@@ -349,11 +349,11 @@ html.light .skeleton { background: linear-gradient(90deg, rgba(0,0,0,.04) 25%, r
       margin-bottom:16px;
     }
     .section-divider { margin-top:16px; }
-    /* Signal and Portfolio: fixed viewport height, no body scroll */
-    #signal    { height:calc(100dvh - var(--bottom-nav-h)); min-height:unset; overflow:hidden; padding-bottom:8px; }
-    #portfolio { height:calc(100dvh - var(--bottom-nav-h)); min-height:unset; overflow:hidden; padding-bottom:calc(var(--bottom-nav-h) + 16px); }
+    /* Signal and Portfolio: fixed viewport height, internal scroll for overflow */
+    #signal    { height:calc(100dvh - var(--bottom-nav-h) - env(safe-area-inset-bottom, 0px)); min-height:unset; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain; padding-bottom:20px; }
+    #portfolio { height:calc(100dvh - var(--bottom-nav-h) - env(safe-area-inset-bottom, 0px)); min-height:unset; overflow-y:auto; -webkit-overflow-scrolling:touch; overscroll-behavior-y:contain; padding-bottom:20px; }
     /* Intel: allow scrolling with clearance for bottom nav */
-    #intel     { padding-bottom:calc(var(--bottom-nav-h) + 16px); }
+    #intel     { padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 16px); }
     /* Uniform tile gap across all section grids on mobile */
     .port-grid   { gap:8px; }
     .intel-grid  { gap:8px; }
@@ -534,7 +534,7 @@ html.light .skeleton { background: linear-gradient(90deg, rgba(0,0,0,.04) 25%, r
       margin-top:10px;
       display:flex; flex-direction:column;
       min-height: calc(100svh - 500px);
-      max-height: calc(100svh - var(--bottom-nav-h) - 200px);
+      max-height: calc(100svh - var(--bottom-nav-h) - env(safe-area-inset-bottom, 0px) - 200px);
     }
     .btc-chart-card .chart-container { flex:1; min-height:150px; height:auto; }
     :global(.btc-chart-card .cc-wrap) { height:100%; }
@@ -843,6 +843,11 @@ html.light .skeleton { background: linear-gradient(90deg, rgba(0,0,0,.04) 25%, r
   :global(html.light) .au-strip-row { background:rgba(0,0,0,.02); border-color:rgba(0,0,0,.06); }
   :global(html.light) .au-strip-row--ratio { background:rgba(60,100,200,.05); border-color:rgba(60,100,200,.12); }
   :global(html.light) .au-ratio-val { color:#2563eb !important; }
+
+  /* ATH row highlighting */
+  .btc-gold-ath-row { padding-top:3px; margin-top:2px; border-top:1px solid rgba(201,168,76,.18); } /* small visual separator above ATH rows */
+  .btc-gold-ath-new { color:var(--up) !important; font-weight:700 !important; }
+  .btc-gold-ath-date .btc-gold-hist-label { opacity:.55; font-size:.48rem; }
 
   /* Divider between halving and sats in combined tile */
   .halving-sats-divider { width:40%; height:1px; background:rgba(255,255,255,.08); margin:8px auto 6px; }

@@ -141,7 +141,7 @@
 </div>
 
 <style>
-  .settings-page { max-width: 600px; margin: 0 auto; padding: 20px 16px calc(var(--bottom-nav-h, 72px) + 24px); }
+  .settings-page { max-width: 600px; margin: 0 auto; padding: 20px 16px calc(var(--bottom-nav-h, 72px) + env(safe-area-inset-bottom, 0px) + 24px); }
   .settings-page-header { margin-bottom: 24px; padding-bottom: 12px; border-bottom: 1px solid rgba(247,147,26,0.18); }
   .settings-page-title {
     font-size: 1.15rem; font-weight: 700; color: var(--t1);
