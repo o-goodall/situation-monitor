@@ -511,13 +511,14 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   }
   :global(html.light) .tile-header { color: rgba(0,0,0,.60); }
 
-  /* Fix ghost tile: [data-tooltip]::after opacity:0 conflicts with .stat-tile::after gradient overlay.
-     Restore the gradient overlay visibility and suppress tooltip-related transitions on ::after. */
+  /* Fix ghost tile: [data-tooltip]::after opacity:0/transform conflicts with .stat-tile::after gradient overlay.
+     Restore the gradient overlay visibility, reset tooltip positioning, and suppress tooltip transitions. */
   .stat-tile[data-tooltip]::after {
     opacity: 1;
     transition: none;
     content: '';
     bottom: 0; left: 0;
+    transform: none;
     white-space: unset;
     padding: 0;
     border: none;
@@ -674,9 +675,8 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   @media (max-width:768px) {
     /* Network card: hide entirely on mobile */
     .btc-network-card { display:none; }
-    /* Hashrate card: compact fixed chart height on mobile */
-    .gc--hashrate .chart-container { flex:none; height:130px; min-height:130px; }
-    .gc--hashrate .hash-row { margin-top:12px; padding-top:10px; }
+    /* Hashrate card: hide entirely on mobile */
+    .btc-hashrate-card { display:none; }
     /* Show BTC price chart on mobile — stable height using clamp to avoid nav overlap */
     .btc-chart-card {
       margin-top:10px;
