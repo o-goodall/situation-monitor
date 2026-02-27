@@ -11,6 +11,21 @@
 
   let canvas: HTMLCanvasElement;
 
+  /** Cached draw parameters — set by draw(), used by hover handlers */
+  let _dp: {
+    W: number; H: number;
+    PAD_L: number; PAD_R: number; PAD_T: number; PAD_B: number;
+    dW: number; dH: number; min: number; rng: number; lineColor: string;
+  } | null = null;
+
+  /** Hover overlay state */
+  let hovX = 0;
+  let hovY = 0;
+  let hovVal = '';
+  let hovDate = '';
+  let hovLineC = '#22c55e';
+  let hovVisible = false;
+
   function fmtLabel(ts: number): string {
     const d = new Date(ts);
     if (range === '1d') return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
@@ -113,7 +128,7 @@
 
     // Y-axis price labels — scale font down on narrow charts (below MIN_LABEL_WIDTH px)
     const MIN_LABEL_WIDTH = 200;
-    ctx.fillStyle = 'rgba(255,255,255,0.35)';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
     ctx.font = `${9 * Math.min(1, W / MIN_LABEL_WIDTH)}px monospace`;
     ctx.textAlign = 'right';
     const defaultFormatter = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(1)}K` : `$${v.toFixed(0)}`;
@@ -197,9 +212,36 @@
     ctx.shadowColor = resolvedLineColor;
     ctx.fill();
     ctx.shadowBlur = 0;
+
+    // Capture draw params for hover overlay (CSS-pixel coordinate space)
+    _dp = { W, H, PAD_L, PAD_R, PAD_T, PAD_B, dW, dH, min, rng, lineColor: resolvedLineColor };
   }
 
   let resizeObserver: ResizeObserver | undefined;
+
+  /** Shared hover computation — called by both mouse and touch handlers */
+  function computeHover(clientX: number, clientY: number) {
+    if (!_dp || prices.length < 2) { hovVisible = false; return; }
+    const rect = canvas.getBoundingClientRect();
+    const cx = clientX - rect.left;
+    if (cx < _dp.PAD_L || cx > _dp.W - _dp.PAD_R) { hovVisible = false; return; }
+    const idx = Math.max(0, Math.min(prices.length - 1,
+      Math.round(((cx - _dp.PAD_L) / _dp.dW) * (prices.length - 1))));
+    hovX = _dp.PAD_L + (idx / (prices.length - 1)) * _dp.dW;
+    hovY = _dp.PAD_T + (1 - (prices[idx].p - _dp.min) / _dp.rng) * _dp.dH;
+    const defaultFmt = (v: number) => v >= 1000 ? `$${(v / 1000).toFixed(2)}K` : `$${v.toFixed(2)}`;
+    hovVal = (formatY ?? defaultFmt)(prices[idx].p);
+    hovDate = fmtLabel(prices[idx].t);
+    hovLineC = _dp.lineColor;
+    hovVisible = true;
+  }
+
+  function onHover(e: MouseEvent) { computeHover(e.clientX, e.clientY); }
+  function onLeave() { hovVisible = false; }
+  function onTouch(e: TouchEvent) {
+    if (!e.touches.length) return;
+    computeHover(e.touches[0].clientX, e.touches[0].clientY);
+  }
 
   onMount(() => {
     draw();
@@ -212,8 +254,76 @@
   onDestroy(() => resizeObserver?.disconnect());
 </script>
 
-<canvas
-  bind:this={canvas}
-  style="width:100%;height:{fillParent ? '100%' : height+'px'};display:block;"
-  aria-hidden="true"
-></canvas>
+<div class="pc-wrap" style="height:{fillParent ? '100%' : height + 'px'}">
+  <canvas
+    bind:this={canvas}
+    style="width:100%;height:100%;display:block;"
+    aria-hidden="true"
+    on:mousemove={onHover}
+    on:mouseleave={onLeave}
+    on:touchmove|passive={onTouch}
+    on:touchend={onLeave}
+  ></canvas>
+  {#if hovVisible && _dp}
+    <svg class="pc-overlay" aria-hidden="true">
+      <line
+        x1={hovX} y1={_dp.PAD_T} x2={hovX} y2={_dp.H - _dp.PAD_B}
+        stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="3 3"
+      />
+      <circle
+        cx={hovX} cy={hovY} r="3.5"
+        fill={hovLineC} stroke="rgba(0,0,0,0.35)" stroke-width="1.5"
+      />
+    </svg>
+    <div
+      class="pc-tooltip"
+      style="left:{hovX}px;top:{hovY}px;transform:translate({hovX > _dp.W / 2 ? '-108%' : '8px'},-50%);"
+    >
+      <span class="pc-tt-date">{hovDate}</span>
+      <span class="pc-tt-val">{hovVal}</span>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .pc-wrap {
+    position: relative;
+    display: block;
+    width: 100%;
+  }
+  .pc-overlay {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .pc-tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: rgba(15,15,15,.92);
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 5px;
+    padding: 5px 8px;
+    font-size: .62rem;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.5);
+    z-index: 10;
+  }
+  .pc-tt-date {
+    display: block;
+    color: rgba(255,255,255,.55);
+    font-size: .56rem;
+    margin-bottom: 2px;
+    font-family: monospace;
+  }
+  .pc-tt-val {
+    display: block;
+    color: rgba(255,255,255,.9);
+    font-weight: 700;
+    font-family: monospace;
+  }
+</style>

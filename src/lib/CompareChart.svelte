@@ -101,6 +101,10 @@
     btcRet: number | null; sp500Ret: number | null; goldRet: number | null;
   } = { x: 0, y: 0, visible: false, date: '', btc: null, sp500: null, gold: null, btcRet: null, sp500Ret: null, goldRet: null };
 
+  // ── Crosshair + active dot elements (set in draw, updated in mousemove) ──────
+  let _ccCrosshair: d3.Selection<SVGLineElement, unknown, null, undefined> | null = null;
+  let _ccDots: Array<{ el: d3.Selection<SVGCircleElement, unknown, null, undefined>; key: SeriesKey }> = [];
+
   // ── D3 chart ─────────────────────────────────────────────────
   let svgEl: SVGSVGElement;
   let containerEl: HTMLDivElement;
@@ -212,7 +216,7 @@
       .call(yAxisBuilder)
       .call(ax => ax.select('.domain').remove())
       .call(ax => ax.selectAll('text')
-        .attr('fill', 'rgba(255,255,255,0.35)')
+        .attr('fill', 'rgba(255,255,255,0.55)')
         .attr('font-size', '9px')
         .attr('font-family', 'monospace')
         .attr('x', -4)
@@ -224,7 +228,7 @@
       .attr('x', -iH / 2)
       .attr('y', -margin.left + 10)
       .attr('text-anchor', 'middle')
-      .attr('fill', 'rgba(255,255,255,0.22)')
+      .attr('fill', 'rgba(255,255,255,0.45)')
       .attr('font-size', '8px')
       .attr('font-family', 'monospace')
       .text('Indexed (100 = start)');
@@ -240,7 +244,7 @@
       )
       .call(ax => ax.select('.domain').remove())
       .call(ax => ax.selectAll('text')
-        .attr('fill', 'rgba(255,255,255,0.35)')
+        .attr('fill', 'rgba(255,255,255,0.55)')
         .attr('font-size', '9px')
         .attr('font-family', 'monospace')
         .attr('dy', '1.2em')
@@ -267,6 +271,29 @@
         .attr('stroke-linecap', 'round')
         .attr('d', lineGen);
     }
+
+    // Crosshair line — hidden initially, shown on hover
+    _ccCrosshair = g.append('line')
+      .attr('y1', 0).attr('y2', iH)
+      .attr('stroke', 'rgba(255,255,255,0.22)')
+      .attr('stroke-width', 1)
+      .attr('stroke-dasharray', '3 3')
+      .style('display', 'none')
+      .style('pointer-events', 'none');
+
+    // Active dots per visible series — hidden initially
+    _ccDots = SERIES_CFG
+      .filter(c => visible[c.key])
+      .map(cfg => ({
+        el: g.append('circle')
+          .attr('r', 3.5)
+          .attr('fill', cfg.color)
+          .attr('stroke', 'rgba(0,0,0,0.40)')
+          .attr('stroke-width', 1.5)
+          .style('display', 'none')
+          .style('pointer-events', 'none'),
+        key: cfg.key as SeriesKey,
+      }));
 
     // Invisible hover overlay
     const bisectTime = d3.bisector((d: { t: number; v: number }) => d.t).left;
@@ -310,8 +337,25 @@
           sp500Ret: sv !== null ? sv - 100 : null,
           goldRet: gv !== null ? gv - 100 : null,
         };
+
+        // Show crosshair at mouse X
+        _ccCrosshair?.attr('x1', mx).attr('x2', mx).style('display', null);
+
+        // Position active dots at the hovered data values
+        _ccDots.forEach(dot => {
+          const val = dot.key === 'btc' ? bv : dot.key === 'sp500' ? sv : gv;
+          if (val !== null && isFinite(val) && val > 0) {
+            dot.el.attr('cx', mx).attr('cy', yScale(val)).style('display', null);
+          } else {
+            dot.el.style('display', 'none');
+          }
+        });
       })
-      .on('mouseleave', () => { tooltip = { ...tooltip, visible: false }; });
+      .on('mouseleave', () => {
+        tooltip = { ...tooltip, visible: false };
+        _ccCrosshair?.style('display', 'none');
+        _ccDots.forEach(d => d.el.style('display', 'none'));
+      });
   }
 
   function redraw() {

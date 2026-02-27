@@ -17,15 +17,15 @@
   --glass-bd:  rgba(255,255,255,0.10);
   --glass-bd2: rgba(255,255,255,0.16);
   /* Liquid Glass tokens */
-  --glass-blur: 24px;
-  --glass-blur-mobile: 18px;
-  --glass-blur-tile-mobile: 14px;
+  --glass-blur: 16px;
+  --glass-blur-mobile: 12px;
+  --glass-blur-tile-mobile: 10px;
   --glass-sheen: linear-gradient(135deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.04) 50%, transparent 100%);
   --glass-inner: inset 0 1px 0 rgba(255,255,255,0.22), inset 0 -1px 0 rgba(0,0,0,0.10);
   --t1: rgba(255,255,255,0.92);
-  --t2: rgba(255,255,255,0.70);
-  --t3: rgba(255,255,255,0.50);
-  --t4: rgba(255,255,255,0.35);
+  --t2: rgba(255,255,255,0.78);
+  --t3: rgba(255,255,255,0.62);
+  --t4: rgba(255,255,255,0.50);
   --up: #22c55e;
   --dn: #ef4444;
   /* Consistent radius scale */
@@ -451,9 +451,9 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   .stat-strip { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--tile-gap); margin-bottom: 20px; }
   .stat-tile {
     padding: 16px 14px; text-align: center;
-    background: rgba(255,255,255,0.11); border: 1px solid rgba(255,255,255,0.14);
-    border-radius: var(--r-md); backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    background: rgba(255,255,255,0.13); border: 1px solid rgba(255,255,255,0.14);
+    border-radius: var(--r-md); backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     transition: transform .25s, border-color .25s, box-shadow .25s;
     position: relative; overflow: hidden;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
@@ -466,8 +466,8 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
     z-index:0;
   }
   .stat-tile::after {
-    content:''; position:absolute; top:0; left:0; width:100%; height:45%;
-    background:linear-gradient(180deg,rgba(255,255,255,.06) 0%,transparent 100%);
+    content:''; position:absolute; bottom:0; left:0; width:100%; height:60%;
+    background:linear-gradient(0deg,rgba(0,0,0,0.10) 0%,transparent 100%);
     pointer-events:none; z-index:0;
   }
   .stat-tile:hover { transform:translateY(-4px); border-color:rgba(255,255,255,.22); box-shadow:0 12px 32px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(0,0,0,.10); }
@@ -589,15 +589,15 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
 
   /* ── GLASS CARD ─────────────────────────────────────────── */
   .gc {
-    background: rgba(255,255,255,0.11); backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
+    background: rgba(255,255,255,0.13); backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
     border: 1px solid rgba(255,255,255,0.14); border-radius: var(--r-md); padding: 24px;
     box-shadow: 0 6px 28px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.20), inset 0 -1px 0 rgba(0,0,0,.10);
     transition: border-color .3s, box-shadow .3s, transform .25s; position: relative; overflow: hidden;
     contain: layout style;
   }
   .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent); z-index:0; }
-  .gc::after  { content:''; position:absolute; top:0; left:0; width:100%; height:40%; background:linear-gradient(180deg,rgba(255,255,255,.05) 0%,transparent 100%); pointer-events:none; z-index:0; }
+  .gc::after  { content:''; position:absolute; bottom:0; left:0; width:100%; height:60%; background:linear-gradient(0deg,rgba(0,0,0,0.10) 0%,transparent 100%); pointer-events:none; z-index:0; }
   .gc:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.22); box-shadow:0 12px 36px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(0,0,0,.10); }
   .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; }
   .gc-title { font-family:inherit; font-size:.65rem; font-weight:600; color:var(--t2); letter-spacing:.04em; text-transform:uppercase; }
