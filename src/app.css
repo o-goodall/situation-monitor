@@ -40,6 +40,20 @@
   --ease-fast: 0.15s ease;
   --ease-med:  0.25s ease;
   --ease-slow: 0.4s ease;
+  /* Layout — consistent container strategy */
+  --container-max-w: 1440px;
+  --container-pad-x: 24px;
+  --container-pad-x-mobile: 14px;
+  /* Spacing scale (4px base unit) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -382,7 +396,7 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   }
 
   /* ── LAYOUT ──────────────────────────────────────────────── */
-  .section { max-width: 1440px; margin: 0 auto; padding: 48px 24px 0; min-height: 100vh; position: relative; overflow: clip; }
+  .section { max-width: var(--container-max-w); margin: 0 auto; padding: var(--sp-12) var(--container-pad-x) 0; min-height: 100vh; position: relative; overflow: clip; }
   /* Desktop scroll snap — align section start to viewport */
   @media (min-width:701px) {
     .section { scroll-snap-align: start; }
@@ -392,13 +406,13 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   .pg-container { margin-bottom: 20px; }
 
   .section-divider {
-    max-width:1440px; margin:48px auto 0;
+    max-width:var(--container-max-w); margin:48px auto 0;
     height:1px; background:rgba(255,255,255,0.06);
     position:relative;
   }
   @media (max-width:700px) {
     .section {
-      padding:20px 14px 0;
+      padding:20px var(--container-pad-x-mobile) 0;
       width:100%;
     }
     .section-header {
