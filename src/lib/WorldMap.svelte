@@ -87,6 +87,8 @@
   let countryPaths: D3Selection<SVGPathElement, GeoJSON.Feature, SVGGElement, unknown> | null = null; // D3 selection retained for live colour updates
 
   const MAX_MAJOR_EVENTS = 8;
+  /** Inner bright-core radius as a fraction of the outer ping radius (produces a subtle highlight dot) */
+  const PING_CORE_RATIO = 0.32;
 
   const EVENT_COLORS: Record<string, string> = {
     critical: '#ff2200',
@@ -200,12 +202,15 @@
   }
   let seenCountries = new Set<string>();
 
+  /** Default land fill for non-conflict countries — deep steel blue gives depth over the dark ocean */
+  const LAND_FILL_DEFAULT = '#1e3248';
+
   /** Returns the fill for a country based on Wikipedia conflict severity */
   function getCountryFillById(id: string): string {
     if (id === trendingIsoId) return 'rgba(255,20,20,0.55)'; // trending: strong red
     const wikiSev = wikiConflictCountryFills.get(id);
-    if (wikiSev) return WIKI_SEVERITY_FILLS[wikiSev] ?? '#ccc';
-    return '#ccc';
+    if (wikiSev) return WIKI_SEVERITY_FILLS[wikiSev] ?? LAND_FILL_DEFAULT;
+    return LAND_FILL_DEFAULT;
   }
 
   function showTip(e: MouseEvent, title: string, color: string, lines: string[] = []) {
@@ -405,6 +410,15 @@
         .attr('fill', '#0d1b2a')
         .attr('stroke', 'none');
 
+      // Sphere outline — crisp disc edge frame, drawn before land so it appears on ocean edges
+      mapGroup.append('path')
+        .datum({ type: 'Sphere' })
+        .attr('d', path as unknown as string)
+        .attr('fill', 'none')
+        .attr('stroke', 'rgba(0,200,255,0.20)')
+        .attr('stroke-width', 0.7)
+        .attr('pointer-events', 'none');
+
       // Countries — shaded by live threat level so severity is immediately visible
       mapGroup.selectAll<SVGPathElement, GeoJSON.Feature>('path.wm-country')
         .data(countries.features)
@@ -417,31 +431,31 @@
       // Retain selection so live refreshes can update fills in-place
       countryPaths = mapGroup.selectAll<SVGPathElement, GeoJSON.Feature>('path.wm-country');
 
-      // Country borders
+      // Country borders — muted white, crisp and subtle
       mapGroup.append('path')
         .datum(borders)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(0,200,255,0.35)')
+        .attr('stroke', 'rgba(255,255,255,0.10)')
         .attr('stroke-width', 0.4);
 
-      // Graticule
+      // Graticule — very subtle, doesn't compete with land/marker layers
       const grat = d3.geoGraticule().step([30, 30]);
       mapGroup.append('path')
         .datum(grat)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(0,200,255,0.12)')
+        .attr('stroke', 'rgba(0,200,255,0.07)')
         .attr('stroke-width', 0.3)
         .attr('stroke-dasharray', '2,2');
 
-      // Day/night terminator (approximate)
+      // Day/night terminator (approximate) — subtle, doesn't obscure land data
       const terminatorPts = calcTerminator();
       if (terminatorPts.length > 0) {
         mapGroup.append('path')
           .datum({ type: 'Polygon', coordinates: [terminatorPts] } as GeoJSON.Polygon)
           .attr('d', path as unknown as string)
-          .attr('fill', 'rgba(0,0,0,0.28)')
+          .attr('fill', 'rgba(0,0,0,0.18)')
           .attr('stroke', 'none');
       }
 
@@ -554,6 +568,10 @@
         .attr('fill', col).attr('fill-opacity', 0.85)
         .attr('stroke', '#F7931A').attr('stroke-width', 0.8).attr('stroke-opacity', 0.65)
         .attr('class', 'wm-ping-glow');
+
+      // Inner bright core — white highlight dot for high-DPI clarity
+      markerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', Math.max(0.8, r * PING_CORE_RATIO))
+        .attr('fill', 'rgba(255,255,255,0.82)').attr('pointer-events', 'none');
 
       // "New" badge — subtle circular dot in Bitcoin orange
       const isNew = ct.hasNew && !seenCountries.has(ct.country);
@@ -781,7 +799,8 @@
       <div class="wm-state wm-state--error">{mapError}</div>
     {/if}
 
-    <svg class="wm-svg"></svg>
+    <!-- aria-hidden: D3 map is decorative/visual; the ticker and modal convey the same data to screen readers -->
+    <svg class="wm-svg" class:wm-svg--loaded={!mapLoading} aria-hidden="true"></svg>
 
     {#if tooltipVisible && tooltipContent}
       <div class="wm-tooltip" style="left:{tooltipLeft}px;top:{tooltipTop}px;">
@@ -905,7 +924,12 @@
     border-radius: 0 0 10px 10px;
     overflow: hidden;
   }
-  .wm-svg { width: 100%; height: 100%; display: block; }
+  .wm-svg {
+    width: 100%; height: 100%; display: block;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+  }
+  .wm-svg--loaded { opacity: 1; }
 
   .wm-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -963,6 +987,9 @@
   .wm-leg-ts { font-size: .48rem; color: var(--t3); font-family: monospace; }
 
   :global(.wm-hit) { cursor: pointer; }
+  /* Country hover — subtle brightness lift, GPU-friendly filter, smooth 150ms transition */
+  :global(.wm-country) { transition: filter 150ms ease; }
+  :global(.wm-country:hover) { filter: brightness(1.4); }
   :global(.wm-poly-pulse) { animation: wm-poly-pulse 1.8s ease-in-out infinite; }
   @keyframes wm-poly-pulse {
     0%, 100% { opacity: .5; }
