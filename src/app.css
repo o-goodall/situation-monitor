@@ -442,6 +442,23 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
     .sig-body { flex-direction:row; align-items:center; gap:3px; }
     .sig-val  { display:none; }
     .sig-label { font-size:.55rem; }
+    /* ── MOBILE LAYOUT STABILITY (TailAdmin-polish) ──────────── */
+    /* Fixed min-heights prevent CLS — tiles load in final position.
+       110px = tile padding (14px×2) + price text (~21px) + label row (~14px) + sparkline clearance (52px) - rounding.
+       This ensures stat tiles never collapse below a readable size while data loads. */
+    .stat-tile { min-height:110px; contain:layout style paint; }
+    /* Restore contain for data-tooltip tiles (tooltip must overflow the tile bounds) */
+    .stat-tile[data-tooltip] { contain:style; overflow:visible; }
+    /* Reserve sparkline area (52px matches the sparkline chart height) so the tile
+       doesn't shift when the sparkline canvas mounts after data arrives. */
+    .tile-spark { min-height:52px; }
+    /* content-visibility defers render of below-fold signal cards; auto 200px gives
+       the browser a stable size estimate to use while they are off-screen. */
+    .btc-network-card,
+    .btc-hashrate-card { content-visibility:auto; contain-intrinsic-size:auto 200px; }
+    /* DCA card: 240px ≈ loaded-state height (header 36px + hero 80px + zone-bar 56px
+       + signals strip 40px + padding 32px) — pre-reserves space to prevent CLS on load. */
+    .gc--dca { min-height:240px; }
   }
   @media (max-width:600px) {
     .section-header { margin-bottom:14px; }
@@ -636,10 +653,15 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   .hashrate-legend { display:flex; gap:10px; margin-bottom:6px; }
   .hr-leg { font-size:.6rem; color:var(--c,#f7931a); font-weight:600; letter-spacing:.03em; opacity:.85; }
 
-  /* ── MOBILE: hide supplementary sections, limit intel stories ── */
+  /* ── MOBILE: compact signal tiles, portfolio summary ────────── */
   @media (max-width:768px) {
-    .btc-network-card,
-    .btc-hashrate-card { display:none; }
+    /* Network card: show on mobile — hide verbose block/mempool, keep fees + hashrate */
+    .btc-network-card .latest-block,
+    .btc-network-card .mempool-bar { display:none; }
+    .btc-network-card .met3 { margin-top:0; }
+    /* Hashrate card: compact fixed chart height on mobile */
+    .gc--hashrate .chart-container { flex:none; height:130px; min-height:130px; }
+    .gc--hashrate .hash-row { margin-top:12px; padding-top:10px; }
     /* Show BTC price chart on mobile — stable height using clamp to avoid nav overlap */
     .btc-chart-card {
       margin-top:10px;
