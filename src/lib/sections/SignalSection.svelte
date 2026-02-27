@@ -266,7 +266,7 @@
   <div class="signal-grid">
 
     <!-- DCA SIGNAL CARD — simplified -->
-    <div class="gc"
+    <div class="gc gc--dca"
       class:signal-card={dcaSecretMode}
       class:signal-zone--red={dcaSecretMode && dcaZoneGif.includes('red')}
       class:signal-zone--amber={dcaSecretMode && dcaZoneGif.includes('amber')}
