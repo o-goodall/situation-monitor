@@ -503,13 +503,30 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   .stat-tile--chart .price-pair, .stat-tile--chart .stat-l, .stat-tile--chart .stat-l-row { position: relative; z-index: 1; }
   .stat-tile--chart .stat-l-row { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3px; padding-bottom: 56px; }
 
-  /* Consistent tile header — top-left of stat tiles */
+  /* Consistent tile header — top-left of stat tiles, matches .gc-title */
   .tile-header {
     position: absolute; top: 8px; left: 10px; z-index: 2;
-    font-size: .58rem; font-weight: 500; color: var(--t3);
-    letter-spacing: .04em; line-height: 1;
+    font-family: inherit; font-size: .65rem; font-weight: 600; color: var(--t2);
+    letter-spacing: .04em; text-transform: uppercase; line-height: 1;
   }
-  :global(html.light) .tile-header { color: rgba(0,0,0,.38); }
+  :global(html.light) .tile-header { color: rgba(0,0,0,.60); }
+
+  /* Fix ghost tile: [data-tooltip]::after opacity:0 conflicts with .stat-tile::after gradient overlay.
+     Restore the gradient overlay visibility and suppress tooltip-related transitions on ::after. */
+  .stat-tile[data-tooltip]::after {
+    opacity: 1;
+    transition: none;
+    content: '';
+    bottom: 0; left: 0;
+    white-space: unset;
+    padding: 0;
+    border: none;
+    box-shadow: none;
+    background:
+      linear-gradient(90deg, rgba(255,255,255,0.04) 0%, transparent 14%, transparent 86%, rgba(255,255,255,0.04) 100%),
+      linear-gradient(0deg, rgba(0,0,0,0.08) 0%, transparent 60%);
+    border-radius: 0;
+  }
 
   /* BTC price pair — USD | Currency side by side */
   .price-pair { display:flex; align-items:baseline; gap:6px; flex-wrap:wrap; justify-content:center; margin-bottom:4px; position:relative; z-index:1; margin-top:8px; }
@@ -655,10 +672,8 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
 
   /* ── MOBILE: compact signal tiles, portfolio summary ────────── */
   @media (max-width:768px) {
-    /* Network card: show on mobile — hide verbose block/mempool, keep fees + hashrate */
-    .btc-network-card .latest-block,
-    .btc-network-card .mempool-bar { display:none; }
-    .btc-network-card .met3 { margin-top:0; }
+    /* Network card: hide entirely on mobile */
+    .btc-network-card { display:none; }
     /* Hashrate card: compact fixed chart height on mobile */
     .gc--hashrate .chart-container { flex:none; height:130px; min-height:130px; }
     .gc--hashrate .hash-row { margin-top:12px; padding-top:10px; }

@@ -70,6 +70,7 @@
   let tooltipVisible = false;
 
   let mapLoading = true;
+  let liveDataLoading = true;
   let mapError = '';
   let threatsUpdatedAt = '';
   let threats: CountryThreat[] = [];
@@ -634,6 +635,8 @@
     } catch (err) {
       console.error('WorldMap live data load failed', err);
       // Base map stays visible — don't set mapError
+    } finally {
+      liveDataLoading = false;
     }
   }
 
@@ -908,6 +911,24 @@
       </div>
     {:else if mapError}
       <div class="wm-state wm-state--error">{mapError}</div>
+    {/if}
+
+    <!-- Military scan overlay — shown after base map loads until live threat data arrives -->
+    {#if !mapLoading && liveDataLoading}
+      <div class="wm-scan-overlay" aria-hidden="true">
+        <div class="wm-scan-corner wm-scan-corner--tl"></div>
+        <div class="wm-scan-corner wm-scan-corner--tr"></div>
+        <div class="wm-scan-corner wm-scan-corner--bl"></div>
+        <div class="wm-scan-corner wm-scan-corner--br"></div>
+        <div class="wm-scan-sweep"></div>
+        <div class="wm-scan-hud">
+          <div class="wm-scan-hud-title">GLOBAL THREAT ASSESSMENT</div>
+          <div class="wm-scan-hud-status">
+            <span class="wm-scan-dot"></span>ACQUIRING INTEL…
+          </div>
+        </div>
+        <div class="wm-scan-grid"></div>
+      </div>
     {/if}
 
     <!-- aria-hidden: D3 map is decorative/visual; the ticker and modal convey the same data to screen readers -->
@@ -1370,5 +1391,91 @@
   :global(.light-mode) .wm-modal-story:hover { background: rgba(0,0,0,.07); border-color: rgba(0,0,0,.14); }
   :global(.light-mode) .wm-modal-story-title { color: rgba(0,0,0,.85); }
   :global(.light-mode) .wm-modal-story-summary { color: rgba(0,0,0,.5); }
+
+  /* ── MILITARY SCAN OVERLAY ─────────────────────────────── */
+  .wm-scan-overlay {
+    position: absolute; inset: 0; z-index: 4;
+    pointer-events: none;
+    overflow: hidden;
+  }
+
+  /* Scrolling scanline sweep — top to bottom */
+  .wm-scan-sweep {
+    position: absolute; left: 0; right: 0; top: -2px;
+    height: 3px;
+    background: linear-gradient(180deg, transparent 0%, rgba(247,147,26,0.6) 40%, rgba(247,147,26,0.9) 50%, rgba(247,147,26,0.6) 60%, transparent 100%);
+    box-shadow: 0 0 18px 6px rgba(247,147,26,0.25), 0 0 40px 12px rgba(247,147,26,0.10);
+    animation: wm-scan-sweep 2.2s cubic-bezier(0.45,0,0.55,1) infinite;
+  }
+  @keyframes wm-scan-sweep {
+    0%   { top: -3px; opacity: 0; }
+    5%   { opacity: 1; }
+    95%  { opacity: 0.7; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  /* Subtle scanline grid — horizontal CRT lines */
+  .wm-scan-grid {
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(
+      180deg,
+      transparent 0px,
+      transparent 3px,
+      rgba(0,0,0,0.08) 3px,
+      rgba(0,0,0,0.08) 4px
+    );
+    animation: wm-grid-fade 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes wm-grid-fade {
+    from { opacity: 0.4; }
+    to   { opacity: 0.15; }
+  }
+
+  /* Corner bracket decorations — HUD style */
+  .wm-scan-corner {
+    position: absolute; width: 18px; height: 18px;
+    border-color: rgba(247,147,26,0.65); border-style: solid; border-width: 0;
+    animation: wm-corner-pulse 1.6s ease-in-out infinite;
+  }
+  .wm-scan-corner--tl { top: 8px; left: 8px;  border-top-width: 2px; border-left-width: 2px; }
+  .wm-scan-corner--tr { top: 8px; right: 8px; border-top-width: 2px; border-right-width: 2px; }
+  .wm-scan-corner--bl { bottom: 8px; left: 8px;  border-bottom-width: 2px; border-left-width: 2px; }
+  .wm-scan-corner--br { bottom: 8px; right: 8px; border-bottom-width: 2px; border-right-width: 2px; }
+  @keyframes wm-corner-pulse {
+    0%, 100% { opacity: 0.65; }
+    50%       { opacity: 1; box-shadow: 0 0 8px rgba(247,147,26,0.5); }
+  }
+
+  /* HUD status label — bottom-centre */
+  .wm-scan-hud {
+    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+  }
+  .wm-scan-hud-title {
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: .5rem; font-weight: 700; letter-spacing: .16em;
+    color: rgba(247,147,26,0.55); text-transform: uppercase; white-space: nowrap;
+  }
+  .wm-scan-hud-status {
+    display: flex; align-items: center; gap: 6px;
+    font-family: monospace, 'Courier New', system-ui;
+    font-size: .58rem; font-weight: 600; letter-spacing: .10em;
+    color: rgba(247,147,26,0.85); text-transform: uppercase; white-space: nowrap;
+    animation: wm-status-blink 1.1s ease-in-out infinite;
+  }
+  @keyframes wm-status-blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+  }
+  .wm-scan-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #f7931a;
+    box-shadow: 0 0 8px rgba(247,147,26,0.8);
+    animation: wm-scan-dot-pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes wm-scan-dot-pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.75); }
+  }
 
 </style>
