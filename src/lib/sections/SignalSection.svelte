@@ -168,7 +168,9 @@
           {/if}
         </span>
         {#if btcDayChangePct !== null}
-          <span class="price-day-change" style="color:{btcDayChangePct >= 0 ? 'var(--up)' : 'var(--dn)'};">{btcDayChangePct >= 0 ? '+' : ''}{btcDayChangePct.toFixed(2)}%</span>
+          <span class="price-day-change" class:price-day-change--up={btcDayChangePct >= 0} class:price-day-change--dn={btcDayChangePct < 0}>
+            {btcDayChangePct >= 0 ? '↑' : '↓'} {btcDayChangePct >= 0 ? '+' : ''}{btcDayChangePct.toFixed(2)}%
+          </span>
         {/if}
       </div>
     </div>

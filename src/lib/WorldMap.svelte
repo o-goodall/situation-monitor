@@ -87,6 +87,8 @@
   let countryPaths: D3Selection<SVGPathElement, GeoJSON.Feature, SVGGElement, unknown> | null = null; // D3 selection retained for live colour updates
 
   const MAX_MAJOR_EVENTS = 8;
+  /** Inner bright-core radius as a fraction of the outer ping radius (produces a subtle highlight dot) */
+  const PING_CORE_RATIO = 0.32;
 
   const EVENT_COLORS: Record<string, string> = {
     critical: '#ff2200',
@@ -200,12 +202,15 @@
   }
   let seenCountries = new Set<string>();
 
+  /** Default land fill for non-conflict countries — deep steel blue gives depth over the dark ocean */
+  const LAND_FILL_DEFAULT = '#1e3248';
+
   /** Returns the fill for a country based on Wikipedia conflict severity */
   function getCountryFillById(id: string): string {
     if (id === trendingIsoId) return 'rgba(255,20,20,0.55)'; // trending: strong red
     const wikiSev = wikiConflictCountryFills.get(id);
-    if (wikiSev) return WIKI_SEVERITY_FILLS[wikiSev] ?? '#ccc';
-    return '#ccc';
+    if (wikiSev) return WIKI_SEVERITY_FILLS[wikiSev] ?? LAND_FILL_DEFAULT;
+    return LAND_FILL_DEFAULT;
   }
 
   function showTip(e: MouseEvent, title: string, color: string, lines: string[] = []) {
@@ -405,6 +410,15 @@
         .attr('fill', '#0d1b2a')
         .attr('stroke', 'none');
 
+      // Sphere outline — crisp disc edge frame, drawn before land so it appears on ocean edges
+      mapGroup.append('path')
+        .datum({ type: 'Sphere' })
+        .attr('d', path as unknown as string)
+        .attr('fill', 'none')
+        .attr('stroke', 'rgba(0,200,255,0.20)')
+        .attr('stroke-width', 0.7)
+        .attr('pointer-events', 'none');
+
       // Countries — shaded by live threat level so severity is immediately visible
       mapGroup.selectAll<SVGPathElement, GeoJSON.Feature>('path.wm-country')
         .data(countries.features)
@@ -417,31 +431,31 @@
       // Retain selection so live refreshes can update fills in-place
       countryPaths = mapGroup.selectAll<SVGPathElement, GeoJSON.Feature>('path.wm-country');
 
-      // Country borders
+      // Country borders — muted white, crisp and subtle
       mapGroup.append('path')
         .datum(borders)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(0,200,255,0.35)')
-        .attr('stroke-width', 0.4);
+        .attr('stroke', 'rgba(255,255,255,0.18)')
+        .attr('stroke-width', 0.5);
 
-      // Graticule
+      // Graticule — very subtle, doesn't compete with land/marker layers
       const grat = d3.geoGraticule().step([30, 30]);
       mapGroup.append('path')
         .datum(grat)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(0,200,255,0.12)')
+        .attr('stroke', 'rgba(0,200,255,0.07)')
         .attr('stroke-width', 0.3)
         .attr('stroke-dasharray', '2,2');
 
-      // Day/night terminator (approximate)
+      // Day/night terminator (approximate) — subtle, doesn't obscure land data
       const terminatorPts = calcTerminator();
       if (terminatorPts.length > 0) {
         mapGroup.append('path')
           .datum({ type: 'Polygon', coordinates: [terminatorPts] } as GeoJSON.Polygon)
           .attr('d', path as unknown as string)
-          .attr('fill', 'rgba(0,0,0,0.28)')
+          .attr('fill', 'rgba(0,0,0,0.18)')
           .attr('stroke', 'none');
       }
 
@@ -554,6 +568,10 @@
         .attr('fill', col).attr('fill-opacity', 0.85)
         .attr('stroke', '#F7931A').attr('stroke-width', 0.8).attr('stroke-opacity', 0.65)
         .attr('class', 'wm-ping-glow');
+
+      // Inner bright core — white highlight dot for high-DPI clarity
+      markerGroup.append('circle').attr('cx', x).attr('cy', y).attr('r', Math.max(0.8, r * PING_CORE_RATIO))
+        .attr('fill', 'rgba(255,255,255,0.82)').attr('pointer-events', 'none');
 
       // "New" badge — subtle circular dot in Bitcoin orange
       const isNew = ct.hasNew && !seenCountries.has(ct.country);
@@ -781,7 +799,8 @@
       <div class="wm-state wm-state--error">{mapError}</div>
     {/if}
 
-    <svg class="wm-svg"></svg>
+    <!-- aria-hidden: D3 map is decorative/visual; the ticker and modal convey the same data to screen readers -->
+    <svg class="wm-svg" class:wm-svg--loaded={!mapLoading} aria-hidden="true"></svg>
 
     {#if tooltipVisible && tooltipContent}
       <div class="wm-tooltip" style="left:{tooltipLeft}px;top:{tooltipTop}px;">
@@ -899,26 +918,31 @@
   .wm-wrap {
     position: relative;
     width: 100%;
-    /* 300px = section top padding (48px) + section header (~80px) + tile padding (40px) + tile header (~60px) + footer gap (72px) */
-    height: calc(100vh - 340px);
-    min-height: 420px;
+    /* clamp: at least 380px, grows with viewport, capped at 680px */
+    height: clamp(380px, calc(100vh - 320px), 680px);
     background: #0d1b2a;
     border-radius: 0 0 10px 10px;
     overflow: hidden;
   }
-  .wm-svg { width: 100%; height: 100%; display: block; }
+  .wm-svg {
+    width: 100%; height: 100%; display: block;
+    opacity: 0;
+    transition: opacity 0.45s ease;
+  }
+  .wm-svg--loaded { opacity: 1; }
 
   .wm-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 12px; z-index: 5;
+    align-items: center; justify-content: center; gap: 14px; z-index: 5;
     background: #0d1b2a;
   }
   .wm-state--error { color: #f43f5e; font-size: .75rem; }
-  .wm-state-text { font-size: .72rem; color: var(--t3); }
+  .wm-state-text { font-size: .72rem; color: rgba(0,200,255,0.5); letter-spacing: .06em; text-transform: uppercase; font-family: monospace; }
   .wm-spinner {
-    width: 22px; height: 22px; border-radius: 50%;
-    border: 2px solid rgba(247,147,26,.2); border-top-color: var(--orange);
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 2px solid rgba(0,200,255,.12); border-top-color: rgba(0,200,255,.7);
     animation: wm-spin .9s linear infinite;
+    box-shadow: 0 0 12px rgba(0,200,255,.15);
   }
   @keyframes wm-spin { to { transform: rotate(360deg); } }
 
@@ -944,25 +968,28 @@
 
   .wm-legend {
     position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column;
-    gap: 3px; background: rgba(8,18,32,.88); padding: 6px 9px; border-radius: 6px;
-    border: 1px solid rgba(0,200,255,0.18);
+    gap: 4px; background: rgba(8,18,32,.92); padding: 7px 10px; border-radius: 6px;
+    border: 1px solid rgba(0,200,255,0.22);
     cursor: pointer; text-align: left;
     transition: padding .25s ease, gap .25s ease;
     overflow: hidden;
   }
-  .wm-legend--min { gap: 0; padding: 5px 9px; }
-  .wm-leg-expand { font-size: .55rem; color: rgba(0,200,255,0.5); margin-left: 4px; }
-  .wm-leg-title { font-size: .52rem; color: var(--t3); letter-spacing: .08em; margin-bottom: 2px; display: flex; align-items: center; }
+  .wm-legend--min { gap: 0; padding: 5px 10px; }
+  .wm-leg-expand { font-size: .55rem; color: rgba(0,200,255,0.55); margin-left: 4px; }
+  .wm-leg-title { font-size: .54rem; font-weight: 700; color: rgba(255,255,255,.75); letter-spacing: .10em; margin-bottom: 2px; display: flex; align-items: center; }
   .wm-legend--min .wm-leg-title { margin-bottom: 0; }
-  .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .56rem; color: #8ab; font-family: monospace; }
+  .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .58rem; color: rgba(255,255,255,.70); font-family: monospace; }
   .wm-leg-row--sub { opacity: .7; }
-  .wm-leg-sub { font-size: .5rem; }
+  .wm-leg-sub { font-size: .52rem; }
   .wm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .wm-dot--sq { border-radius: 2px; }
-  .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.15); margin: 3px 0; }
-  .wm-leg-ts { font-size: .48rem; color: var(--t3); font-family: monospace; }
+  .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.18); margin: 3px 0; }
+  .wm-leg-ts { font-size: .50rem; color: rgba(255,255,255,.45); font-family: monospace; }
 
   :global(.wm-hit) { cursor: pointer; }
+  /* Country hover — subtle brightness lift, GPU-friendly filter, smooth 150ms transition */
+  :global(.wm-country) { transition: filter 150ms ease; }
+  :global(.wm-country:hover) { filter: brightness(1.4); }
   :global(.wm-poly-pulse) { animation: wm-poly-pulse 1.8s ease-in-out infinite; }
   @keyframes wm-poly-pulse {
     0%, 100% { opacity: .5; }
@@ -1063,7 +1090,7 @@
     max-width: 320px; overflow: hidden; text-overflow: ellipsis;
   }
   .wm-story-age {
-    font-size: .5rem; color: rgba(255,255,255,.3); font-family: monospace;
+    font-size: .5rem; color: rgba(255,255,255,.45); font-family: monospace;
     flex-shrink: 0; white-space: nowrap;
   }
   .wm-story-sep {
@@ -1072,9 +1099,7 @@
 
   @media (max-width: 768px) {
     .wm-wrap {
-      height: calc(100svh - 270px);
-      min-height: 260px;
-      max-height: 600px;
+      height: clamp(260px, calc(100svh - 270px), 580px);
       border-radius: 0 0 10px 10px;
     }
     .wm-story-title { max-width: 200px; }
@@ -1151,7 +1176,7 @@
 
   .wm-modal-count {
     padding: 10px 20px 4px; margin: 0;
-    font-size: .65rem; color: rgba(255,255,255,.35); font-family: monospace;
+    font-size: .65rem; color: rgba(255,255,255,.50); font-family: monospace;
   }
   .wm-modal-empty {
     padding: 24px 20px; margin: 0;
@@ -1183,7 +1208,7 @@
     color: rgba(255,255,255,.88); line-height: 1.4;
   }
   .wm-modal-story-summary {
-    margin: 0; font-size: .72rem; color: rgba(255,255,255,.45); line-height: 1.5;
+    margin: 0; font-size: .72rem; color: rgba(255,255,255,.58); line-height: 1.5;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
 

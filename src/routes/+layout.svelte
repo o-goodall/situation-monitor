@@ -7,6 +7,7 @@
   import SettingsPersonalizationToggle from '$lib/SettingsPersonalizationToggle.svelte';
   import WelcomeScreen from '$lib/WelcomeScreen.svelte';
   import type { FeedCategory } from '$lib/settings';
+  import { FOCUSABLE_SEL } from '$lib/focusable';
   import {
     settings, showSettings, saved, time, lightMode, activeSection,
     btcPrice, prevPrice, priceFlash, priceHistory, btcBlock, btcFees,
@@ -26,6 +27,8 @@
   let intervals: ReturnType<typeof setInterval>[] = [];
   let scrolled = false;
   let mobileMenuOpen = false;
+  let mobileMenuPanelEl: HTMLDivElement | null = null;
+  let mobileMenuOpenerEl: HTMLElement | null = null;
   let sectionObserver: IntersectionObserver | null = null;
   let showDcaFormula = false;
   let pendingScrollTarget: string | null = null;
@@ -363,8 +366,38 @@
       }
     });
   }
-  function toggleMobileMenu() { mobileMenuOpen = !mobileMenuOpen; if (mobileMenuOpen) $showSettings = false; }
-  function closeMobileMenu() { mobileMenuOpen = false; }
+  function toggleMobileMenu() {
+    if (mobileMenuOpen) {
+      mobileMenuOpen = false;
+    } else {
+      mobileMenuOpenerEl = document.activeElement as HTMLElement | null;
+      mobileMenuOpen = true;
+      $showSettings = false;
+      requestAnimationFrame(() => {
+        const first = mobileMenuPanelEl?.querySelector<HTMLElement>(MOBILE_MENU_FOCUSABLE);
+        first?.focus();
+      });
+    }
+  }
+  function closeMobileMenu() {
+    mobileMenuOpen = false;
+    mobileMenuOpenerEl?.focus();
+    mobileMenuOpenerEl = null;
+  }
+
+  const MOBILE_MENU_FOCUSABLE = FOCUSABLE_SEL;
+
+  function handleMobileMenuKeydown(e: KeyboardEvent) {
+    if (!mobileMenuOpen || !mobileMenuPanelEl) return;
+    if (e.key === 'Escape') { e.preventDefault(); closeMobileMenu(); return; }
+    if (e.key === 'Tab') {
+      const items = [...mobileMenuPanelEl.querySelectorAll<HTMLElement>(MOBILE_MENU_FOCUSABLE)];
+      if (!items.length) return;
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  }
 
   // Apply light/dark mode to <html>
   $: if (typeof document !== 'undefined') {
@@ -685,6 +718,8 @@
   });
 </script>
 
+<svelte:window on:keydown={handleMobileMenuKeydown} />
+
 <canvas id="net-canvas" aria-hidden="true"></canvas>
 
 <!-- ══ WELCOME SCREEN (mobile only) ════════════════════════════ -->
@@ -898,7 +933,7 @@
   <!-- svelte-ignore a11y-click-events-have-key-events -->
   <!-- svelte-ignore a11y-no-static-element-interactions -->
   <div class="mobile-menu-backdrop" on:click={closeMobileMenu}></div>
-  <div class="mobile-menu-panel">
+  <div class="mobile-menu-panel" bind:this={mobileMenuPanelEl}>
     <!-- Appearance row: light/dark toggle -->
     <div class="mob-appearance-row">
       <span class="mob-appearance-label">Appearance</span>

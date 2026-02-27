@@ -1,10 +1,7 @@
 <script lang="ts">
   import { markets, marketsUpdated, newsItems } from '$lib/store';
   import WorldMap from '$lib/WorldMap.svelte';
-  import { fade, scale } from 'svelte/transition';
-  import { backOut } from 'svelte/easing';
-  import { browser } from '$app/environment';
-  import { onDestroy } from 'svelte';
+  import Modal from '$lib/components/Modal.svelte';
 
   // ── MODAL STATE ──────────────────────────────────────────────
   let openModal: 'news' | 'polymarket' | null = null;
@@ -15,10 +12,6 @@
 
   $: if (openModal === 'news') newsLoaded = true;
   $: if (openModal === 'polymarket') polyLoaded = true;
-
-  // Prevent body scroll while modal is open
-  $: if (browser) document.body.style.overflow = openModal !== null ? 'hidden' : '';
-  onDestroy(() => { if (browser) document.body.style.overflow = ''; });
 
   function handleTileClick(tile: 'news' | 'polymarket', e: MouseEvent) {
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -35,17 +28,6 @@
   }
 
   function closeModal() { openModal = null; }
-
-  function handleBackdropClick(e: MouseEvent) {
-    if (e.target === e.currentTarget) closeModal();
-  }
-
-  function handleKeydown(e: KeyboardEvent) {
-    if (e.key === 'Escape' && openModal !== null) {
-      e.preventDefault();
-      closeModal();
-    }
-  }
 
   const INTEL_TILE_LIMIT = 12;
 
@@ -67,8 +49,6 @@
   const ago = (d:string) => {try{const m=Math.floor((Date.now()-new Date(d).getTime())/60000);return m<60?`${m}m`:m<1440?`${Math.floor(m/60)}h`:`${Math.floor(m/1440)}d`;}catch{return '';}};
   const pc  = (p:number) => p>=70?'var(--up)':p>=40?'var(--orange)':'var(--dn)';
 </script>
-
-<svelte:window on:keydown={handleKeydown} />
 
 <section id="intel" class="section" aria-label="Intel">
   <div class="section-header">
@@ -93,24 +73,13 @@
   </div>
 
   <!-- ── TILE MODALS ── -->
-  {#if openModal !== null}
-    <!-- svelte-ignore a11y-click-events-have-key-events -->
-    <!-- svelte-ignore a11y-no-static-element-interactions -->
-    <div
-      class="tile-modal-backdrop"
-      on:click={handleBackdropClick}
-      transition:fade={{ duration: 180 }}
-    >
-      <div
-        class="gc tile-modal"
-        style="transform-origin: {modalOriginX} {modalOriginY};"
-        role="dialog"
-        aria-modal="true"
-        aria-label={openModal === 'news' ? 'News Feed' : 'Poly Market'}
-        transition:scale={{ duration: 320, start: 0.78, easing: backOut }}
-      >
-        <button class="tile-modal-close" on:click={closeModal} aria-label="Close modal">✕</button>
-
+  <Modal
+    open={openModal !== null}
+    label={openModal === 'news' ? 'News Feed' : 'Geopolitics'}
+    originX={modalOriginX}
+    originY={modalOriginY}
+    on:close={closeModal}
+  >
         <!-- ── NEWS MODAL CONTENT (lazy) ── -->
         {#if openModal === 'news' && newsLoaded}
           <div class="gc-head" style="margin-bottom:16px;">
@@ -199,8 +168,6 @@
           {/if}
         {/if}
 
-      </div>
-    </div>
-  {/if}
+  </Modal>
 
 </section>
