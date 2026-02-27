@@ -54,6 +54,9 @@
   --sp-8: 32px;
   --sp-10: 40px;
   --sp-12: 48px;
+  /* Grid / tile gap — one token used by every tile grid */
+  --tile-gap: 16px;
+  --tile-gap-mobile: 8px;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -180,15 +183,12 @@ body::after {
 /* ══ SECTION LABEL ═════════════════════════════════════ */
 .sect-title {
   font-family: inherit;
-  font-size: 16px; font-weight: 600;
+  font-size: 17px; font-weight: 600;
   color: var(--t1);
-  letter-spacing: -0.01em;
-  position: relative; padding-bottom: 10px;
-}
-.sect-title::after {
-  content: ''; position: absolute; bottom: 0; left: 0;
-  width: 24px; height: 2px;
-  background: var(--orange);
+  letter-spacing: -0.015em;
+  line-height: 1;
+  padding-left: 10px;
+  border-left: 2px solid var(--orange);
 }
 
 /* ══ SKIP LINK ══════════════════════════════════════════ */
@@ -315,6 +315,7 @@ html.light .card {
 }
 html.light .card:hover { border-color: rgba(247,147,26,.2); box-shadow: 0 8px 28px rgba(0,0,0,.10); }
 html.light .section-divider { background: rgba(0,0,0,.08); }
+html.light .section-header { border-bottom-color: rgba(0,0,0,.07); }
 html.light .sect-title { color: #111; }
 html.light h1, html.light h2, html.light h3, html.light h4, html.light h5, html.light h6 { color: #111; }
 html.light .btn-ghost { color:rgba(0,0,0,.5); border-color:rgba(0,0,0,.1); background:rgba(0,0,0,.02); }
@@ -402,7 +403,11 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
     .section { scroll-snap-align: start; }
   }
   .section::before { content: ''; position: absolute; inset: -20% 0; z-index: -1; background: radial-gradient(ellipse at 50% 30%, rgba(247,147,26,.04) 0%, transparent 70%); transform: translateY(calc(var(--section-parallax, 0) * 1px)); will-change: transform; pointer-events: none; }
-  .section-header { display: flex; align-items: center; gap: 16px; margin-bottom: 28px; flex-wrap: wrap; }
+  .section-header {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding-bottom: 16px; margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
   .pg-container { margin-bottom: 20px; }
 
   .section-divider {
@@ -416,7 +421,7 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
       width:100%;
     }
     .section-header {
-      margin-bottom:16px;
+      padding-bottom:10px; margin-bottom:12px;
     }
     .section-divider { margin-top:16px; }
     /* Signal and Portfolio: fixed viewport height, internal scroll for overflow */
@@ -425,10 +430,10 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
     /* Intel: allow scrolling with clearance for bottom nav */
     #intel     { padding-bottom:calc(var(--bottom-nav-h) + env(safe-area-inset-bottom, 0px) + 16px); }
     /* Uniform tile gap across all section grids on mobile */
-    .port-grid   { gap:8px; }
-    .intel-grid  { gap:8px; }
-    .signal-grid { gap:8px; }
-    .stat-strip  { margin-bottom:8px; }
+    .port-grid   { gap:var(--tile-gap-mobile); }
+    .intel-grid  { gap:var(--tile-gap-mobile); }
+    .signal-grid { gap:var(--tile-gap-mobile); }
+    .stat-strip  { gap:var(--tile-gap-mobile); margin-bottom:8px; }
     /* Hide Connect Ghostfolio tile on mobile when no token is configured */
     .gc--no-token { display:none; }
     /* DCA signal indicators: one clean horizontal line */
@@ -443,7 +448,7 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   }
 
   /* ── STAT STRIP ─────────────────────────────────────────── */
-  .stat-strip { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .stat-strip { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--tile-gap); margin-bottom: 20px; }
   .stat-tile {
     padding: 16px 14px; text-align: center;
     background: rgba(255,255,255,0.11); border: 1px solid rgba(255,255,255,0.14);
@@ -453,6 +458,7 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
     position: relative; overflow: hidden;
     display: flex; flex-direction: column; justify-content: center; align-items: center;
     box-shadow: 0 6px 24px rgba(0,0,0,.32), inset 0 1px 0 rgba(255,255,255,.22), inset 0 -1px 0 rgba(0,0,0,.10);
+    contain: layout style;
   }
   .stat-tile::before {
     content:''; position:absolute; top:0; left:0; right:0; height:1px;
@@ -527,7 +533,7 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   @media (max-width:800px) { .stat-strip{ grid-template-columns:repeat(3,1fr); } }
   @media (max-width:500px) {
     /* Two-column stat strip: BTC price (stat-tile--wide) spans full width, sats + halving side by side */
-    .stat-strip { grid-template-columns:1fr 1fr; gap:8px; }
+    .stat-strip { grid-template-columns:1fr 1fr; gap:var(--tile-gap-mobile); }
     .stat-tile--wide { grid-column:span 2; } /* spans both columns to fill the row */
     .stat-n { font-size:1.25rem; }
     .stat-tile { padding:14px 12px; }
@@ -577,9 +583,9 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   :global(html.light) .comp-item { color:rgba(0,0,0,.5); }
 
   /* ── SIGNAL GRID ────────────────────────────────────────── */
-  .signal-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+  .signal-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:var(--tile-gap); }
   @media (max-width:1100px) { .signal-grid{grid-template-columns:1fr 1fr;} }
-  @media (max-width:768px)  { .signal-grid{grid-template-columns:1fr; gap:10px;} }
+  @media (max-width:768px)  { .signal-grid{grid-template-columns:1fr; gap:var(--tile-gap-mobile);} }
 
   /* ── GLASS CARD ─────────────────────────────────────────── */
   .gc {
@@ -588,12 +594,13 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
     border: 1px solid rgba(255,255,255,0.14); border-radius: var(--r-md); padding: 24px;
     box-shadow: 0 6px 28px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.20), inset 0 -1px 0 rgba(0,0,0,.10);
     transition: border-color .3s, box-shadow .3s, transform .25s; position: relative; overflow: hidden;
+    contain: layout style;
   }
   .gc::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(255,255,255,.45),transparent); z-index:0; }
   .gc::after  { content:''; position:absolute; top:0; left:0; width:100%; height:40%; background:linear-gradient(180deg,rgba(255,255,255,.05) 0%,transparent 100%); pointer-events:none; z-index:0; }
   .gc:hover { transform:translateY(-2px); border-color:rgba(255,255,255,.22); box-shadow:0 12px 36px rgba(0,0,0,.42), inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(0,0,0,.10); }
   .gc-head { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; gap:12px; }
-  .gc-title { font-family:inherit; font-size:.58rem; font-weight:500; color:var(--t3); letter-spacing:.04em; }
+  .gc-title { font-family:inherit; font-size:.65rem; font-weight:600; color:var(--t2); letter-spacing:.04em; text-transform:uppercase; }
   @media (max-width:600px) { .gc { padding:16px 14px; border-radius:var(--r-md); } }
   /* Reduce blur on mobile for better paint performance */
   @media (max-width:768px) {
@@ -612,14 +619,13 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   @media (max-width:768px) {
     .btc-network-card,
     .btc-hashrate-card { display:none; }
-    /* Show BTC price chart on mobile — constrained to avoid bottom nav overlap */
+    /* Show BTC price chart on mobile — stable height using clamp to avoid nav overlap */
     .btc-chart-card {
       margin-top:10px;
       display:flex; flex-direction:column;
-      min-height: calc(100svh - 500px);
-      max-height: calc(100svh - var(--bottom-nav-h) - env(safe-area-inset-bottom, 0px) - 200px);
+      height: clamp(180px, calc(100svh - var(--bottom-nav-h, 72px) - env(safe-area-inset-bottom, 0px) - 220px), 340px);
     }
-    .btc-chart-card .chart-container { flex:1; min-height:150px; height:auto; }
+    .btc-chart-card .chart-container { flex:1; min-height:0; height:auto; }
     :global(.btc-chart-card .cc-wrap) { height:100%; }
     .dca-hero { padding:20px 0 12px; }
     /* Portfolio: hide detailed tiles, show merged summary only */
@@ -951,7 +957,7 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   @media (max-width:500px) { .scen-grid { grid-template-columns:repeat(2,1fr); } }
 
   /* ── PORTFOLIO GRID ─────────────────────────────────────── */
-  .port-grid { display:grid; grid-template-columns:1fr 1.6fr; gap:14px; }
+  .port-grid { display:grid; grid-template-columns:1fr 1.6fr; gap:var(--tile-gap); }
   @media (max-width:1000px) { .port-grid{grid-template-columns:1fr;} }
 
   .asset-panels { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:4px; }
@@ -1170,7 +1176,7 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   :global(html.light) .pm-urgent-tag { background:rgba(180,110,0,.08); border-color:rgba(180,110,0,.25); color:#946000; }
 
   /* ── INTEL GRID ─────────────────────────────────────────── */
-  .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  .intel-grid { display:grid; grid-template-columns:1fr 1fr; gap:var(--tile-gap); }
   @media (max-width:900px) { .intel-grid{grid-template-columns:1fr;} }
   @media (max-width:700px) {
     .intel-grid .gc { overflow:hidden; padding:12px 10px; }

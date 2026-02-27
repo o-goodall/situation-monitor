@@ -899,9 +899,8 @@
   .wm-wrap {
     position: relative;
     width: 100%;
-    /* 300px = section top padding (48px) + section header (~80px) + tile padding (40px) + tile header (~60px) + footer gap (72px) */
-    height: calc(100vh - 340px);
-    min-height: 420px;
+    /* clamp: at least 380px, grows with viewport, capped at 680px */
+    height: clamp(380px, calc(100vh - 320px), 680px);
     background: #0d1b2a;
     border-radius: 0 0 10px 10px;
     overflow: hidden;
@@ -910,15 +909,16 @@
 
   .wm-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
-    align-items: center; justify-content: center; gap: 12px; z-index: 5;
+    align-items: center; justify-content: center; gap: 14px; z-index: 5;
     background: #0d1b2a;
   }
   .wm-state--error { color: #f43f5e; font-size: .75rem; }
-  .wm-state-text { font-size: .72rem; color: var(--t3); }
+  .wm-state-text { font-size: .72rem; color: rgba(0,200,255,0.5); letter-spacing: .06em; text-transform: uppercase; font-family: monospace; }
   .wm-spinner {
-    width: 22px; height: 22px; border-radius: 50%;
-    border: 2px solid rgba(247,147,26,.2); border-top-color: var(--orange);
+    width: 32px; height: 32px; border-radius: 50%;
+    border: 2px solid rgba(0,200,255,.12); border-top-color: rgba(0,200,255,.7);
     animation: wm-spin .9s linear infinite;
+    box-shadow: 0 0 12px rgba(0,200,255,.15);
   }
   @keyframes wm-spin { to { transform: rotate(360deg); } }
 
@@ -1072,9 +1072,7 @@
 
   @media (max-width: 768px) {
     .wm-wrap {
-      height: calc(100svh - 270px);
-      min-height: 260px;
-      max-height: 600px;
+      height: clamp(260px, calc(100svh - 270px), 580px);
       border-radius: 0 0 10px 10px;
     }
     .wm-story-title { max-width: 200px; }
