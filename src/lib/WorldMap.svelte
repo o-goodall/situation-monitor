@@ -436,8 +436,8 @@
         .datum(borders)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(255,255,255,0.10)')
-        .attr('stroke-width', 0.4);
+        .attr('stroke', 'rgba(255,255,255,0.18)')
+        .attr('stroke-width', 0.5);
 
       // Graticule — very subtle, doesn't compete with land/marker layers
       const grat = d3.geoGraticule().step([30, 30]);
@@ -968,23 +968,23 @@
 
   .wm-legend {
     position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column;
-    gap: 3px; background: rgba(8,18,32,.88); padding: 6px 9px; border-radius: 6px;
-    border: 1px solid rgba(0,200,255,0.18);
+    gap: 4px; background: rgba(8,18,32,.92); padding: 7px 10px; border-radius: 6px;
+    border: 1px solid rgba(0,200,255,0.22);
     cursor: pointer; text-align: left;
     transition: padding .25s ease, gap .25s ease;
     overflow: hidden;
   }
-  .wm-legend--min { gap: 0; padding: 5px 9px; }
-  .wm-leg-expand { font-size: .55rem; color: rgba(0,200,255,0.5); margin-left: 4px; }
-  .wm-leg-title { font-size: .52rem; color: var(--t3); letter-spacing: .08em; margin-bottom: 2px; display: flex; align-items: center; }
+  .wm-legend--min { gap: 0; padding: 5px 10px; }
+  .wm-leg-expand { font-size: .55rem; color: rgba(0,200,255,0.55); margin-left: 4px; }
+  .wm-leg-title { font-size: .54rem; font-weight: 700; color: rgba(255,255,255,.75); letter-spacing: .10em; margin-bottom: 2px; display: flex; align-items: center; }
   .wm-legend--min .wm-leg-title { margin-bottom: 0; }
-  .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .56rem; color: #8ab; font-family: monospace; }
+  .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .58rem; color: rgba(255,255,255,.70); font-family: monospace; }
   .wm-leg-row--sub { opacity: .7; }
-  .wm-leg-sub { font-size: .5rem; }
+  .wm-leg-sub { font-size: .52rem; }
   .wm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .wm-dot--sq { border-radius: 2px; }
-  .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.15); margin: 3px 0; }
-  .wm-leg-ts { font-size: .48rem; color: var(--t3); font-family: monospace; }
+  .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.18); margin: 3px 0; }
+  .wm-leg-ts { font-size: .50rem; color: rgba(255,255,255,.45); font-family: monospace; }
 
   :global(.wm-hit) { cursor: pointer; }
   /* Country hover — subtle brightness lift, GPU-friendly filter, smooth 150ms transition */
@@ -1090,7 +1090,7 @@
     max-width: 320px; overflow: hidden; text-overflow: ellipsis;
   }
   .wm-story-age {
-    font-size: .5rem; color: rgba(255,255,255,.3); font-family: monospace;
+    font-size: .5rem; color: rgba(255,255,255,.45); font-family: monospace;
     flex-shrink: 0; white-space: nowrap;
   }
   .wm-story-sep {
@@ -1176,7 +1176,7 @@
 
   .wm-modal-count {
     padding: 10px 20px 4px; margin: 0;
-    font-size: .65rem; color: rgba(255,255,255,.35); font-family: monospace;
+    font-size: .65rem; color: rgba(255,255,255,.50); font-family: monospace;
   }
   .wm-modal-empty {
     padding: 24px 20px; margin: 0;
@@ -1208,7 +1208,7 @@
     color: rgba(255,255,255,.88); line-height: 1.4;
   }
   .wm-modal-story-summary {
-    margin: 0; font-size: .72rem; color: rgba(255,255,255,.45); line-height: 1.5;
+    margin: 0; font-size: .72rem; color: rgba(255,255,255,.58); line-height: 1.5;
     display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
   }
 

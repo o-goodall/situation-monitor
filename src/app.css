@@ -497,7 +497,20 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   }
   .price-label-sep { color:var(--t3); margin-right:3px; }
   .price-label-cur { color:#22c55e; font-weight:700; }
-  .price-day-change { font-size:.6rem; font-weight:700; letter-spacing:.04em; }
+  .price-day-change {
+    font-size: .68rem; font-weight: 600; letter-spacing: .02em;
+    padding: 2px 7px; border-radius: 4px; display: inline-block;
+  }
+  .price-day-change--up {
+    color: var(--up);
+    background: rgba(34,197,94,.12);
+    border: 1px solid rgba(34,197,94,.22);
+  }
+  .price-day-change--dn {
+    color: var(--dn);
+    background: rgba(239,68,68,.12);
+    border: 1px solid rgba(239,68,68,.22);
+  }
   @media (max-width:500px) {
     .price-usd { font-size:1.2rem; }
     .price-alt { font-size:1.2rem; }
