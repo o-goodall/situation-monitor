@@ -474,6 +474,12 @@ html.light .gc-title { color: rgba(0,0,0,.60); }
   }
   .stat-tile:hover { transform:translateY(-4px); border-color:rgba(255,255,255,.22); box-shadow:0 12px 32px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.24), inset 0 -1px 0 rgba(0,0,0,.10); }
 
+  /* Allow data-tooltip pseudo-element to overflow tile bounds */
+  .stat-tile[data-tooltip] {
+    overflow: visible;
+    contain: style;
+  }
+
   .stat-tile--chart { padding-bottom: 0; cursor:default; }
   .stat-tile--chart::before { display:none; }
   .tile-spark { position: absolute; bottom: 0; left: 0; right: 0; height: 52px; opacity: 0.7; pointer-events: none; }

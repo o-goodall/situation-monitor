@@ -97,20 +97,34 @@
     low:      '#0088ff',
   };
 
-  /** Wikipedia conflict severity → solid colour for pings/markers */
+  // ── Design tokens (Bitcoin brand palette) ─────────────────
+  const TOKEN = {
+    ocean:              '#0d1b2a',
+    land:               '#1e3248',
+    borderStroke:       'rgba(255,255,255,0.28)',
+    borderWidth:        0.65,
+    sphereStroke:       'rgba(247,147,26,0.15)',
+    sphereStrokeWidth:  0.8,
+    graticule:          'rgba(247,147,26,0.06)',
+    graticuleWidth:     0.3,
+    graticuleDash:      '2,2',
+    orange:             '#F7931A',
+  } as const;
+
+  /** Wikipedia conflict severity → solid colour for pings/markers (bright, always visible) */
   const WIKI_SEVERITY_COLORS: Record<string, string> = {
-    Extreme:   '#8B0000',   // Major wars ≥10,000 casualties
-    High:      '#FF4500',   // Minor wars 1,000–9,999
-    Turbulent: '#FFA500',   // Conflicts 100–999
-    Low:       '#FFD580',   // Skirmishes/clashes 1–99
+    Extreme:   '#F7931A',   // Full Bitcoin orange — Major wars ≥10,000
+    High:      '#FF8C00',   // Bright orange — Minor wars 1,000–9,999
+    Turbulent: '#FFAA33',   // Amber — Conflicts 100–999
+    Low:       '#FFD580',   // Light gold — Skirmishes 1–99
   };
 
-  /** Wikipedia conflict severity → solid colour fill for country shading */
+  /** Wikipedia conflict severity → muted fill for country background shading */
   const WIKI_SEVERITY_FILLS: Record<string, string> = {
-    Extreme:   '#8B0000',   // Major wars ≥10,000 casualties
-    High:      '#FF4500',   // Minor wars 1,000–9,999
-    Turbulent: '#FFA500',   // Conflicts 100–999
-    Low:       '#FFD580',   // Skirmishes 1–99
+    Extreme:   '#F7931A',   // Bitcoin orange — Major wars ≥10,000 (full intensity)
+    High:      '#C46800',   // Rich amber — Minor wars 1,000–9,999
+    Turbulent: '#7A3D00',   // Dark orange-brown — Conflicts 100–999
+    Low:       '#4A2400',   // Very dark burnt sienna — Skirmishes 1–99
   };
 
   /** Ranking for de-duplication: higher = more severe */
@@ -203,7 +217,7 @@
   let seenCountries = new Set<string>();
 
   /** Default land fill for non-conflict countries — deep steel blue gives depth over the dark ocean */
-  const LAND_FILL_DEFAULT = '#1e3248';
+  const LAND_FILL_DEFAULT = TOKEN.land;
 
   /** Returns the fill for a country based on Wikipedia conflict severity */
   function getCountryFillById(id: string): string {
@@ -407,7 +421,7 @@
       mapGroup.append('path')
         .datum({ type: 'Sphere' })
         .attr('d', path as unknown as string)
-        .attr('fill', '#0d1b2a')
+        .attr('fill', TOKEN.ocean)
         .attr('stroke', 'none');
 
       // Sphere outline — crisp disc edge frame, drawn before land so it appears on ocean edges
@@ -415,8 +429,8 @@
         .datum({ type: 'Sphere' })
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(0,200,255,0.20)')
-        .attr('stroke-width', 0.7)
+        .attr('stroke', TOKEN.sphereStroke)
+        .attr('stroke-width', TOKEN.sphereStrokeWidth)
         .attr('pointer-events', 'none');
 
       // Countries — shaded by live threat level so severity is immediately visible
@@ -431,23 +445,23 @@
       // Retain selection so live refreshes can update fills in-place
       countryPaths = mapGroup.selectAll<SVGPathElement, GeoJSON.Feature>('path.wm-country');
 
-      // Country borders — muted white, crisp and subtle
+      // Country borders — crisp white strokes for high-contrast visibility
       mapGroup.append('path')
         .datum(borders)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(255,255,255,0.18)')
-        .attr('stroke-width', 0.5);
+        .attr('stroke', TOKEN.borderStroke)
+        .attr('stroke-width', TOKEN.borderWidth);
 
-      // Graticule — very subtle, doesn't compete with land/marker layers
+      // Graticule — very subtle warm tint, doesn't compete with land/marker layers
       const grat = d3.geoGraticule().step([30, 30]);
       mapGroup.append('path')
         .datum(grat)
         .attr('d', path as unknown as string)
         .attr('fill', 'none')
-        .attr('stroke', 'rgba(0,200,255,0.07)')
-        .attr('stroke-width', 0.3)
-        .attr('stroke-dasharray', '2,2');
+        .attr('stroke', TOKEN.graticule)
+        .attr('stroke-width', TOKEN.graticuleWidth)
+        .attr('stroke-dasharray', TOKEN.graticuleDash);
 
       // Day/night terminator (approximate) — subtle, doesn't obscure land data
       const terminatorPts = calcTerminator();
@@ -821,14 +835,14 @@
     <button class="wm-legend" class:wm-legend--min={legendMinimized} on:click={() => legendMinimized = !legendMinimized} title={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-label={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-expanded={!legendMinimized}>
       <div class="wm-leg-title">THREAT {#if legendMinimized}<span class="wm-leg-expand">▸</span>{:else}<span class="wm-leg-expand">▾</span>{/if}</div>
       {#if !legendMinimized}
-      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(139,0,0,0.45);"></span><span class="wm-leg-sub">Country fill = conflict severity</span></div>
+      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(247,147,26,0.40);"></span><span class="wm-leg-sub">Country fill = conflict severity</span></div>
       <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#0088ff,#ff8800,#ff2200);border-radius:2px;width:20px;height:7px;"></span>Live events</div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#4a2400,#7a3d00,#c46800,#f7931a);border-radius:2px;width:20px;height:7px;"></span>Conflict intensity</div>
       <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#8B0000;"></span><span>Major war ≥10k</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#FF4500;"></span><span>Minor war 1k–9.9k</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#FFA500;"></span><span>Conflict 100–999</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#FFD580;"></span><span>Skirmish &lt;100</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#F7931A;"></span><span>Major war ≥10k</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#C46800;"></span><span>Minor war 1k–9.9k</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#7A3D00;"></span><span>Conflict 100–999</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#4A2400;"></span><span>Skirmish &lt;100</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#b91c1c;box-shadow:0 0 4px #b91c1c;"></span><span style="color:#ff6655;">Trending 24h</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ffffff;border:1px solid rgba(255,255,255,0.4);"></span><span>News – no conflict data</span></div>
       {#if polymarketThreats.length > 0}
@@ -937,22 +951,32 @@
     background: #0d1b2a;
   }
   .wm-state--error { color: #f43f5e; font-size: .75rem; }
-  .wm-state-text { font-size: .72rem; color: rgba(0,200,255,0.5); letter-spacing: .06em; text-transform: uppercase; font-family: monospace; }
+  .wm-state-text { font-size: .72rem; color: rgba(247,147,26,0.6); letter-spacing: .06em; text-transform: uppercase; font-family: 'Inter', system-ui, sans-serif; }
   .wm-spinner {
     width: 32px; height: 32px; border-radius: 50%;
-    border: 2px solid rgba(0,200,255,.12); border-top-color: rgba(0,200,255,.7);
+    border: 2px solid rgba(247,147,26,.12); border-top-color: rgba(247,147,26,.7);
     animation: wm-spin .9s linear infinite;
-    box-shadow: 0 0 12px rgba(0,200,255,.15);
+    box-shadow: 0 0 12px rgba(247,147,26,.15);
   }
   @keyframes wm-spin { to { transform: rotate(360deg); } }
 
   .wm-tooltip {
-    position: absolute; background: rgba(8,18,32,.97); border: 1px solid rgba(0,200,255,0.3);
-    border-radius: 6px; padding: 6px 9px; font-size: .65rem; color: #ddd;
-    max-width: 260px; pointer-events: none; z-index: 100;
+    position: absolute;
+    background: rgba(13,19,30,0.97);
+    border: 1px solid rgba(247,147,26,0.35);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: 'Inter', system-ui, sans-serif;
+    font-size: .72rem;
+    font-weight: 500;
+    color: rgba(255,255,255,0.92);
+    max-width: 260px;
+    pointer-events: none;
+    z-index: 100;
     line-height: 1.5;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.55);
   }
-  .wm-tip-line { opacity: .75; }
+  .wm-tip-line { opacity: .80; }
 
   .wm-zoom {
     position: absolute; bottom: 10px; right: 10px;
@@ -960,36 +984,36 @@
   }
   .wm-zbtn {
     width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-    background: rgba(8,18,32,.9); border: 1px solid rgba(0,200,255,0.25); border-radius: 5px;
-    color: #6b8f9f; font-size: .9rem; cursor: pointer; transition: color .15s, border-color .15s;
+    background: rgba(13,19,30,.92); border: 1px solid rgba(247,147,26,0.28); border-radius: 5px;
+    color: rgba(247,147,26,0.55); font-size: .9rem; cursor: pointer; transition: color .15s, border-color .15s, background .15s;
   }
-  .wm-zbtn:hover { color: #fff; border-color: rgba(0,200,255,0.6); }
+  .wm-zbtn:hover { color: #F7931A; border-color: rgba(247,147,26,0.65); background: rgba(247,147,26,0.08); }
   .wm-zbtn:disabled { opacity: .4; cursor: default; }
 
   .wm-legend {
     position: absolute; top: 10px; right: 10px; display: flex; flex-direction: column;
-    gap: 4px; background: rgba(8,18,32,.92); padding: 7px 10px; border-radius: 6px;
-    border: 1px solid rgba(0,200,255,0.22);
+    gap: 4px; background: rgba(13,19,30,.94); padding: 7px 10px; border-radius: 6px;
+    border: 1px solid rgba(247,147,26,0.25);
     cursor: pointer; text-align: left;
     transition: padding .25s ease, gap .25s ease;
     overflow: hidden;
   }
   .wm-legend--min { gap: 0; padding: 5px 10px; }
-  .wm-leg-expand { font-size: .55rem; color: rgba(0,200,255,0.55); margin-left: 4px; }
-  .wm-leg-title { font-size: .54rem; font-weight: 700; color: rgba(255,255,255,.75); letter-spacing: .10em; margin-bottom: 2px; display: flex; align-items: center; }
+  .wm-leg-expand { font-size: .55rem; color: rgba(247,147,26,0.60); margin-left: 4px; }
+  .wm-leg-title { font-size: .54rem; font-weight: 700; color: rgba(255,255,255,.80); letter-spacing: .10em; margin-bottom: 2px; display: flex; align-items: center; }
   .wm-legend--min .wm-leg-title { margin-bottom: 0; }
-  .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .58rem; color: rgba(255,255,255,.70); font-family: monospace; }
+  .wm-leg-row { display: flex; align-items: center; gap: 5px; font-size: .58rem; color: rgba(255,255,255,.75); font-family: 'Inter', system-ui, sans-serif; }
   .wm-leg-row--sub { opacity: .7; }
   .wm-leg-sub { font-size: .52rem; }
   .wm-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
   .wm-dot--sq { border-radius: 2px; }
-  .wm-leg-sep { height: 1px; background: rgba(0,200,255,0.18); margin: 3px 0; }
-  .wm-leg-ts { font-size: .50rem; color: rgba(255,255,255,.45); font-family: monospace; }
+  .wm-leg-sep { height: 1px; background: rgba(247,147,26,0.18); margin: 3px 0; }
+  .wm-leg-ts { font-size: .50rem; color: rgba(255,255,255,.45); font-family: 'Inter', system-ui, sans-serif; }
 
   :global(.wm-hit) { cursor: pointer; }
-  /* Country hover — subtle brightness lift, GPU-friendly filter, smooth 150ms transition */
-  :global(.wm-country) { transition: filter 150ms ease; }
-  :global(.wm-country:hover) { filter: brightness(1.4); }
+  /* Country hover — Bitcoin orange glow lift, GPU-friendly filter, smooth 150ms transition */
+  :global(.wm-country) { transition: filter 150ms ease; cursor: pointer; }
+  :global(.wm-country:hover) { filter: brightness(1.5) drop-shadow(0 0 3px rgba(247,147,26,0.35)); }
   :global(.wm-poly-pulse) { animation: wm-poly-pulse 1.8s ease-in-out infinite; }
   @keyframes wm-poly-pulse {
     0%, 100% { opacity: .5; }
@@ -1028,7 +1052,7 @@
   .wm-stories {
     --ticker-duration: 200s;
     background: #0a1420;
-    border: 1px solid rgba(0,200,255,0.18);
+    border: 1px solid rgba(247,147,26,0.20);
     border-bottom: none;
     border-radius: 10px 10px 0 0;
     display: flex;
@@ -1039,13 +1063,13 @@
   .wm-ticker-label {
     display: flex; align-items: center; gap: 6px;
     padding: 0 12px; flex-shrink: 0;
-    border-right: 1px solid rgba(0,200,255,0.18);
+    border-right: 1px solid rgba(247,147,26,0.18);
     height: 100%;
-    background: rgba(0,200,255,0.05);
+    background: rgba(247,147,26,0.05);
   }
   .wm-stories-title {
-    font-size: .5rem; font-weight: 700; letter-spacing: .12em; color: rgba(0,200,255,0.6);
-    font-family: monospace; white-space: nowrap;
+    font-size: .5rem; font-weight: 700; letter-spacing: .12em; color: rgba(247,147,26,0.75);
+    font-family: 'Inter', system-ui, sans-serif; white-space: nowrap;
   }
   .wm-stories-badge {
     font-size: .48rem; font-weight: 700; letter-spacing: .1em;
@@ -1077,13 +1101,13 @@
     transition: background .2s;
     height: 38px; flex-shrink: 0;
   }
-  .wm-story:hover { background: rgba(0,200,255,.06); }
+  .wm-story:hover { background: rgba(247,147,26,.06); }
   .wm-story-dot {
     width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
   }
   .wm-story-loc {
     font-size: .52rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
-    color: rgba(0,200,255,.7); font-family: monospace; white-space: nowrap;
+    color: rgba(247,147,26,.80); font-family: 'Inter', system-ui, sans-serif; white-space: nowrap;
   }
   .wm-story-title {
     font-size: .62rem; color: #b8c8d8; white-space: nowrap;
@@ -1094,7 +1118,7 @@
     flex-shrink: 0; white-space: nowrap;
   }
   .wm-story-sep {
-    font-size: .45rem; color: rgba(0,200,255,.25); margin-left: 8px; flex-shrink: 0;
+    font-size: .45rem; color: rgba(247,147,26,.30); margin-left: 8px; flex-shrink: 0;
   }
 
   @media (max-width: 768px) {
@@ -1124,7 +1148,7 @@
     width: min(92vw, 580px);
     max-height: min(82vh, 700px);
     background: rgba(9, 17, 30, 0.97);
-    border: 1px solid rgba(0, 200, 255, 0.25);
+    border: 1px solid rgba(247, 147, 26, 0.25);
     border-radius: 14px;
     overflow: hidden;
     display: flex;
@@ -1144,7 +1168,7 @@
     justify-content: space-between;
     gap: 12px;
     padding: 20px 20px 14px;
-    border-bottom: 1px solid rgba(0,200,255,0.12);
+    border-bottom: 1px solid rgba(247,147,26,0.14);
     flex-shrink: 0;
     background: rgba(9, 17, 30, 0.98);
   }
@@ -1153,7 +1177,7 @@
     overscroll-behavior: contain;
     flex: 1;
     scrollbar-width: thin;
-    scrollbar-color: rgba(0,200,255,0.2) transparent;
+    scrollbar-color: rgba(247,147,26,0.2) transparent;
   }
   .wm-modal-title-row {
     display: flex; align-items: center; gap: 10px; flex-wrap: wrap; flex: 1;
@@ -1199,7 +1223,7 @@
   }
   .wm-modal-source {
     font-size: .55rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
-    color: rgba(0,200,255,.7); font-family: monospace;
+    color: rgba(247,147,26,.80); font-family: 'Inter', system-ui, sans-serif;
   }
   .wm-modal-age { font-size: .55rem; color: rgba(255,255,255,.3); font-family: monospace; }
   .wm-modal-cas { font-size: .55rem; color: #f87171; font-family: monospace; }
