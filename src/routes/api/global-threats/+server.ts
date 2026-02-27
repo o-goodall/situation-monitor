@@ -466,6 +466,7 @@ export async function GET(_event: RequestEvent) {
       if (!stories || stories.length === 0) continue;
       const hasNew = stories.some(s => now - new Date(s.date).getTime() < NEW_STORY_MS);
       threats.push({ country: wc.country, severity: 'turbulent', lat: wc.lat, lon: wc.lon, hasNew, isTrending: trendingCountry === wc.country, stories });
+      addedCountries.add(wc.country);
     }
 
     // Sort: highest severity first, then most-recent story first

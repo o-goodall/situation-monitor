@@ -82,10 +82,12 @@ export interface ThreatEvent {
   score: number;
   pubDate: string;
   link: string;
+  /** Country name from Nominatim reverse-geocode (used client-side to deduplicate against threat markers) */
+  country?: string;
 }
 
 // ── In-memory geocode cache ────────────────────────────────────
-const geoCache: Record<string, { lat: number; lon: number } | null> = {};
+const geoCache: Record<string, { lat: number; lon: number; country?: string } | null> = {};
 
 // ── Module-level response cache (5-minute TTL) ─────────────────
 let _cachedResponse: { events: ThreatEvent[]; updatedAt: string } | null = null;
@@ -105,19 +107,19 @@ function extractLocation(title: string): string | null {
   return places.length > 0 ? places[0] : null;
 }
 
-async function geocode(place: string): Promise<{ lat: number; lon: number } | null> {
+async function geocode(place: string): Promise<{ lat: number; lon: number; country?: string } | null> {
   if (place in geoCache) return geoCache[place];
 
   try {
     const encoded = encodeURIComponent(place);
     const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1`,
+      `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1&addressdetails=1`,
       { headers: { 'User-Agent': 'situation-monitor/1.0 (https://github.com/o-goodall/situation-monitor)' } }
     );
     if (!res.ok) { geoCache[place] = null; return null; }
-    const data: Array<{ lat: string; lon: string }> = await res.json();
+    const data: Array<{ lat: string; lon: string; address?: { country?: string } }> = await res.json();
     if (!data.length) { geoCache[place] = null; return null; }
-    const result = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+    const result = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon), country: data[0].address?.country };
     geoCache[place] = result;
     return result;
   } catch {
@@ -236,7 +238,7 @@ export async function GET(_event: RequestEvent) {
       .map(item => ({ ...item, location: extractLocation(item.title) }))
       .filter((item): item is typeof item & { location: string } => item.location !== null);
 
-    const geocoded: (typeof withLocation[0] & { lat: number; lon: number } | null)[] = [];
+    const geocoded: (typeof withLocation[0] & { lat: number; lon: number; country?: string } | null)[] = [];
     let networkCallsMade = 0;
     for (const item of withLocation) {
       const alreadyCached = item.location in geoCache;
@@ -275,6 +277,7 @@ export async function GET(_event: RequestEvent) {
           score:    timeDecayScore(e.pubDate, level),
           pubDate:  e.pubDate,
           link:     e.link,
+          country:  e.country,
         }];
       })
       .sort((a, b) => b.score - a.score);

@@ -151,6 +151,12 @@
     'Ivory Coast': "Côte d'Ivoire",
     'United Arab Emirates': 'UAE',
     'Sahrawi Republic': 'Western Sahara',
+    // Nominatim country name variants
+    'Bosnia and Herzegovina': 'Bosnia',
+    'State of Palestine': 'Palestine',
+    'Russian Federation': 'Russia',
+    'Republic of Korea': 'South Korea',
+    "Democratic People's Republic of Korea": 'North Korea',
   };
 
   /** Maps global-threat location names to ISO 3166-1 numeric country IDs (topojson) */
@@ -598,8 +604,20 @@
           const isNearThreat = (lat: number, lon: number) =>
             globalThreatData.threats.some(h => Math.abs(h.lat - lat) < MIN_MARKER_DISTANCE_DEGREES && Math.abs(h.lon - lon) < MIN_MARKER_DISTANCE_DEGREES);
 
+          // Build a set of threat country names for country-level deduplication.
+          // This handles large countries (e.g. Australia) where cities can be 10+
+          // degrees away from the geographic-centre threat marker, defeating the
+          // coordinate-proximity check above.
+          const threatCountryNames = new Set(globalThreatData.threats.map(t => t.country));
+          const isFromThreatCountry = (evCountry?: string): boolean => {
+            if (!evCountry) return false;
+            const normalized = WIKI_COUNTRY_ALIAS[evCountry] ?? evCountry;
+            return threatCountryNames.has(normalized);
+          };
+
           for (const ev of eventData.events) {
             if (isNearThreat(ev.lat, ev.lon)) continue;
+            if (isFromThreatCountry(ev.country)) continue;
             const pos = projection([ev.lon, ev.lat]);
             if (!pos) continue;
             const [x, y] = pos;
