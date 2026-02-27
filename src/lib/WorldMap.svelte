@@ -101,38 +101,45 @@
     low:      '#0088ff',
   };
 
-  // ── Design tokens (Bitcoin brand palette) ─────────────────
+  // ── Design tokens (TailAdmin flat/clean aesthetic adapted to dark palette) ─
   const TOKEN = {
-    ocean:              '#0d1b2a',
-    land:               '#1e3248',
-    borderStroke:       'rgba(255,255,255,0.28)',
-    borderWidth:        0.65,
-    sphereStroke:       'rgba(247,147,26,0.15)',
-    sphereStrokeWidth:  0.8,
-    graticule:          'rgba(247,147,26,0.06)',
-    graticuleWidth:     0.3,
-    graticuleDash:      '2,2',
+    ocean:              '#0f172a',   // slate-900 deep navy
+    land:               '#1e293b',   // slate-800 neutral
+    borderStroke:       'rgba(148,163,184,0.28)',   // slate-400 subtle borders
+    borderWidth:        0.5,
+    sphereStroke:       'rgba(148,163,184,0.10)',
+    sphereStrokeWidth:  0.6,
+    graticule:          'rgba(148,163,184,0.05)',
+    graticuleWidth:     0.25,
+    graticuleDash:      '2,3',
     orange:             '#F7931A',
   } as const;
 
-  /** Wikipedia conflict severity → solid colour for pings/markers (bright, always visible) */
+  /** Wikipedia conflict severity → solid colour for pings/markers (cold→warm gradient, bright) */
   const WIKI_SEVERITY_COLORS: Record<string, string> = {
-    Extreme:   '#F7931A',   // Full Bitcoin orange — Major wars ≥10,000
-    High:      '#FF8C00',   // Bright orange — Minor wars 1,000–9,999
-    Turbulent: '#FFAA33',   // Amber — Conflicts 100–999
-    Low:       '#FFD580',   // Light gold — Skirmishes 1–99
+    Extreme:   '#ef4444',   // Red — Major wars ≥10,000 (hot)
+    High:      '#f97316',   // Orange — Minor wars 1,000–9,999
+    Turbulent: '#f59e0b',   // Amber — Conflicts 100–999
+    Low:       '#3b82f6',   // Blue — Skirmishes <100 (cold)
   };
 
-  /** Wikipedia conflict severity → muted fill for country background shading */
+  /** Wikipedia conflict severity → muted fill for country background (cold→warm gradient) */
   const WIKI_SEVERITY_FILLS: Record<string, string> = {
-    Extreme:   '#F7931A',   // Bitcoin orange — Major wars ≥10,000 (full intensity)
-    High:      '#C46800',   // Rich amber — Minor wars 1,000–9,999
-    Turbulent: '#7A3D00',   // Dark orange-brown — Conflicts 100–999
-    Low:       '#4A2400',   // Very dark burnt sienna — Skirmishes 1–99
+    Extreme:   '#7f1d1d',   // Dark crimson — Major wars ≥10,000 (hot)
+    High:      '#9a3412',   // Dark burnt orange — Minor wars 1,000–9,999
+    Turbulent: '#92400e',   // Dark amber — Conflicts 100–999
+    Low:       '#1e3a5f',   // Dark navy blue — Skirmishes <100 (cold)
   };
 
   /** Ranking for de-duplication: higher = more severe */
   const WIKI_SEVERITY_RANK: Record<string, number> = { Extreme: 3, High: 2, Turbulent: 1, Low: 0 };
+
+  /** ISO numeric IDs for countries involved in documented proxy wars (China, USA) */
+  const PROXY_WAR_ISO_IDS = new Set(['156', '840']);
+  /** Proxy war country fill — deep violet, distinct from conflict gradient */
+  const PROXY_WAR_FILL  = '#4c1d95';
+  /** Proxy war ping/marker colour */
+  const PROXY_WAR_COLOR = '#a855f7';
 
   /** Alias map: Wikipedia country names → LOCATION_TO_ISO_ID keys */
   const WIKI_COUNTRY_ALIAS: Record<string, string> = {
@@ -199,6 +206,11 @@
     'Solomon Islands': '090', 'Vanuatu': '548', 'Samoa': '882', 'Tonga': '776',
   };
 
+  /** Reverse lookup: ISO numeric ID → display name (computed from LOCATION_TO_ISO_ID) */
+  const ISO_ID_TO_LOCATION: Record<string, string> = Object.fromEntries(
+    Object.entries(LOCATION_TO_ISO_ID).map(([name, id]) => [id, name])
+  );
+
   /** ISO numeric ID → Wikipedia conflict severity (highest for that country) */
   let wikiConflictCountryFills = new Map<string, string>();
   /** ISO numeric ID → CLED-based global-threat severity (for trending detection only) */
@@ -223,9 +235,10 @@
   /** Default land fill for non-conflict countries — deep steel blue gives depth over the dark ocean */
   const LAND_FILL_DEFAULT = TOKEN.land;
 
-  /** Returns the fill for a country based on Wikipedia conflict severity */
+  /** Returns the fill for a country based on proxy-war status or Wikipedia conflict severity */
   function getCountryFillById(id: string): string {
-    if (id === trendingIsoId) return 'rgba(255,20,20,0.55)'; // trending: strong red
+    if (id === trendingIsoId) return 'rgba(239,68,68,0.55)'; // trending: strong red
+    if (PROXY_WAR_ISO_IDS.has(id)) return PROXY_WAR_FILL;   // proxy war: deep violet
     const wikiSev = wikiConflictCountryFills.get(id);
     if (wikiSev) return WIKI_SEVERITY_FILLS[wikiSev] ?? LAND_FILL_DEFAULT;
     return LAND_FILL_DEFAULT;
@@ -422,7 +435,21 @@
         .attr('class', 'wm-country')
         .attr('d', path as unknown as string)
         .attr('fill', (d: GeoJSON.Feature) => getCountryFillById(String(d.id ?? '')))
-        .attr('stroke', 'none');
+        .attr('stroke', 'none')
+        .on('mouseenter', (e: MouseEvent, d: GeoJSON.Feature) => {
+          const id   = String(d.id ?? '');
+          if (!(id in ISO_ID_TO_LOCATION)) return;
+          const name = ISO_ID_TO_LOCATION[id];
+          const isProxy  = PROXY_WAR_ISO_IDS.has(id);
+          const wikiSev  = wikiConflictCountryFills.get(id);
+          const col      = isProxy ? PROXY_WAR_COLOR : (WIKI_SEVERITY_COLORS[wikiSev ?? ''] ?? 'rgba(200,200,200,0.7)');
+          const sevLabel = isProxy ? 'Proxy War' : wikiSev
+            ? ({ Extreme: 'Major war ≥10k', High: 'Minor war 1k–9.9k', Turbulent: 'Conflict 100–999', Low: 'Skirmish <100' }[wikiSev] ?? wikiSev)
+            : null;
+          showTip(e, name, col, sevLabel ? [sevLabel] : []);
+        })
+        .on('mousemove', moveTip)
+        .on('mouseleave', hideTip);
 
       // Retain selection for in-place fill updates
       countryPaths = mapGroup.selectAll<SVGPathElement, GeoJSON.Feature>('path.wm-country');
@@ -451,8 +478,24 @@
         mapGroup.append('path')
           .datum({ type: 'Polygon', coordinates: [terminatorPts] } as GeoJSON.Polygon)
           .attr('d', path as unknown as string)
-          .attr('fill', 'rgba(0,0,0,0.18)')
+          .attr('fill', 'rgba(0,0,0,0.15)')
           .attr('stroke', 'none');
+      }
+
+      // Proxy-war text labels for China and USA
+      const proxyFeatures = countries.features.filter(d => PROXY_WAR_ISO_IDS.has(String(d.id ?? '')));
+      for (const feature of proxyFeatures) {
+        const centroid = path.centroid(feature as GeoJSON.Feature);
+        if (!centroid || isNaN(centroid[0]) || isNaN(centroid[1])) continue;
+        const [cx, cy] = centroid;
+        mapGroup.append('text')
+          .attr('class', 'wm-proxy-label')
+          .attr('x', cx).attr('y', cy)
+          .attr('text-anchor', 'middle').attr('dominant-baseline', 'middle')
+          .attr('fill', '#c4b5fd').attr('font-size', '4.5px').attr('font-weight', '700')
+          .attr('font-family', 'Inter, system-ui, sans-serif').attr('letter-spacing', '0.06em')
+          .attr('pointer-events', 'none').attr('opacity', '0.85')
+          .text('PROXY WAR');
       }
 
       // Pre-create marker groups (empty; populated in Phase 2) — order determines Z-layer
@@ -889,14 +932,13 @@
     <button class="wm-legend" class:wm-legend--min={legendMinimized} on:click={() => legendMinimized = !legendMinimized} title={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-label={legendMinimized ? 'Show threat key' : 'Hide threat key'} aria-expanded={!legendMinimized}>
       <div class="wm-leg-title">THREAT {#if legendMinimized}<span class="wm-leg-expand">▸</span>{:else}<span class="wm-leg-expand">▾</span>{/if}</div>
       {#if !legendMinimized}
-      <div class="wm-leg-row"><span class="wm-dot wm-dot--sq" style="background:rgba(247,147,26,0.40);"></span><span class="wm-leg-sub">Country fill = conflict severity</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#1e3a5f,#92400e,#9a3412,#7f1d1d);border-radius:2px;width:20px;height:7px;"></span>Conflict intensity</div>
       <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:linear-gradient(90deg,#4a2400,#7a3d00,#c46800,#f7931a);border-radius:2px;width:20px;height:7px;"></span>Conflict intensity</div>
-      <div class="wm-leg-sep"></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#F7931A;"></span><span>Major war ≥10k</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#C46800;"></span><span>Minor war 1k–9.9k</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#7A3D00;"></span><span>Conflict 100–999</span></div>
-      <div class="wm-leg-row"><span class="wm-dot" style="background:#4A2400;"></span><span>Skirmish &lt;100</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#7f1d1d;"></span><span>Major war ≥10k</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#9a3412;"></span><span>Minor war 1k–9.9k</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#92400e;"></span><span>Conflict 100–999</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#1e3a5f;"></span><span>Skirmish &lt;100</span></div>
+      <div class="wm-leg-row"><span class="wm-dot" style="background:#4c1d95;"></span><span style="color:#c4b5fd;">Proxy war</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#b91c1c;box-shadow:0 0 4px #b91c1c;"></span><span style="color:#ff6655;">Trending 24h</span></div>
       <div class="wm-leg-row"><span class="wm-dot" style="background:#ffffff;border:1px solid rgba(255,255,255,0.4);"></span><span>News – no conflict data</span></div>
       {#if polymarketThreats.length > 0}
@@ -988,7 +1030,7 @@
     width: 100%;
     /* clamp: at least 380px, grows with viewport, capped at 680px */
     height: clamp(380px, calc(100vh - 320px), 680px);
-    background: #0d1b2a;
+    background: #0f172a;
     border-radius: 0 0 10px 10px;
     overflow: hidden;
     /* Layout containment: prevent map reflows from affecting outer layout */
@@ -1004,7 +1046,7 @@
   .wm-state {
     position: absolute; inset: 0; display: flex; flex-direction: column;
     align-items: center; justify-content: center; gap: 14px; z-index: 5;
-    background: #0d1b2a;
+    background: #0f172a;
   }
   .wm-state--error { color: #f43f5e; font-size: .75rem; }
   .wm-state-text { font-size: .72rem; color: rgba(247,147,26,0.6); letter-spacing: .06em; text-transform: uppercase; font-family: 'Inter', system-ui, sans-serif; }
@@ -1067,10 +1109,12 @@
   .wm-leg-ts { font-size: .50rem; color: rgba(255,255,255,.45); font-family: 'Inter', system-ui, sans-serif; }
 
   :global(.wm-hit) { cursor: pointer; }
-  /* Country hover — Bitcoin orange glow lift, GPU-friendly filter, smooth 150ms transition */
+  /* Country hover — clean TailAdmin-style glow lift, GPU-friendly filter, smooth 180ms transition */
   /* fill transition: enables smooth color update when Phase 2 live data arrives */
-  :global(.wm-country) { transition: fill 0.5s ease, filter 150ms ease; cursor: pointer; }
-  :global(.wm-country:hover) { filter: brightness(1.5) drop-shadow(0 0 3px rgba(247,147,26,0.35)); }
+  :global(.wm-country) { transition: fill 0.2s ease, filter 180ms ease; cursor: pointer; }
+  :global(.wm-country:hover) { filter: brightness(1.45) drop-shadow(0 0 4px rgba(255,255,255,0.20)); }
+  /* Proxy-war label — always on top of country fills, never interactive */
+  :global(.wm-proxy-label) { pointer-events: none; user-select: none; }
   :global(.wm-poly-pulse) { animation: wm-poly-pulse 1.8s ease-in-out infinite; }
   @keyframes wm-poly-pulse {
     0%, 100% { opacity: .5; }
